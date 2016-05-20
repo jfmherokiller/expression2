@@ -1,0 +1,59 @@
+@name Trolololololol
+@inputs
+@outputs
+@persist LastTick Radius
+@persist HoloVel:array HoloPos:array HoloMaterialTime:array
+@trigger
+@model models/combine_helicopter/helicopter_bomb01.mdl
+
+runOnTick(1)
+
+if (first() | duped()) {
+    LastTick = curtime()
+    
+    HoloVel:clear()
+    HoloPos:clear()
+    
+    HoloVel:pushVector(vec(-32, -32, 32) * 4)
+    HoloVel:pushVector(vec(-32, 32, 32) * 4)
+    HoloVel:pushVector(vec(32, -32, 32) * 4)
+    HoloVel:pushVector(vec(32, 32, 32) * 4)
+    HoloVel:pushVector(vec(-32, -32, 32) * 4)
+    HoloVel:pushVector(vec(-32, 32, 32) * 4)
+    HoloVel:pushVector(vec(32, -32, 32) * 4)
+    HoloVel:pushVector(vec(32, 32, 32) * 4)
+    
+    for (I = 1, 8) {
+        HoloPos:pushVector(entity():pos())
+        holoCreate(I)
+        holoModel(I, "hqsphere")
+        holoPos(I, entity():pos())
+        holoScale(I, vec(8, 8, 8))
+    }
+    Radius = 8 * 8
+}
+
+DeltaTime = curtime() - LastTick
+for (I = 1, 8) {
+    NewPos = HoloPos[I, vector] + HoloVel[I, vector] * DeltaTime
+    HoloVel[I, vector] = HoloVel[I, vector] - vec(0, 0, 600) * DeltaTime
+    
+    Direction = NewPos - HoloPos[I, vector]
+    Direction = Direction:normalized()
+    Ranger = rangerOffset(HoloPos[I, vector], NewPos + Direction * Radius)
+    if (Ranger:hit()) {
+        NewPos = Ranger:position() - Radius * Direction
+        HoloVel[I, vector] = HoloVel[I, vector] + (2 * Ranger:hitNormal() + randvec()) * 512
+        Texture = Ranger:toTable()["HitTexture", string]
+        HoloMaterialTime[I, number] = curtime()
+        holoMaterial(I, Texture)
+        # holoColor(I, vec(random(0, 255), random(0, 255), random(0, 255)))
+        holoColor(I, vec4(255, 255, 255, 255))
+    }
+    if (curtime() - HoloMaterialTime[I, number] > 0.1) {
+        holoMaterial(I, "")
+    }
+    HoloPos[I, vector] = NewPos
+    holoPos(I, NewPos)
+}
+LastTick = curtime()

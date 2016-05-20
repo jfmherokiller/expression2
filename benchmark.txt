@@ -1,0 +1,39 @@
+@name Benchmark
+@inputs 
+@outputs 
+@persist A B C D N Ret
+@trigger 
+
+A = systime()
+D = curtime()
+
+function number sum (B, C)
+{
+    Ret = 0
+    I = B
+    while (I <= C)
+    {
+        Ret = Ret + I
+        I = I + 1
+    }
+    return Ret
+}
+
+function number factorial (B)
+{
+    if (B < 1)
+    {
+        return 1
+    }
+    if (B < 1)
+    {
+        print("FAIL")
+    }
+    return factorial(B - 1) * B
+}
+
+N = 5
+print("sum is " + sum(1000, 2000))
+print("factorial(" + N + ") is " + factorial(N))
+print("execution took " + (systime() - A) * 1000 + ".ms")
+

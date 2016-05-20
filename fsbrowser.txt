@@ -1,0 +1,348 @@
+@name FSBrowser
+@inputs EGP1:wirelink EGP2:wirelink
+@outputs 
+@persist Path:string FilePath:string FileContents:string FileLines:array
+@persist Folders:array Files:array
+
+@persist FileDisplayStartLine
+
+@persist PlayerI MaxPlayers Players:array
+@persist HoveredCommands:array UsePressed:array
+
+@persist ColorTransparent:vector4
+@trigger 
+
+if (first() | duped())
+{
+    runOnTick(1)
+    runOnFile(1)
+    
+    ColorTransparent = vec4(0, 0, 0, 0)
+    PlayerI = 1
+    MaxPlayers = maxPlayers()
+    if (MaxPlayers > 15) { MaxPlayers = 15 }
+    
+    function initScreen1()
+    {
+        EGP1:egpClear()
+        EGP1:egpDrawTopLeft(1)
+        EGP1:egpBox(1, vec2(0, 0), vec2(512, 20))
+        EGP1:egpColor(1, vec4(128, 128, 255, 255))
+        EGP1:egpText(2, "Virtual Filesystem Browser", vec2(4, 0))
+        
+        EGP1:egpBox(3, vec2(0, 20), vec2(512, 20))
+        EGP1:egpColor(3, vec4(128, 128, 128, 255))
+    }
+    
+    function updateScrollBars()
+    {
+        FileDisplayStartLine
+        VisibleLines = 22
+        Y1 = (FileDisplayStartLine - 1) / (FileLines:count() - 1)
+        Y2 = (FileDisplayStartLine + VisibleLines - 1) / (FileLines:count() - 1)
+        Y1 = clamp(Y1, 0, 1)
+        Y2 = clamp(Y2, 0, 1)
+        Y1 = 64 + Y1 * 424
+        Y2 = 64 + Y2 * 424
+        
+        EGP2:egpBox(15, vec2(488, Y1), vec2(24, Y2 - Y1))
+        EGP2:egpColor(15, vec4(160, 160, 160, 255))
+    }
+    
+    function initScreen2()
+    {
+        EGP2:egpClear()
+        EGP2:egpDrawTopLeft(1)
+        EGP2:egpBox(1, vec2(0, 0), vec2(512, 20))
+        EGP2:egpColor(1, vec4(128, 128, 255, 255))
+        EGP2:egpText(2, "Virtual Filesystem Browser", vec2(4, 0))
+        
+        EGP2:egpBox(3, vec2(0, 20), vec2(512, 20))
+        EGP2:egpColor(3, vec4(128, 128, 128, 255))
+        
+        # Scrollbars
+        EGP2:egpBox(10, vec2(488, 40), vec2(24, 24))
+        EGP2:egpBox(11, vec2(488, 488), vec2(24, 24))
+        EGP2:egpColor(10, vec4(160, 160, 160, 255))
+        EGP2:egpColor(11, vec4(160, 160, 160, 255))
+        EGP2:egpText(12, toUnicodeChar(9650), vec2(500, 40))
+        EGP2:egpText(13, toUnicodeChar(9660), vec2(500, 488))
+        EGP2:egpAlign(12, 1)
+        EGP2:egpAlign(13, 1)
+        
+        EGP2:egpBox(14, vec2(488, 64), vec2(24, 424))
+        EGP2:egpColor(14, vec4(96, 96, 96, 255))
+        updateScrollBars()
+    }
+    
+    function updatePath(NewPath:string)
+    {
+        Path = NewPath
+        EGP1:egpText(4, NewPath, vec2(4, 20))
+    }
+    
+    function updateFilePath(NewPath:string)
+    {
+        FilePath = NewPath
+        EGP2:egpText(4, NewPath, vec2(4, 20))
+    }
+    
+    function string rewritePath(Path:string)
+    {
+        MaxPlayers = maxPlayers()
+        for (I = 1, MaxPlayers)
+        {
+            Player = entity(I)
+            if (Player:isValid())
+            {
+                Name = Player:name()
+                if (Path:sub(1, Name:length()) == Name)
+                {
+                    Path = Player:steamID() + Path:sub(Name:length() + 1)
+                    return Path
+                }
+            }
+        }
+        return Path
+    }
+    
+    function requestFolderListing(Path:string)
+    {
+        # print(fileCanList())
+        if (!fileCanList()) { return }
+        
+        updatePath(Path)
+        Path = rewritePath(Path)
+        print("[Dir] " + Path)
+        fileList(Path)
+    }
+    
+    function requestFileContents(Path:string)
+    {
+        if (!fileCanLoad()) { return }
+        
+        updateFilePath(Path)
+        Path = rewritePath(Path)
+        print("[File] " + Path + "\\.txt")
+        fileLoad(Path + "\\.txt")
+    }
+    
+    function browseItem(ID)
+    {
+        IsFolder = 0
+        Name = ""
+        if (ID < Folders:count())
+        {
+            IsFolder = 1
+            Name = Folders[ID + 1, string]
+        }
+        else
+        {
+            IsFolder = 0
+            Name = Files[ID - Folders:count() + 1, string]
+        }
+        
+        print("Browse: " + Name)
+        if (Name == "") { return }
+        
+        NewPath = Path
+        if (Name == "..")
+        {
+            SlashPos = NewPath:reverse():find("/")
+            if (SlashPos)
+            {
+                SlashPos = NewPath:length() - SlashPos
+                NewPath = NewPath:sub(1, SlashPos)
+            }
+            else
+            {
+                NewPath = ""
+            }
+        }
+        else
+        {
+            if (NewPath == "")
+            {
+                NewPath = Name
+            }
+            else
+            {
+                NewPath = NewPath + "/" + Name
+            }
+        }
+        
+        if (IsFolder)
+        {
+            requestFolderListing(NewPath)
+        }
+        else
+        {
+            requestFileContents(NewPath)
+        }
+    }
+    
+    function scrollTo (Line)
+    {
+        if (Line > FileLines:count() - 22) { Line = FileLines:count() - 22 }
+        if (Line < 1) { Line = 1 }
+        FileDisplayStartLine = Line
+        for (I = 0, 22)
+        {
+            EGP2:egpText(40 + I, FileLines[Line + I, string]:replace("\t", "    "), vec2(20, 40 + I * 20))
+        }
+        
+        updateScrollBars()
+    }
+    
+    initScreen1()
+    initScreen2()
+    requestFolderListing("")
+}
+
+if (changed(EGP1)) { initScreen1() }
+if (changed(EGP2)) { initScreen2() }
+
+if (fileListClk())
+{
+    R = fileReadList()
+    
+    Folders = array("..")
+    Files = array()
+    for (I = 1, R:count())
+    {
+        Name = R[I, string]
+        if (Name:sub(-1, -1) == "/")
+        {
+            Name = Name:sub(1, -2)
+            Folders:pushString(Name)
+        }
+        else
+        {
+            Files:pushString(Name)
+        }
+    }
+    
+    I = 0
+    for (J = 1, Folders:count())
+    {
+        if (I >= 24) { break }
+        EGP1:egpText(40 + I * 2, Folders[J, string], vec2(24, 40 + I * 20))
+        EGP1:egpBox(40 + I * 2 + 1, vec2(4, 40 + I * 20), vec2(16, 16))
+        EGP1:egpMaterial(40 + I * 2 + 1, "gui/silkicons/folder")
+        I++
+    }
+    for (J = 1, Files:count())
+    {
+        if (I >= 24) { break }
+        EGP1:egpText(40 + I * 2, Files[J, string], vec2(20, 40 + I * 20))
+        EGP1:egpBox(40 + I * 2 + 1, vec2(4, 40 + I * 20), vec2(16, 16))
+        EGP1:egpMaterial(40 + I * 2 + 1, "gui/silkicons/page_white")
+        I++
+    }
+    
+    while (I < 23)
+    {
+        EGP1:egpRemove(40 + I * 2)
+        EGP1:egpRemove(40 + I * 2 + 1)
+        I++
+    }
+}
+
+if (fileClk())
+{
+    FileContents = fileRead()
+    FileLines = FileContents:explode("\n")
+    scrollTo(1)
+}
+
+if (tickClk())
+{
+    while(perf())
+    {
+        Player = owner()
+        PlayerI = owner():id()
+        if (!Player:isValid()) { continue }
+        Players[PlayerI, entity] = Player
+        Pos = EGP1:egpCursor(Player)
+        Y = Pos:y() - 40
+        Y = floor(Y / 20)
+        if (Y >= 0)
+        {
+            Command = "item" + Y
+        }
+        else
+        {
+            Command = ""
+            Pos = EGP2:egpCursor(Player)
+            X = Pos:x(), Y = Pos:y()
+            if (X >= 488 & Y >= 40)
+            {
+                if (Y < 276)
+                {
+                    Command = "up"
+                }
+                else
+                {
+                    Command = "down"
+                }
+            }
+            else
+            {
+                Command = ""
+            }
+        }
+        
+        # Update screen if the player's hover selection has changed
+        if (Command != HoveredCommands[PlayerI, string])
+        {
+            if (Command:sub(1, 4) == "item")
+            {
+                EGP1:egpBox(100 + PlayerI, vec2(0, 40 + Y * 20), vec2(512, 20))
+                EGP1:egpColor(100 + PlayerI, vec4(0, 0, 255, 128))
+            }
+            else
+            {
+                EGP1:egpColor(100 + PlayerI, ColorTransparent)
+            }
+            if (Command == "up")
+            {
+                EGP2:egpBox(100 + PlayerI, vec2(488, 40), vec2(24, 236))
+                EGP2:egpColor(100 + PlayerI, vec4(0, 0, 255, 128))
+            }
+            elseif (Command == "down")
+            {
+                EGP2:egpBox(100 + PlayerI, vec2(488, 276), vec2(24, 236))
+                EGP2:egpColor(100 + PlayerI, vec4(0, 0, 255, 128))
+            }
+            else
+            {
+                EGP2:egpColor(100 + PlayerI, ColorTransparent)
+            }
+            HoveredCommands[PlayerI, string] = Command
+        }
+        
+        # Check use button
+        UseDown = Player:keyUse()
+        if (UseDown & !UsePressed[PlayerI, number] & Command != "")
+        {
+            # print(entity(I):name() + ": " + Command)
+            if (Command:sub(1, 4) == "item")
+            {
+                ID = Command:sub(5):toNumber()
+                browseItem(ID)
+            }
+            elseif (Command == "up")
+            {
+                scrollTo(FileDisplayStartLine - 11)
+            }
+            elseif (Command == "down")
+            {
+                scrollTo(FileDisplayStartLine + 11)
+            }
+        }
+        UsePressed[PlayerI, number] = UseDown
+        
+        PlayerI++
+        if (PlayerI >= MaxPlayers) { PlayerI = 1 }
+    }
+}

@@ -1,0 +1,67 @@
+@name Aperture Science Weighted Storage Cube Dispenser
+@inputs
+@outputs
+@persist State NextStateTime
+@persist Cube:entity ShouldDispense
+@trigger
+@model
+
+runOnLast(1)
+runOnChat(1)
+runOnTick(1)
+
+if (first() | duped()) {
+    State = 0
+    holoCreate(1)
+    holoCreate(2)
+#ifdef entity:setModel(string)
+    holoEntity(1):setModel("models/props/box_dropper.mdl")
+    holoEntity(2):setModel("models/props/box_dropper_cover.mdl")
+#else
+    holoModel(1, "models/props/box_dropper.mdl")
+    holoModel(2, "models/props/box_dropper_cover.mdl")
+#endif
+    holoAng(1, ang(0, 0, 0))
+    holoAng(2, ang(0, 0, 0))
+    holoPos(1, entity():pos() + vec(0, 0, 320))
+    holoPos(2, entity():pos() + vec(0, 0, 320))
+    holoParent(1, entity())
+    holoParent(2, entity())
+    ShouldDispense = 1
+}
+if (last())
+{
+    Cube:propDelete()
+}
+
+if (NextStateTime & curtime() > NextStateTime) {
+    State++
+    if (State == 1) {
+        holoAnim(2, 1)
+        NextStateTime = curtime() + holoAnimLength(2)
+    } elseif (State == 2) {
+        ShouldDispense = 0
+        Cube:unFreeze()
+        NextStateTime = curtime() + 1
+    } elseif (State == 3) {
+        holoAnim(2, 2)
+        NextStateTime = curtime() + holoAnimLength(2)
+    } elseif (State == 4) {
+        State = 0
+        NextStateTime = 0
+    }
+}
+
+if (!Cube | Cube:getAlpha() == 0) {
+    # Cube = propSpawn("models/props/turret_01.mdl", 1)
+    Cube = propSpawn("models/props/metal_box.mdl", 1)
+    Cube:setSkin(1)
+    # Cube = propSpawn("models/props_junk/watermelon01.mdl", 1)
+    Cube:setPos(holoEntity(1):pos() + vec(0, 0, 24))
+    Cube:noCollide(entity())
+    ShouldDispense = 1
+}
+
+if (ShouldDispense & State == 0) {
+    NextStateTime = curtime()
+}

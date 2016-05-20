@@ -1,0 +1,31 @@
+@name BunkerDoorAuthorization
+@inputs Button Denied
+@outputs Message:string
+@persist ShouldOpen PlayerName:string MessageTime
+@trigger
+
+interval(500)
+
+gSetGroup("bunker_door")
+if (Button) {
+    if (!Denied) {
+        gSetNum("door_button_time", curtime())
+        ShouldOpen = 1
+        Message = "<br>Access Granted"
+    } else {
+        Message = "<br>Access Denied"
+    }
+    MessageTime = curtime()
+}
+
+if (curtime() - gGetNum("door_button_time") > 8) {
+    ShouldOpen = 0
+    stoptimer("interval")
+}
+
+if (curtime() - MessageTime > 5) {
+    Message = ""
+}
+
+gSetNum("door_opened", ShouldOpen)
+gResetGroup()

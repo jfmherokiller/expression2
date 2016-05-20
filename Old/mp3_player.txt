@@ -1,0 +1,84 @@
+@name MP3 Player
+@inputs Screen:wirelink
+@outputs
+@persist Sounds:array Selected ShuttingDown
+@persist PlayingSound:string
+@trigger 
+
+interval(500)
+runOnChat(1)
+
+PlaySound = ""
+if (!Selected) {
+    Selected = 1
+    concmd("lmsg getmp3list")
+}
+
+if (chatClk()) {
+    ChatActivated = 0
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        ChatActivated = 1
+    }
+    if (ChatActivated) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        Components = Params:explode(" ")
+        ReducedParams = Params:replace(" ", "")
+        Number = Components:number(1)
+        Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        Player = findPlayerByName(Components:string(1))
+        Message = Params:sub(Params:find(" ") + 1, Params:length())
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "tick") {
+                EncodedData = ""
+                for (I = 1, convarnum("lmsg_message_proxy_data_count")) {
+                    EncodedData = EncodedData + convar("lmsg_message_proxy_data" + I)
+                }
+                hint("" + convar("lmsg_message_proxy_data1"):length() + " " + convar("lmsg_message_proxy_data2"):length() + " " + convar("lmsg_message_proxy_data3"):length(), 10)
+                Data = glonDecode(EncodedData)
+                for (I = 1, Data:count()) {
+                    String = Data:string(I)
+                    Table = glonDecodeTable(String)
+                    Type = Table:string("type")
+                    Message = Table:string("msg")
+                    Player = entity(Table:number("ply"))
+                    if (Type == "string") {
+                        hint("Added mp3: " + Message, 10)
+                        Sounds:pushString(Message)
+                    }
+                }
+            } elseif (Command == "addmp3") {
+                Sounds:pushString(Params)
+            } elseif (Command == "play") {
+                
+            } elseif (Command == "info") {
+                hint(toString(Sounds:count()) + " sounds registered.", 10)
+            } elseif (Command == "shutdown") {
+                ShuttingDown = 1
+            }
+        }
+    }
+} elseif (clk("interval")) {
+    if (!ShuttingDown) {
+        concmd("lmsg ping")
+    }
+}
+
+if (PlaySound:length() > 0) {
+    soundStop(1)
+    entity():soundPlay(1, 0, PlaySound)
+}

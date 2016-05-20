@@ -1,0 +1,7 @@
+@name Server Crash (Sound)
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+soundPlay(1, 1, toChar(1) + ".wav")

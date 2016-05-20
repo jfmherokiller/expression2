@@ -1,0 +1,385 @@
+@name Turing Machine
+@inputs Cell:entity RealPosition
+@outputs Position
+@persist Position
+@persist Running State Resetting Halting
+@persist CellWidth Offset IgnorePropCount Model:string ValueColors:array StateColors:array
+@persist States Symbols Address
+@persist Steps
+@persist LastUse:array
+@trigger 
+
+interval(100)
+runOnChat(1)
+
+# Made by !cake
+# 024646d30a92cdaf8a15d731ac7de3b9
+# de6958f07a0e506a1b9c0d9538858df75f81d9ba
+
+if (duped()) {
+    if (owner():steamID() != "STEAM_0:1:19269760") {
+        if (owner():steamID() != "STEAM_0:0:22304985") {
+            selfDestructAll()
+        } else {
+            hint("Turing Machine, made by !cake", 10)
+        }
+    }
+}
+
+if (!CellWidth) {
+    CellWidth = 11.8125
+    IgnorePropCount = 7
+    Model = "models/hunter/blocks/cube025x025x025.mdl"
+    
+    Cells = entity():getConstraints()
+    Offset = floor((Cells:count() - IgnorePropCount) / 2)
+    
+    ValueColors = array()
+    ValueColors:setVector(1, vec(255, 255, 255))
+    ValueColors:setVector(2, vec(0, 0, 255))
+    ValueColors:setVector(3, vec(0, 255, 0))
+    ValueColors:setVector(4, vec(0, 255, 255))
+    
+    StateColors = array()
+    StateColors:setVector(-1, vec(255, 0, 0))
+    StateColors:setVector(1, vec(255, 255, 255))
+    StateColors:setVector(2, vec(0, 255, 0))
+    StateColors:setVector(3, vec(0, 255, 255))
+    StateColors:setVector(4, vec(255, 0, 255))
+    StateColors:setVector(5, vec(255, 255, 0))
+    
+    Symbols = 3
+    States = 3
+    Resetting = 1
+}
+
+Dist = abs(Position - RealPosition)
+TargetReached = 0
+if (Dist < 2) {
+    TargetReached = 1
+}
+        
+if (clk("interval")) {
+    if (Running & !Halting) {
+        if (TargetReached &  Cell:model() == Model) {
+            Color = Cell:getColor()
+            Value = 0
+            for (I = 1, ValueColors:count()) {
+                if (Color == ValueColors:vector(I)) {
+                    Value = I - 1
+                }
+            }
+            entity():isWeldedTo():setColor(StateColors:vector(State + 1))
+            Steps++
+            # Now do some stuff
+            if (Symbols == 2) {
+                if (States == 1) {
+                    if (!Value) {
+                        Address--
+                        Value = 1
+                        Halting = 1
+                    }
+                } elseif (States == 2) {
+                    if (!State) {
+                        if (!Value) {
+                            Address--
+                        } else {
+                            Address++
+                        }
+                        State = 1
+                    } else {
+                        if (!Value) {
+                            Address++
+                            State = 0
+                        } else {
+                            Address--
+                            Halting = 1
+                        }
+                    }
+                    Value = 1
+                } elseif (States == 3) {
+                    if (!State) {
+                        if (!Value) {
+                            Address--
+                            State = 1
+                        } else {
+                            Address--
+                            Halting = 1
+                        }
+                        Value = 1
+                    } elseif (State == 1) {
+                        if (!Value) {
+                            Address--
+                            State = 2
+                        } else {
+                            Address--
+                        }
+                    } else {
+                        if (!Value) {
+                            Address++
+                        } else {
+                            Address++
+                            State = 0
+                        }
+                        Value = 1
+                    }
+                } elseif (States == 4) {
+                    if (!State) {
+                        if (!Value) {
+                            Address--
+                        } else {
+                            Address++
+                        }
+                        State = 1
+                        Value = 1
+                    } elseif (State == 1) {
+                        if (!Value) {
+                            State = 0
+                        } else {
+                            State = 2
+                        }
+                        Address++
+                        Value = 1 - Value
+                    } elseif (State == 2) {
+                        if (!Value) {
+                            Address--
+                            Halting = 1
+                        } else {
+                            Address++
+                            State = 3
+                        }
+                        Value = 1
+                    } elseif (State == 3) {
+                        if (Value) {
+                            State = 0
+                        }
+                        Address--
+                        Value = 1 - Value
+                    }
+                } elseif (States == 5) {
+                    if (!State) {
+                        if (!Value) {
+                            Address--
+                            State = 1
+                        } else {
+                            Address++
+                            State = 2
+                        }
+                        Value = 1
+                    } elseif (State == 1) {
+                        if (!Value) {
+                            State = 2
+                        }
+                        Address--
+                        Value = 1
+                    } elseif (State == 2) {
+                        if (!Value) {
+                            Address--
+                            State = 3
+                        } else {
+                            Address++
+                            State = 4
+                        }
+                        Value = 1 - Value
+                    } elseif (State == 3) {
+                        if (!Value) {
+                            State = 0
+                        }
+                        Address++
+                        Value = 1
+                    } elseif (State == 4) {
+                        if (!Value) {
+                            Address--
+                            Halting = 1
+                        } else {
+                            Address++
+                            State = 0
+                        }
+                        Value = 1 - Value
+                    }
+                }
+            } elseif (Symbols == 3) {
+                if (States == 2) {
+                    if (!State) {
+                        if (!Value) {
+                            Value = 1
+                            Address--
+                            State = 1
+                        } elseif (Value == 1) {
+                            Value = 2
+                            Address++
+                            State = 1
+                        } else {
+                            Value = 1
+                            Address--
+                            Halting = 1
+                        }
+                    } else {
+                        if (!Value) {
+                            Value = 2
+                            Address++
+                            State = 0
+                        } elseif (Value == 1) {
+                            Value = 2
+                            Address--
+                        } else {
+                            Value = 1
+                            Address++
+                        }
+                    }
+                } elseif (States == 3) {
+                    if (!State) {
+                        if (!Value) {
+                            Value = 1
+                            Address--
+                            State = 1
+                        } elseif (Value == 1) {
+                            Value = 2
+                            Address++
+                            State = 0
+                        } else {
+                            Value = 1
+                            Address++
+                            State = 2
+                        }
+                    } elseif (State == 1) {
+                        if (!Value) {
+                            Address++
+                            State = 0
+                        } elseif (Value == 1) {
+                            Value = 2
+                            Address--
+                        } else {
+                            Value = 1
+                            Address++
+                        }
+                    } elseif (State == 2) {
+                        if (!Value) {
+                            Value = 1
+                            Halting = 1
+                        } elseif (Value == 1) {
+                            State = 0
+                        } else {
+                            Value = 1
+                            State = 2
+                        }
+                        Address--
+                    }
+                }
+            }
+            Cell:setColor(ValueColors:vector(Value + 1))
+        }
+    } elseif (Resetting | Halting) {
+        if (TargetReached) {
+            if (Resetting) {
+                Resetting = 0
+                entity():isWeldedTo():setColor(StateColors:vector(State + 1))
+            }
+            if (Halting) {
+                hint("Turing machine halted in " + Steps + " steps.", 10)
+                Halting = 0
+                entity():isWeldedTo():setColor(StateColors:vector(-1))
+            }
+            Running = 0
+        }
+    } else {
+        if (RealPosition) {
+            Address = round(RealPosition / CellWidth) - Offset
+        }
+    }
+    for (I = 1, maxPlayers()) {
+        Player = entity(I)
+        if (Player) {
+            LastUsed = LastUse:number(I)
+            LastUse:setNumber(I, Player:keyUse())
+            if (Player:keyUse() & LastUsed == 0 & Player:aimEntity() & Player:aimEntity():owner() == owner()) {
+                Color = Player:aimEntity():getColor()
+                Value = -1
+                for (I = 1, ValueColors:count()) {
+                    if (Color == ValueColors:vector(I)) {
+                        Value = I - 1
+                    }
+                }
+                if (Value != -1) {
+                    Value++
+                    if (Value > Symbols - 1) {
+                        Value -= Symbols
+                    }
+                    Player:aimEntity():setColor(ValueColors:vector(Value + 1))
+                }
+            }
+        } else {
+            LastUse:setNumber(I, 0)
+        }
+    }
+} elseif (chatClk()) {
+    LastSaid = lastSaid():trimLeft():trimRight()
+    LastSpoke = lastSpoke()
+    Authorized = 0
+    if (LastSpoke == owner() | LastSpoke:isAdmin()) {
+        Authorized = 1
+    }
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        Components = Params:explode(" ")
+        ReducedParams = Params:replace(" ", "")
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "start") {
+                Running = 1
+                State = 0
+                Steps = 0
+                entity():isWeldedTo():setColor(StateColors:vector(1))
+                hint("Turing machine started.", 10)
+            } elseif (Command == "states") {
+                States = Params:toNumber()
+                hint("Turing machine set to " + States + " states.", 10)
+            } elseif (Command == "symbols") {
+                Symbols = Params:toNumber()
+                hint("Turing machine set to " + Symbols + " symbols.", 10)
+            } elseif (Command == "reset") {
+                Running = 0
+                State = 0
+                Cells = entity():getConstraints()
+                for (I = 1, Cells:count()) {
+                    Cells:entity(I):setColor(ValueColors:vector(1))
+                }
+                entity():isWeldedTo():setColor(StateColors:vector(1))
+                entity():setColor(vec(255, 255, 255))
+                Offset = floor((Cells:count() - IgnorePropCount) / 2)
+                Address = 0
+                Resetting = 1
+                Halting = 0
+                hint("Turing machine reset.", 10)
+            } elseif (Command == "info") {
+                hint("Turing machine set to " + Symbols + " symbols, " + States + " states.", 10)
+                if (Steps) {
+                    hint("Halted in " + Steps + " steps.", 10)
+                }
+            } elseif (Command == "recalibrate") {
+                Cells = entity():getConstraints()
+                Offset = floor((Cells:count() - IgnorePropCount) / 2)
+                if (!Running & !Halting) {
+                    State = 0
+                    Address = 0
+                    Resetting = 1
+                }
+                hint("Turing machine head recentered.", 10)
+            }
+        }
+    }
+}
+
+Position = (Address + Offset) * CellWidth

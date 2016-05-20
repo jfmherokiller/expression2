@@ -1,0 +1,19 @@
+@name Average Ping
+@inputs 
+@outputs AveragePing
+@persist 
+@trigger
+
+interval(1000)
+
+Players = array()
+for (I = 1, maxPlayers()) {
+    if (entity(I)) {
+        Players:pushEntity(entity(I))
+    }
+}
+
+AveragePing = 0
+for (I = 1, Players:count()) {
+    AveragePing += Players:entity(I):ping() / Players:count()
+}

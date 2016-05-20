@@ -1,0 +1,72 @@
+@model models/props_lab/reciever01a.mdl
+@persist Announce:string Name:string O:entity RARAR:string
+@persist Safe01:string Chat:string Safe02:string
+@name Eut CL [v1.04]
+
+if (duped()) {reset()}
+interval(100)
+
+if (first()) {
+    O = owner()
+    
+    printColor(vec(238,255,0),"Eut CL",vec(255,255,255),": Created by Eutrophication!")
+    printColor(vec(238,255,0),"Eut CL",vec(255,255,255),": Chat : - [MessageHere] | -name [NameHere] | -ncol [R G B]")
+    
+    runOnChat(1)
+    
+    RARAR = "0 180 0"
+    Name = O:name()
+    gShare(1)
+    
+    gDeleteStr("Eut_Chat")
+    gSetStr("Eut_Announce","Eut CL: "+Name+" entered server.")
+}
+
+
+Ann = gGetStr("Eut_Announce")
+Chat = gGetStr("Eut_Chat")
+
+#Announcments
+if (Ann == Safe01 == 0) {
+    Temp01 = Ann:find(":")-1
+    Safe01 = Ann 
+    
+    
+    printColor(vec(238,255,0),Ann:left(Temp01),vec(255,255,255),Ann:right(Ann:length() - Temp01))
+}   
+
+if (chatClk(O) & O:lastSaid():left(1) == "-") {
+    hideChat(1)
+    LS = lastSaid()
+    
+    #Chat Setup
+    if (LS:lower():left(2) == "- ") {        
+        gSetStr("Eut_Chat", Name+": "+LS:right(LS:length() - 2))
+        gSetStr("Eut_NameCL",RARAR)
+    }
+    
+    #Name Setup
+    if (LS:lower():left(5) == "-name") {
+        Name = LS:right(LS:length() - 6)
+        Announce = "Eut CL: "+O:name() +" changed their name to ''"+Name+"''!"
+        gSetStr("Eut_Announce",Announce)
+    }
+}
+    #Name Color Setup
+    if (LS:lower():left(5) == "-ncol") {
+        NameCol = LS:right(LS:length() - 6):explode(" ")
+        RARAR = LS:right(LS:length() - 6)
+        printColor(vec(238,255,0),"Eut CL",vec(255,255,255),": Your name looks like ",vec(NameCol:string(1):toNumber(),NameCol:string(2):toNumber(),NameCol:string(3):toNumber()),Name)
+}
+
+#Get Chat
+if (Chat == Safe02 == 0) {
+    NameColor = gGetStr("Eut_NameCL")
+    Temp = Chat:find(":")-1
+    NC = gGetStr("Eut_NameCL"):explode(" ")    
+    
+    printColor(vec(NC:string(1):toNumber(),NC:string(2):toNumber(),NC:string(3):toNumber()),Chat:left(Temp), vec(255,255,255),": "+Chat:right(Chat:length() - Chat:find(":")-1))
+    
+    Safe02 = Chat
+}
+    

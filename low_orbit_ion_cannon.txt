@@ -1,0 +1,166 @@
+@name Low Orbit Ion Cannon
+@inputs 
+@outputs
+@persist TargetPosition:vector TargetNormal:vector
+@persist NukeStage NukeStageStart Entities:array
+@trigger 
+@model models/combine_helicopter/helicopter_bomb01.mdl
+
+runOnChat(1)
+runOnTick(1)
+
+if (first() | duped()) {
+    entity():propFreeze(0)
+#ifdef e:setDisableGravity(number)
+    entity():setDisableGravity(1)
+#endif
+    holoCreate(20)
+    holoCreate(21)
+    holoParent(20, entity())
+    holoParent(21, entity())
+    holoPos(20, entity():pos() + vec(0, 20, 0))
+    holoPos(21, entity():pos() + vec(0, -20, 0))
+    holoScale(20, vec(2, 5, 0.2))
+    holoScale(21, vec(2, 5, 0.2))
+    
+    NukeStage = 0
+}
+
+if (chatClk() & !dsClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!" |
+            LastSaid:sub(1, 1) == "/") {
+            hideChat(1)
+            LookingAtThis = 0
+            if (owner():eyeTrace():entity() == entity()) {
+                LookingAtThis = 1
+            }
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "target") {
+                TargetPosition = owner():eyeTrace():position()
+                TargetNormal = owner():eyeTrace():hitNormal()
+                holoCreate(1)
+                holoModel(1, "hqsphere")
+                holoPos(1, owner():eyeTrace():position())
+                holoScale(1, vec(0.2, 0.2, 0.2))
+                holoColor(1, vec(255, 0, 0))
+                
+                for (I = 2, 5) {
+                    holoCreate(I)
+                    holoModel(I, "hqsphere")
+                    holoPos(I, owner():eyeTrace():position())
+                    holoScale(I, vec(0.2, 0.2, 0.2))
+                    holoColor(I, vec(255, 0, 0))
+                }
+            } elseif (Command == "nuke") {
+                NukeStage = 1
+                NukeStageStart = curtime()
+            }
+        }
+    }
+}
+
+if (NukeStage == 1) {
+    Distance = (2 - curtime() + NukeStageStart) * 100
+    holoPos(2, TargetPosition + vec(Distance, 0, 0))
+    holoPos(3, TargetPosition + vec(-Distance, 0, 0))
+    holoPos(4, TargetPosition + vec(0, Distance, 0))
+    holoPos(5, TargetPosition + vec(0, -Distance, 0))
+    
+    if (Distance < 0) {
+        NukeStage = 2
+        NukeStageStart = curtime()
+        holoPos(2, TargetPosition)
+        holoPos(3, TargetPosition)
+        holoPos(4, TargetPosition)
+        holoPos(5, TargetPosition)
+    }
+} elseif (NukeStage == 2) {
+    findExcludeClass("gmod_wire_hologram")
+    findInSphere(TargetPosition, 256)
+    Entities = findToArray()
+    NukeStage = 3
+    NukeStageStart = curtime()
+} elseif (NukeStage == 3) {
+    TimeLeft = (2 - curtime() + NukeStageStart) / 2
+    for (I = 1, Entities:count()) {
+        if ((Entities[I, entity]:pos() - TargetPosition):length() < 256 &
+            Entities[I, entity]:type() != "player") {
+            Entities[I, entity]:setColor(vec(255 * TimeLeft, 255 * TimeLeft, 255))
+        }
+    }
+    holoCreate(6)
+    holoCreate(7)
+    holoCreate(8)
+    holoPos(6, TargetPosition)
+    holoPos(7, TargetPosition)
+    holoPos(8, TargetPosition + vec(0, 0, 2))
+    holoModel(6, "hqsphere")
+    holoModel(7, "hqsphere")
+    holoModel(8, "hqcylinder")
+    holoAng(8, TargetNormal:toAngle() + ang(90, 0, 0))
+    holoColor(6, vec(64, 64, 255))
+    holoColor(7, vec(64, 64, 255))
+    holoColor(8, vec(64, 64, 255))
+    holoScale(6, vec(256 / 12, 256 / 12, 256 / 12))
+    holoScale(7, -vec(256 / 12, 256 / 12, 256 / 12))
+    holoScale(8, -vec(256 / 12, 256 / 12, 0.1))
+    holoAlpha(6, 128 - TimeLeft ^ 0.25 * 128)
+    holoAlpha(7, 128 - TimeLeft ^ 0.25 * 128)
+    holoAlpha(8, 128 - TimeLeft ^ 0.25 * 128)
+    if (TimeLeft < 0) {
+        holoAlpha(6, 128)
+        holoAlpha(7, 128)
+        holoAlpha(8, 128)
+        NukeStage = 4
+        NukeStageStart = curtime()
+    }
+} elseif (NukeStage == 4) {
+    if (curtime() - NukeStageStart > 2) {
+        NukeStage = 5
+        NukeStageStart = curtime()
+    }
+} elseif (NukeStage == 5) {
+    for (I = 1, Entities:count()) {
+        if ((Entities[I, entity]:pos() - TargetPosition):length() < 256) {
+#ifdef e:setDamage(number)
+            Entities[I, entity]:setDamage(200)
+#endif
+        }
+    }
+    NukeStage = 6
+    NukeStageStart = curtime()
+} elseif (NukeStage == 6) {
+    NukeStage = 7
+    NukeStageStart = curtime()
+} elseif (NukeStage == 7) {
+    Radius = (curtime() - NukeStageStart) / 2 * 256 + 256
+    holoScale(6, vec(Radius / 12, Radius / 12, Radius / 12))
+    holoScale(7, -vec(Radius / 12, Radius / 12, Radius / 12))
+    holoScale(8, -vec(Radius / 12, Radius / 12, 0.1))
+    holoAlpha(6, 256 - Radius / 2)
+    holoAlpha(7, 256 - Radius / 2)
+    holoAlpha(8, 256 - Radius / 2)
+    if (Radius > 512) {
+        holoAlpha(6, 0)
+        holoAlpha(7, 0)
+        holoAlpha(8, 0)
+        NukeStage = 0
+        NukeStageStart = curtime()
+    }
+}
+
+TargetZ = 1000
+DeltaZ = TargetZ - entity():pos():z()
+DeltaZ -= entity():vel():z()
+Horizontal = entity():vel():setZ(0)
+entity():applyForce(vec(0, 0, sqrt(DeltaZ)) * entity():mass())
+if (Horizontal:length() < 10) {
+    entity():applyForce(vec(10, 0, 0) * entity():mass())
+}
+DeltaAng = (TargetPosition - entity():pos()):toAngle()
+entity():setAng(DeltaAng + ang(90, 0, 0))

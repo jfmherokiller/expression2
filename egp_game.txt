@@ -1,0 +1,51 @@
+@name EGP Game
+@inputs EGP:wirelink
+@outputs 
+@persist LastTick
+@persist Ships:mtable Debris:mtable
+@trigger 
+
+interval(10)
+
+if (first() | duped()) {
+    LastTick = curtime()
+    print("EGP Max Objects: " + egpMaxObjects())
+    if (EGP:entity()) {
+        EGP:egpClear()
+        EGP:egpBoxOutline(1, vec2(256, 256), vec2(20, 20))
+        EGP:egpAngle(1, 10)
+        
+        EGP:egpBoxOutline(2, vec2(256, 256), vec2(100, 1))
+        Object = table()
+        Object["egpid", number] = 2
+        Object["alpha", number] = 255
+        Object["pos", vector2] = vec2(256, 256)
+        Object["vel", vector2] = vec2(0, 1)
+        Object["rvel", number] = 2
+        Debris:pushTable(Object)
+    }
+}
+
+DeltaTime = curtime() - LastTick
+
+RemoveDebris = array()
+for (I = 1, Debris:count()) {
+    Object = Debris[I, table]
+    Object["alpha", number] = Object["alpha", number] - 255 * DeltaTime
+    Object["pos", vector2] = Object["pos", vector2] + Object["vel", vector2] * DeltaTime
+    Object["rot", number] = Object["rot", number] + Object["rvel", number] * DeltaTime
+    EGPID = Object["egpid", number]
+    if (Object["alpha", number] <= 0) {
+        EGP:egpRemove(EGPID)
+        RemoveDebris:pushNumber(I)
+    } else {
+        EGP:egpAlpha(EGPID, Object["alpha", number])
+        EGP:egpPos(EGPID, Object["pos", vector2])
+        EGP:egpAngle(EGPID, Object["rot", number])
+    }
+}
+for (I = 1, RemoveDebris:count()) {
+    Debris:remove(RemoveDebris[I, number])
+}
+
+LastTick = curtime()

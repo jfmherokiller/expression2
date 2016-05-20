@@ -1,0 +1,122 @@
+@name Recursive descent, bitches
+@inputs 
+@outputs 
+@persist DataStack:array FunctionStack:array
+@persist NumberCharacters:table Tokens:array TokenTypes:array TokenIndex
+@persist ParseTree:table NextParseTreeItemIndex Root
+@trigger 
+
+runOnChat(1)
+interval(100)
+
+if (first() | duped()) {
+    NumberCharacters["0", number] = 1
+    NumberCharacters["1", number] = 1
+    NumberCharacters["2", number] = 1
+    NumberCharacters["3", number] = 1
+    NumberCharacters["4", number] = 1
+    NumberCharacters["5", number] = 1
+    NumberCharacters["6", number] = 1
+    NumberCharacters["7", number] = 1
+    NumberCharacters["8", number] = 1
+    NumberCharacters["9", number] = 1
+    NumberCharacters[".", number] = 1
+    
+    NextParseTreeItemIndex = 1
+}
+
+# Function loop
+if (FunctionStack:count()) {
+    Function = FunctionStack:popString()
+    hint("Running function " + Function + ".", 10)
+    if (Function == "compile") {
+        Tokens:clear()
+        TokenTypes:clear()
+        TokenIndex = 1
+        
+        # Reverse order
+        FunctionStack:pushString("evaluate")
+        FunctionStack:pushString("parse")
+        FunctionStack:pushString("tokenize")
+    } elseif (Function == "tokenize") {
+        String = DataStack:popString()
+        LastType = ""
+        Buffer = ""
+        for (I = 1, String:length()) {
+            Char = String:sub(I, I)
+            if (NumberCharacters[Char, number]) {
+                if (LastType == "op") {
+                    Tokens:pushString(Buffer)
+                    TokenTypes:pushString(LastType)
+                    Buffer = ""
+                }
+                Buffer += Char
+                LastType = "num"
+            } else {
+                if (LastType == "num") {
+                    Tokens:pushString(Buffer)
+                    TokenTypes:pushString(LastType)
+                } elseif (LastType == "op") {
+                    Tokens:pushString(Buffer)
+                    TokenTypes:pushString(LastType)
+                }
+                Buffer = Char
+                LastType = "op"
+            }
+        }
+        Tokens:pushString(Buffer)
+        TokenTypes:pushString(LastType)
+    } elseif (Function == "recurse_left") {
+        FunctionStack:pushString("recurse_left_1")
+        FunctionStack:pushString(DataStack[DataStack:count(), string])
+    } elseif (Function == "recurse_left_1") {
+        Node = DataStack:popNumber()
+        if (Node) {
+            if (Tokens[TokenIndex, string] == DataStack[DataStack:count() - 2, string]) {
+                FunctionStack:pushString("recurse_left_1")
+                
+            }
+        } else {
+            DataStack:pop()
+            DataStack:pop()
+            DataStack:pop()
+            DataStack:pushNumber(Node)
+        }
+    } elseif (Function == "parse") {
+        FunctionStack:pushString("parse_1")
+        FunctionStack:pushString("root")
+    } elseif (Function == "parse_1") {
+        Root = DataStack:popNumber()
+        hint("Root node is " + toString(Root) + ".", 10)
+    } elseif (Function == "root") {
+        FunctionStack:pushString("expression")
+    } elseif (Function == "expression") {
+        FunctionStack:pushString("expression_addition")
+    } elseif (Function == "expression_addition") {
+        FunctionStack:pushString("recurse_left")
+        DataStack:pushString("+")
+        DataStack:pushNumber(1)
+        DataStack:pushString("expression_subtraction")
+    }
+}
+
+if (chatClk()) {
+    if (lastSpoke() == owner()) {
+        hideChat(1)
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "parse") {
+                DataStack:pushString(Arguments)
+                FunctionStack:pushString("compile")
+            } elseif (Command == "tokens") {
+                TokenString = Tokens:concat(", ")
+                hint("Tokens are " + TokenString + ".", 10)
+            }
+        }
+    }
+}

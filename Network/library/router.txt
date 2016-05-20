@@ -1,0 +1,11 @@
+@define router_connect
+findIncludeClass ("gmod_wire_expression2")
+findInSphere (entity ():pos (), 256)
+Routers = findToArray ()
+for (I = 1, Routers:count ()) {
+    if (Routers [I, entity]:getName ():find("Router")) {
+			     Connections:pushEntity (Routers [I, entity])
+			     dsSendDirect ("Network", Routers [I, entity], array (Routers [I, entity], entity (), 0, IPAddress, "BGPPing", IPBlockMask))
+		  }
+}
+@end

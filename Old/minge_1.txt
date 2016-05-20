@@ -1,0 +1,76 @@
+@name Minge 1
+@persist Kill Targ:entity Pos:vector Back:vector Spawnkill
+@trigger all
+interval(2)
+runOnChat(1)
+
+entity():setMass(2000)
+
+if (first()|duped())
+{
+    entity():setAlpha(0)
+    print("This expression is only to be used against minges")
+}
+
+if (chatClk(owner()))
+{
+    if (owner():lastSaid()==".help")
+    {
+        hideChat(1)
+        print("Commands are:")
+        print(".kill, .spawnkill, .stop")
+    }
+    
+    if (owner():lastSaid():explode(" ")[1,string]==".kill")
+    {
+        hideChat(1)
+        Targ=findPlayerByName(owner():lastSaid():explode(" ")[2,string])
+        if (Targ:isPlayer()==0)
+        {
+            print("No player found!")
+        }
+        if (Targ:isPlayer())
+        {
+            print("killing "+Targ:name()+"!")
+            Kill=1
+        }
+    }
+    
+    if (owner():lastSaid():explode(" ")[1,string]==".spawnkill")
+    {
+        hideChat(1)
+        Targ=findPlayerByName(owner():lastSaid():explode(" ")[2,string])
+        if (Targ:isPlayer()==0)
+        {
+            print("No player found!")
+        }
+        if (Targ:isPlayer())
+        {
+            print("killing "+Targ:name()+"!")
+            Spawnkill=1
+        }
+    }
+    
+    if (owner():lastSaid()==".stop")
+    {
+        hideChat(1)
+        Spawnkill=0
+        Kill=0
+    }
+    
+}
+
+if (Targ:isAlive()==0)
+{
+    Kill=0
+}
+
+
+if (Kill|Spawnkill)
+{
+    Pos=Targ:pos()+vec(0,0,40)
+} else {Pos=owner():pos()+vec(0,0,120)}
+
+entity():applyForce((((Pos-entity():pos())*50)-entity():vel())*entity():mass())
+
+#By Rekondo (Reko)

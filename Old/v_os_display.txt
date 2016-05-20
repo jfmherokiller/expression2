@@ -1,0 +1,251 @@
+@name V OS Display
+@inputs Screen:wirelink LastKey
+@outputs
+@persist Data:array DataIndex
+@persist LastCleared ClearGap
+@persist ShuttingDown
+@persist ComputerID
+@persist ScrW ScrH
+# Receive messages
+@persist FileName:string
+# Prediction
+@persist TextColor TextBGColor
+@persist KeyboardEnabled PromptEnabled CursorX CursorY CommandBuffer:string
+@persist Debug
+@trigger 
+
+interval(500)
+runOnChat(1)
+runOnFile(1)
+
+if (duped() | first()) {
+    Data = array()
+    DataIndex = 1
+    ID = entity():id()
+    ScrW = 60
+    ScrH = 36
+    
+    # Debugging
+    Debug = 1
+    
+    # Configuration
+    ClearGap = 2
+    
+    # Prediction
+    KeyboardEnabled = 0
+    PromptEnabled = 0
+    CursorX = 0
+    CursorY = 0
+    CommandBuffer = ""
+    CommandLength = 0
+    
+    ShuttingDown = 0
+    
+    TextColor = 999
+    TextBGColor = 0
+    
+    # Initialization
+    FileName = "v_os.txt"
+    fileRemove(FileName)
+    fileLoad(FileName)
+    concmd("lmsg file " + FileName + " v_os")
+    hint("V OS file: " + FileName, 10)
+    concmd("lmsg startup " + entity():id())
+    print("Sent startup signal.")
+}
+
+# Instruction buffers
+ReceiveMessages = 0
+
+if (chatClk()) {
+    ChatActivated = 0
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        ChatActivated = 1
+    }
+    if (ChatActivated) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        Components = Params:explode(" ")
+        ReducedParams = Params:replace(" ", "")
+        Number = Components:number(1)
+        Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        Player = findPlayerByName(Components:string(1))
+        Message = Params:sub(Params:find(" ") + 1, Params:length())
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "tick") {
+                ReceiveMessages = 1
+            } elseif (Command == "reboot") {
+                concmd("lmsg startup " + ID)
+                print("Sent startup signal.")
+            } elseif (Command == "shutdown") {
+                concmd("lmsg shutdown " + ID)
+                ShuttingDown = 1
+            }
+        }
+    }
+} elseif (clk("interval")) {
+    if (!ShuttingDown) {
+        if (ComputerID) {
+            concmd("lmsg ping " + ComputerID + " " + entity():id())
+        }
+    }
+} elseif (inputClk()) {
+    if (KeyboardEnabled) {
+        concmd("lmsg keyboard " + ComputerID + " " + LastKey)
+        # Prediction
+        if (PromptEnabled) {
+            if (LastKey == 9) {
+                CursorX += 4
+                CommandBuffer += "\t"
+            }
+            if (LastKey == 127) {
+                if (CommandBuffer:length()) {
+                    DiscardedChar = CommandBuffer:sub(CommandBuffer:length() - 1)
+                    if (DiscardedChar == "\t") {
+                        CursorX -= 4
+                    } else {
+                        CursorX--
+                    }
+                    Addr = CursorY * 120 + CursorX * 2
+                    Screen[Addr] = 0
+                    CommandBuffer = CommandBuffer:sub(1, CommandBuffer:length() - 1)
+                }
+            }
+            # ASCII
+            if (LastKey >= 32 & LastKey <= 126) {
+                Addr = CursorY * 120 + CursorX * 2
+                Screen[Addr] = LastKey
+                Addr++
+                Screen[Addr] = TextBGColor * 1000 + TextColor
+                CursorX++
+                CommandBuffer += toChar(LastKey)
+            }
+            # Enter
+            if (LastKey == 13) {
+                PromptEnabled = 0
+                CursorY++
+                CursorX = 0
+                CommandBuffer = ""
+            }
+            hint("Predicted: " + CommandBuffer, 10)
+            hint("Cursor: " + CursorX + ", " + CursorY, 10)
+        }
+    }
+} elseif (fileClk(FileName)) {
+    ReceiveMessages = 2
+}
+
+# Handle convar data
+if (ReceiveMessages) {
+    EncodedData = ""
+    MessageID = 32768
+    if (ReceiveMessages == 1) {
+        MessageID = convarnum("lmsg_message_proxy_data_id")
+        for (I = 1, convarnum("lmsg_message_proxy_data_count")) {
+            EncodedData = EncodedData + convar("lmsg_message_proxy_data" + I)
+        }
+    } else {
+        EncodedData = fileRead(FileName)
+        fileRemove(FileName)
+        fileLoad(FileName)
+        concmd("lmsg ack " + FileName)
+    }
+    NewData = glonDecode(EncodedData)
+    for (I = 1, NewData:count()) {
+        if (NewData:string(I):length()) {
+            Data:pushString(NewData:string(I))
+            if (Debug) {
+                # printColor(vec(255, 0, 0), "Data: " + MessageID + ": " + NewData:string(I))
+            }
+        } else {
+            printColor(vec(255, 0, 0), "Message reception failure.")
+        }
+    }
+}
+
+# Process tables
+for (Z = DataIndex, Data:count()) {
+    GLONString = Data:string(Z)
+    MessageTable = glonDecodeTable(GLONString)
+
+    MessageType = MessageTable:string("type")
+    MessageComputerID = MessageTable:number("computer_id")
+
+    if (MessageType == "alloc_computer_id") {
+        MessageEntityID = MessageTable:number("entity_id")
+        hint("Received computer ID: Entity " + MessageEntityID + " to computer " + MessageComputerID, 10)
+        if (MessageEntityID == entity():id()) {
+            ComputerID = MessageComputerID
+        }
+    }
+    if (!MessageComputerID & Debug) {
+        printColor(vec(255, 0, 0), toString(I) + ": No target ID given for message " + MessageType + "(" + GLONString:length() + " bytes).")
+        Keys = MessageTable:keys()
+        for (I = 1, Keys:count()) {
+            printColor(vec(255, 0, 0), "\t" + Keys:string(I) + ": " + MessageTable:string(Keys:string(I)))
+        }
+    }
+    if (MessageComputerID == ComputerID) {
+        if (MessageType == "bgcolor") {
+            Value = MessageTable:number("value")
+            Screen[5042] = Value
+        } elseif (MessageType == "clrscr") {
+            LastCleared = curtime()
+            Screen[5041] = 1
+        } elseif (MessageType == "cursorpos") {
+            CursorX = MessageTable:number("x")
+            CursorY = MessageTable:number("y")
+            hint("Cursor: " + CursorX + ", " + CursorY, 10)
+        } elseif (MessageType == "hrange") {
+            Screen[5031] = MessageTable:number("hstart")
+            Screen[5032] = MessageTable:number("hend")
+        } elseif (MessageType == "keyboard_state") {
+            KeyboardEnabled = MessageTable:number("keyboard_enabled")
+            if (!KeyboardEnabled) {
+                CommandBuffer = ""
+            }
+            PromptEnabled = MessageTable:number("keyboard_enabled")
+            hint("PromptEnabled: " + PromptEnabled, 10)
+        } elseif (MessageType == "text") {
+            if (curtime() - LastCleared < ClearGap) {
+                break
+            }
+            Value = MessageTable:number("value")
+            Message = MessageTable:string("msg")
+            # printColor(vec(0, 255, 0), "Wrote string \"" + Message + "\".")
+            Addr = MessageTable:number("y") * 120 + MessageTable:number("x") * 2
+            if (Message:length() == 1) {
+                Message = ""
+            }
+            for (I = 1, Message:length()) {
+                Screen[Addr] = toByte(Message, I)
+                Screen[Addr + 1] = Value
+                Addr += 2
+            }
+        } elseif (MessageType == "vrange") {
+            Screen[5033] = MessageTable:number("vstart")
+            Screen[5034] = MessageTable:number("vend")
+        } elseif (MessageType == "vshift") {
+            Screen[5038] = MessageTable:number("offset")
+        }
+        if (Debug) {
+            # printColor(vec(0, 0, 255), "Received command " + MessageType + ".")
+        }
+    }
+    Data:setString(Z, "")
+    DataIndex++
+}

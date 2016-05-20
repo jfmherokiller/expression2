@@ -1,0 +1,17 @@
+@name Tests/Console Test
+@inputs Console:wirelink
+@outputs 
+@persist 
+@trigger 
+
+runOnChat(1)
+
+if (first())
+{
+    Console:writeUnicodeString("testing ", 0, 0, vec(255, 255, 255), vec(0, 0, 0))
+}
+
+if (chatClk())
+{
+    Console:writeUnicodeString(lastSaid(), 0, 1, vec(255, 255, 255), vec(0, 0, 0))
+}

@@ -1,0 +1,7 @@
+@name Nebtown/Anti-Nebual Defenses Mk II
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+printTable(entity():entTable())

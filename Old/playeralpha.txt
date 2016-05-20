@@ -1,0 +1,7 @@
+@name PlayerColor
+@inputs 
+@outputs
+@persist
+@trigger 
+
+owner():setColor(255, 255, 255)

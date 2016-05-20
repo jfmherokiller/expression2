@@ -1,0 +1,90 @@
+@name gMemory
+@inputs 
+@outputs 
+@persist StringSize String:string
+@persist BaseStringSize BaseString:string
+@persist Running
+@trigger 
+
+runOnChat(1)
+interval(1)
+
+if (!BaseStringSize) {
+    Power = 27
+    BaseString = "01"
+    for (I = 1, Power - 1) {
+        BaseString = BaseString + BaseString
+    }
+    BaseStringSize = 2 ^ Power
+}
+
+Run = 0
+
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "length") {
+            hint("Base buffer is " + BaseString:length() + " bytes long.", 10)
+        } elseif (Command == "fill") {
+            Run = 1
+        } elseif (Command == "on") {
+            Running = 1
+            hint("Filling memory...", 10)
+        } elseif (Command == "off") {
+            Running = 0
+            hint("Stopped filling memory.", 10)
+        } elseif (Command == "toggle") {
+            Running = 1 - Running
+            if (Running) {
+                hint("Filling memory...", 10)
+            } else {
+                hint("Stopped filling memory.", 10)
+            }
+        } elseif (Command == "reset") {
+            String = ""
+            StringSize = 0
+            hint("Reset memory.", 10)
+        } elseif (Command == "double") {
+            BaseStringSize *= 2
+            BaseString = BaseString + BaseString
+            hint("Base buffer is now " + BaseString:length() + " bytes long.", 10)
+        } elseif (Command == "status") {
+            BytesFilled = StringSize + BaseStringSize
+            MB = floor(BytesFilled / 1024 / 1024)
+            KB = BytesFilled / 1024 % 1024
+            B = BytesFilled % 1024
+            hint("Filled " + MB + " megabytes, " + KB + " kilobytes and " + B + " bytes.", 10)
+        }
+    }
+}
+
+if (Running) {
+    Run = 1
+}
+
+if (Run) {
+    String = String + BaseString
+    StringSize += BaseStringSize
+    
+    if (StringSize % (1024 * 1024) == 0) {
+        hint("Filled " + StringSize / 1024 / 1024 + " megabytes.", 10)
+    }
+}

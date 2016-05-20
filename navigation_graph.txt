@@ -1,0 +1,126 @@
+@name Navigation Graph
+@inputs 
+@outputs 
+@persist Nodes:table Stack:array
+@persist NextHoloID
+@trigger 
+
+interval(500)
+
+if (first() | duped())
+{
+    NextHoloID = 1
+    
+    function createNode(Pos:vector)
+    {
+        Node = table()
+        Node["exists", number] = 1
+        Node["pos", vector] = Pos
+        Node["edges", array] = array()
+        Node["edgesPopulated", number] = 0
+        Node["probed", number] = 0
+        
+        Nodes[Pos:toString(), table] = Node
+    }
+    
+    function createHoloNode(Node:table)
+    {
+        holoCreate(NextHoloID, Node["pos", vector])
+        holoModel(NextHoloID, "cube")
+        
+        NextHoloID++
+    }
+    
+    function table getNode(Pos:vector)
+    {
+        return Nodes[Pos:toString(), table]
+    }
+    
+    function number nodeExists(Pos:vector)
+    {
+        return Nodes[Pos:toString(), table]["exists", number]
+    }
+    
+    function probeNode(Node:table)
+    {
+        if (Node["probed", number] == 1) { return }
+        
+        Directions = array(vec(1, 0, 0), vec(-1, 0, 0), vec(0, 1, 0), vec(0, -1, 0))
+        NodePos = Node["pos", vector]
+        for (I = 1, 4)
+        {
+            NewPos = NodePos + 64 * Directions[I, vector]
+            rangerReset()
+            Ranger = rangerOffset(64, NodePos, Directions[I, vector])
+            if (!Ranger:hit())
+            {
+                if (!nodeExists(NewPos))
+                {
+                    createNode(NewPos)
+                    createHoloNode(getNode(NewPos))
+                }
+                Node["edges", array]:pushVector(NewPos)
+            }
+        }
+        
+        Node["probed", number] = 1
+        Node["edgesPopulated", number] = 1
+    }
+    
+    function vector stackPop()
+    {
+        return Stack:popVector()
+    }
+    
+    function stackPush(Pos:vector)
+    {
+        Stack:pushVector(Pos)
+    }
+    
+    function vector stackTop()
+    {
+        return Stack[Stack:count(), vector]
+    }
+    
+    StartPos = entity():pos() + vec(0, 0, 8)
+    createNode(StartPos)
+    createHoloNode(getNode(StartPos))
+    
+    stackPush(StartPos)
+}
+
+while (perf() & Stack:count() > 0)
+{
+    Top = stackTop()
+    Node = Nodes[Top:toString(), table]
+    
+    if (Node["probed", number] == 0)
+    {
+        probeNode(Node)
+    }
+    else
+    {
+        # Check all edges
+        Edges = Node["edges", array]
+        FoundNextEdge = 0
+        NextNode = vec()
+        for (I = 1, Edges:count())
+        {
+            if (!Nodes[Edges[I, vector]:toString(), table]["probed", number])
+            {
+                FoundNextEdge = 1
+                NextNode = Edges[I, vector]
+                break
+            }
+        }
+        
+        if (FoundNextEdge)
+        {
+            stackPush(NextNode)
+        }
+        else
+        {
+            stackPop()
+        }
+    }
+}

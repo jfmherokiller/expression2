@@ -1,0 +1,58 @@
+@define keyboard_preinit
+@inputs KeyboardCode KeyboardUser:entity
+@persist KeyboardString:string KeyboardStringOffset
+@persist KeyboardCommandQueue:array
+@end
+
+@define keyboard_handler
+KeyboardInputReceived = 0
+KeyboardCommand = ""
+if ($KeyboardCode & KeyboardCode) {
+    KeyboardInputReceived = 1
+    if (KeyboardCode >= 32 & KeyboardCode < 127) {
+        # ASCII
+        KeyboardString = KeyboardString:sub(1, KeyboardStringOffset) + toChar(KeyboardCode) + KeyboardString:sub(KeyboardStringOffset + 1)
+        KeyboardStringOffset++
+    } elseif (KeyboardCode == 127) {
+        # Backspace
+        if (KeyboardStringOffset) {
+            KeyboardString = KeyboardString:sub(1, KeyboardStringOffset - 1) + KeyboardString:sub(KeyboardStringOffset + 1)
+            KeyboardStringOffset--
+        }
+    } elseif (KeyboardCode == 148) {
+        # Delete
+        if (KeyboardStringOffset <= KeyboardString:length()) {
+            KeyboardString = KeyboardString:sub(1, KeyboardStringOffset) + KeyboardString:sub(KeyboardStringOffset + 2)
+        }
+    } elseif (KeyboardCode == 149) {
+        # Home
+        KeyboardStringOffset = 0
+    } elseif (KeyboardCode == 150) {
+        # End
+        KeyboardStringOffset = KeyboardString:length()
+    } elseif (KeyboardCode == 158) {
+        # Right control
+        KeyboardString = KeyboardString:sub(1, KeyboardStringOffset) + "`" + KeyboardString:sub(KeyboardStringOffset + 1)
+        KeyboardStringOffset++
+    } elseif (KeyboardCode == 17) {
+        # Up arrow
+        KeyboardCommand = "up"
+    } elseif (KeyboardCode == 18) {
+        # Down arrow
+        KeyboardCommand = "down"
+    } elseif (KeyboardCode == 19) {
+        # Left arrow
+        if (KeyboardStringOffset) {
+            KeyboardStringOffset--
+        }
+    } elseif (KeyboardCode == 20) {
+        # Right arrow
+        if (KeyboardStringOffset < KeyboardString:length()) {
+            KeyboardStringOffset++
+        }
+    } elseif (KeyboardCode == 13) {
+        # Enter
+        KeyboardCommand = "enter"
+    }
+}
+@end

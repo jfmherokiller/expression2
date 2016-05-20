@@ -1,0 +1,25 @@
+@name Renamer
+@inputs
+@outputs
+@persist PlayerName:string
+@trigger
+
+runOnChat(1)
+
+if (chatClk()) {
+    if (lastSpoke() == owner()) {
+        if (lastSaid():find("!hide", 1) == 1) {
+            hideChat(1)
+            PlayerName = lastSaid():sub(6, lastSaid():length()):trimLeft():trimRight()
+        } elseif (lastSaid():find("!unhide", 1) == 1) {
+            hideChat(1)
+            PlayerName = ""
+        }
+    }
+    if (PlayerName:length()) {
+        if (lastSpoke():name():find(PlayerName)) {
+            hint("Said: " + lastSaid(), 10)
+            hideChat(1)
+        }
+    }
+}

@@ -1,0 +1,374 @@
+@name Comms System
+@inputs LastKey User:entity InUse
+@inputs Reset
+@inputs Monitor:wirelink Monitor2:wirelink Monitor3:wirelink
+@outputs Kick
+@persist Started
+@persist Message:string LastReceived LinesUsed
+@persist EUTLastReceived:string EUTServerLastReceived:string EUTServer2LastReceived:string
+@persist KeyPressTime KeyPressed
+@persist Location:string
+@persist 
+@persist GlobalGroup:string
+@persist Mode FirstLine LastLine
+@trigger 
+
+@import protector
+
+# Made by !cake
+# f96b697d7cb7938d525a2f31aaf161d0
+# 90d925d853c3d35cd54070bb75280fefad9de9e7
+
+interval(333)
+runOnChat(1)
+
+SubmitMessage = 0
+MessageToSubmit = ""
+RedrawTextArea = 0
+
+# Modes
+# 0 - send and receive
+# 1 - receive only
+
+if (Reset) {
+    Message = ""
+    Started = 0
+}
+
+# Only do this once
+if (!Started) {
+    # Configuration
+    GlobalGroup = "Chat"
+    if (Mode == 0) {
+        FirstLine = 5
+        LastLine = 14
+    } elseif (Mode == 1) {
+        FirstLine = 2
+        LastLine = 17
+    }
+
+    LinesUsed = 0
+    for (I = 0, 17) {
+        Monitor:writeString("                              ", 0, I, 999, 0)
+        Monitor:writeString("------------------------------", 0, I, 999, 0)
+        Monitor2:writeString("                              ", 0, I, 999, 0)
+        Monitor2:writeString("------------------------------", 0, I, 999, 0)
+        Monitor3:writeString("                              ", 0, I, 999, 0)
+        Monitor3:writeString("------------------------------", 0, I, 999, 0)
+    }
+    Monitor:writeString("Chat System                   ", 0, 0, 777, 9)
+    Monitor:writeString("______________________________", 0, 1, 777, 9)
+    Monitor2:writeString("Chat System                   ", 0, 0, 777, 9)
+    Monitor2:writeString("______________________________", 0, 1, 777, 9)
+    Monitor3:writeString("Chat System                   ", 0, 0, 777, 9)
+    Monitor3:writeString("______________________________", 0, 1, 777, 9)
+
+    Offset = 0
+    if (Mode == 0) {
+        Offset = 3
+        Monitor:writeString("Location:                     ", 0, 2, 777, 9)
+        Monitor:writeString(Location, 10, 2, 777, 9)
+        Monitor:writeString("Press ALT to get off keyboard.", 0, 3, 900, 9)
+        Monitor:writeString("______________________________", 0, 4, 777, 9)
+    }
+    for (I = FirstLine, LastLine) {
+        Monitor:writeString("                              ", 0, I, 999, 0)
+    }
+    if (Mode == 0) {
+        Monitor:writeString("______________________________", 0, 15, 999, 0)
+    }
+    for (I = 2, 17) {
+        Monitor2:writeString("                              ", 0, I, 999, 0)
+        Monitor3:writeString("                              ", 0, I, 999, 0)
+    }
+    LastReceived = 0
+    EUTLastReceived = ""
+    EUTServerLastReceived = ""
+    EUTServer2LastReceived = ""
+    RedrawTextArea = 1
+    Started = 1
+    KeyPressTime = 0
+}
+
+gSetGroup(GlobalGroup)
+gShare(1)
+
+# Initialize chat
+if (!gGetNum("ChatStarted")) {
+    gSetNum("ChatStarted", 1)
+    gSetNum("MessageId", 0)
+    gSetStr("Message", "")
+    gSetStr("Location", "")
+    gSetStr("Player", "")
+    gSetNum("PlayerColor", 59)
+}
+
+# Disable the keyboard when the user dies.
+if (InUse & (!User | !User:isAlive())) {
+    Kick = 1 - Kick
+} else {
+    Kick = 0
+}
+
+if (duped()) {
+    RedrawTextArea = 1
+    LinesUsed = 0
+    Message = ""
+    Started = 0
+    KeyPressTime = 0
+}
+
+SendLocations = array()
+SendPlayers = array()
+SendPlayerColors = array()
+SendMessages = array()
+
+if (!chatClk()) {
+    # Clear the message if no one is there
+    if (!InUse) {
+        if (Message:length()) {
+            Message = ""
+            RedrawTextArea = 1
+        }
+    }
+    
+    # Process keystrokes
+    if (LastKey != KeyPressed) {
+        KeyPressTime = curtime()
+        KeyPressed = LastKey
+    }
+    if (LastKey & InUse & (!clk() | curtime() - KeyPressTime > 1)) {
+        # Tab key
+        if (LastKey == 9) {
+            Message += "    "
+        }
+        # Backspace
+        if (LastKey == 127) {
+            Message = Message:sub(0, Message:length() - 1)
+        }
+        # ASCII
+        if (LastKey >= 32 & LastKey <= 126) {
+            Message += toChar(LastKey)
+        }
+        # Enter
+        if (LastKey == 13 & Message:length()) {
+            SubmitMessage = 1
+            MessageToSubmit = Message
+            Message = ""
+        }
+        # Message length constraints
+        if (Message:length() > 59) {
+            Message = Message:sub(0, 59)
+        }
+        RedrawTextArea = 1
+    }
+
+    # Message submission
+    if (SubmitMessage) {
+        SendMessages:pushString(MessageToSubmit:trimLeft():trimRight())
+        SendLocations:pushString(Location)
+        SendPlayers:pushString(User:name())
+        SendPlayerColors:pushVector(teamColor(User:team()))
+    }
+} else {
+    SpeakerTarget = 0
+    # Is the speaker aiming at the contraption?
+    if (lastSpoke():aimEntity() == entity() |
+        lastSpoke():aimEntity() == entity():isWeldedTo() |
+        lastSpoke():aimEntity():isWeldedTo() == entity():isWeldedTo()) {
+            SpeakerTarget = 1
+    }
+    LastSaid = lastSaid()
+    LastSpoke = lastSpoke()
+    
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "say") {
+            if (SpeakerTarget) {    
+                # Submit message
+                SendMessages:pushString(Params:trimLeft():trimRight())
+                SendLocations:pushString(Location)
+                SendPlayers:pushString(LastSpoke:name())
+                SendPlayerColors:pushVector(teamColor(LastSpoke:team()))
+            }  
+        } elseif (Command == "mode") {
+            if (SpeakerTarget) {
+                NewMode = Params:toNumber()
+                if (NewMode < 0 | NewMode > 1) {
+                    hint("Mode must be 0 or 1.", 10)
+                } else {
+                    if (NewMode != Mode) {
+                        Mode = NewMode
+                        Started = 0
+                    }
+                }
+            }
+        } elseif (Command == "location") {
+            if (SpeakerTarget & LastSpoke == owner()) {
+                Location = Params
+                if (Mode == 0) {
+                    Monitor:writeString("                    ", 10, 2, 777, 9)
+                    Monitor:writeString(Location, 10, 2, 777, 9)
+                }
+                hint("Set location to " + Location + ".", 10)
+            }
+        }
+    }
+}
+
+if (Mode == 0) {
+    for (I = 1, SendMessages:count()) {
+        gSetNum("MessageId", gGetNum("MessageId") + 1)
+        gSetStr("Message", SendMessages:string(I))
+        gSetStr("Location", SendLocations:string(I))
+        gSetStr("Player", SendPlayers:string(I))
+        PlayerColor = SendPlayerColors:vector(I)
+        gSetNum("PlayerColor", round(PlayerColor:x() / 255 * 9) * 100 + round(PlayerColor:y() / 255 * 9) * 10 + round(PlayerColor:z() / 255 * 9))
+        gResetGroup()
+        gShare(1)
+        gSetStr("EUTCC", SendPlayers:string(I) + ": " + SendMessages:string(I))
+        gSetStr("NAMECOLC", glonEncode((PlayerColor:x() + " " + PlayerColor:y() + " " + PlayerColor:z()):explode(" ")))
+        gResetGroup()
+        gSetGroup("Chat")
+    }
+}
+
+# Text drawing
+if (RedrawTextArea & Mode == 0) {
+    # Text entry area
+    TextAreaString = ">" + Message
+    Spaces = ""
+    for(I = 0, 60 - TextAreaString:length()) {
+        Spaces += " "
+    }
+    TextAreaString += Spaces
+    Monitor:writeString(TextAreaString, 0, 16, 777, 30)
+}
+
+RecvMessages = array()
+RecvPlayers = array()
+RecvPlayerColors = array()
+RecvLocations = array()
+
+IgnoreMessage = gGetStr("Message")
+IgnorePlayer = gGetStr("Player")
+# Receive messages
+if (LastReceived < gGetNum("MessageId")) {
+    LastReceived = gGetNum("MessageId")
+    RecvMessages:pushString(gGetStr("Message"))
+    RecvPlayers:pushString(gGetStr("Player"))
+    RecvPlayerColors:pushNumber(gGetNum("PlayerColor"))
+    RecvLocations:pushString(gGetStr("Location"))
+}
+gResetGroup()
+gShare(1)
+# Receive EUT messages
+EUTReceived = gGetStr("EUTSC")
+if (EUTLastReceived != EUTReceived) {
+    EUTPlayerOffset = EUTReceived:find(":") - 1
+    EUTColors = glonDecode(gGetStr("NAMECOLS"))
+    EUTPlayer = EUTReceived:left(EUTPlayerOffset)
+    EUTMessage = EUTReceived:right(EUTReceived:length() - EUTPlayerOffset - 2)
+    if (IgnorePlayer == EUTPlayer & IgnoreMessage == EUTMessage) {
+        IgnorePlayer = ""
+        IgnoreMessage = ""
+    } else {
+        RecvMessages:pushString(EUTMessage:trimLeft():trimRight())
+        RecvPlayers:pushString(EUTPlayer)
+        RecvPlayerColors:pushNumber(round(EUTColors:number(1) / 255 * 9) * 100 + round(EUTColors:number(2) / 255 * 9) * 10 + round(EUTColors:number(3) / 255 * 9))
+        RecvLocations:pushString("EUT Client")
+    }
+    EUTLastReceived = EUTReceived
+}
+EUTReceived = gGetStr("EUTSANNREC")
+if (EUTServerLastReceived != EUTReceived) {
+    RecvMessages:pushString(EUTReceived:trimLeft():trimRight())
+    RecvLocations:pushString("EUT Server")
+    RecvPlayers:pushString("")
+    RecvPlayerColors:pushNumber(59)
+    EUTServerLastReceived = EUTReceived
+}
+EUTReceived = gGetStr("EUTSANNRECPURP")
+if (EUTServer2LastReceived != EUTReceived) {
+    RecvMessages:pushString(EUTReceived:trimLeft():trimRight())
+    RecvLocations:pushString("EUT Server")
+    RecvPlayers:pushString("")
+    RecvPlayerColors:pushNumber(59)
+    EUTServer2LastReceived = EUTReceived
+}
+
+for (I = 1, RecvMessages:count()) {
+    # Printed strings will be in the format:
+    # ($location) $player: $message
+
+    ExtraLength = 2
+    if (RecvLocations:string(I):length()) {
+        ExtraLength += 2
+        if (RecvPlayers:string(I):length()) {
+            ExtraLength++
+        }
+    }
+    RequiredLength = ExtraLength + RecvMessages:string(I):length() + RecvPlayers:string(I):length() + RecvLocations:string(I):length()
+    Lines = ceil(RequiredLength / 30)
+    
+    # Now shift
+    TotalLines = LastLine - FirstLine + 1
+    if (LinesUsed + Lines > TotalLines) {
+        Monitor:writeCell(2033, FirstLine)
+        Monitor:writeCell(2034, LastLine)
+        Monitor2:writeCell(2033, 2)
+        Monitor2:writeCell(2034, 17)
+        Monitor3:writeCell(2033, 2)
+        Monitor3:writeCell(2034, 17)
+        LinesToShift = Lines - TotalLines + LinesUsed
+        Monitor3:writeCell(2038, LinesToShift)
+        for (K = 1, LinesToShift) {
+            ArrData = array()
+            for (J = 1, 60) {
+                ArrData:setNumber(J, Monitor2:readCell((K + 1) * 60 + J - 1))
+            }
+            Monitor3:writeArray((17 - LinesToShift + K) * 60, ArrData)
+        }
+        Monitor2:writeCell(2038, LinesToShift)
+        for (K = FirstLine, FirstLine + LinesToShift) {
+            ArrData = array()
+            for (J = 1, 60) {
+                ArrData:setNumber(J, Monitor:readCell(K * 60 + J - 1))
+            }
+            Monitor2:writeArray((17 - LinesToShift + K) * 60, ArrData)
+        }
+        Monitor:writeCell(2038, LinesToShift)
+        LinesUsed -= LinesToShift
+    }
+    
+    StartLine = LinesUsed + FirstLine
+    CharsWritten = 0
+    if (RecvLocations:string(I):length()) {
+        Space = ""
+        if (RecvPlayers:string(I):length()) {
+            Space = " "
+        }
+        Monitor:writeString("(" + RecvLocations:string(I) + ")" + Space, 0, StartLine, 990, 0)
+        CharsWritten = 2 + Space:length() + RecvLocations:string(I):length()
+    }
+    if (RecvPlayers:string(I):length()) {
+        Monitor:writeString(RecvPlayers:string(I), CharsWritten % 30, StartLine + floor(CharsWritten / 30), RecvPlayerColors:number(I), 0)
+        CharsWritten += RecvPlayers:string(I):length()
+    }
+    Monitor:writeString(": " + RecvMessages:string(I), CharsWritten % 30, StartLine + floor(CharsWritten / 30), 999, 0)
+    LinesUsed += Lines
+}
+
+gResetGroup()

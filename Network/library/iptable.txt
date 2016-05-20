@@ -1,0 +1,14 @@
+@define iptable_preinit
+@persist Connections:array
+@persist IPTable:array IPTableEntities:array
+@end
+
+@define iptable_chat_handlers
+} elseif (Command == "iptable" |
+    Command == "iptables") {
+	   print ("Routing table for " + floor (IPAddress / 256 / 256 / 256) + "." + floor (IPAddress / 256 / 256 % 256) + "." + floor (IPAddress / 256 % 256) + "." + (IPAddress % 256) + ":")
+	   for (I = 1, IPTable:count ()) {
+		      Address = IPTable [I, vector2]:x ()
+		      print (floor (Address / 256 / 256 / 256) + "." + floor (Address / 256 / 256 % 256) + "." + floor (Address / 256 % 256) + "." + (Address % 256) + "/" + (32 - log (IPTable [I, vector2]:y (), 2)) + " -> " + IPTableEntities[I, entity]:id ())
+	   }
+@end

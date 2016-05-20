@@ -1,0 +1,47 @@
+@name Int2Digit
+@inputs Num
+@outputs A B C D E F G
+@persist
+@trigger all
+
+if (Num == 0 | Num == 4 | Num == 5 | Num == 6 | Num == 8 | Num == 9) {
+    A = 1
+} else {
+    A = 0
+}
+
+if (Num == 0 | Num == 2 | Num == 3 | Num == 5 | Num == 6 | Num == 7 | Num == 8 | Num == 9) {
+    B = 1
+} else {
+    B = 0
+}
+
+if (Num == 0 | Num == 1 | Num == 2 | Num == 3 | Num == 4 | Num == 7 | Num == 8 | Num == 9) {
+    C = 1   
+} else {
+    C = 0
+}
+
+if (Num == 2 | Num == 3 | Num == 4 | Num == 5 | Num == 6 | Num == 8 | Num == 9) {
+    D = 1   
+} else {
+    D = 0
+}
+
+if (Num == 0 | Num == 2 | Num == 6 | Num == 8) {
+    E = 1   
+} else {
+    E = 0
+}
+
+if (Num == 0 | Num == 1 | Num == 3 | Num == 4 | Num == 5 | Num == 6 | Num == 7 | Num == 8 | Num == 9) {
+    F = 1   
+} else {
+    F = 0
+}
+
+if (Num == 0 | Num == 2 | Num == 3 | Num == 5 | Num == 6 | Num == 8 | Num == 9) {
+    G = 1   
+} else {
+    G = 0
+}

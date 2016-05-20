@@ -1,0 +1,52 @@
+@name Robobuggy_Transmitter
+@inputs Memory:wirelink InUse EntPlayer:entity
+@outputs Kick Grab LastG
+@persist
+@trigger 
+
+interval(10)
+
+if (InUse & (!EntPlayer | !EntPlayer:isAlive())) {
+    Kick = 1 - Kick
+} else {
+    Kick = 0
+}
+gSetGroup("Buggy")
+gShare(1)
+if (InUse) {
+    gSetNum("Off", 0)
+} else {
+    gSetNum("Off", 1)
+}
+if (InUse) {
+    gSetNum("W", Memory[32 + 119])
+    gSetNum("S", Memory[32 + 115])
+    gSetNum("A", Memory[32 + 97])
+    gSetNum("D", Memory[32 + 100])
+    if (gGetNum("Holding")) {
+        Grab = 1
+    } else {
+        Grab = 0
+    }
+    if (Memory[32 + 103] & !LastG) {
+        Grab = 1 - Grab
+    }
+    LastG = Memory[32 + 103]
+    gSetNum("G", Grab)
+    gSetNum("X", Memory[32 + 120])
+    gSetNum("Space", Memory[32 + 32])
+} else {
+    Grab = 0
+    gSetNum("W", 0)
+    gSetNum("S", 0)
+    gSetNum("A", 0)
+    gSetNum("D", 0)
+    gSetNum("G", Grab)
+    # Don't reset X.
+    # Prevent the user from repeatedly blowing
+    # himself up when the buggy is next to the controls
+    # and the X key is stuck.
+    #gSetNum("X", 0)
+    gSetNum("Space", 0)
+}
+gResetGroup()

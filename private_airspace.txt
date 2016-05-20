@@ -1,0 +1,109 @@
+@import chat
+@name Private Airspace
+@inputs
+@outputs
+@persist Storage:gtable
+@persist Radius Centre:vector CentreEntity:entity
+@persist RegionType:string Planes:array
+@persist Enabled Whitelist:table
+@trigger
+@model
+
+interval(100)
+@expand chat_init
+
+if (first() | duped()) {
+    Storage = gTable("Private Airspace", 0)
+    Planes = Storage["Planes", array]
+    Storage["Planes", array] = Planes
+    
+    Enabled = 0
+    
+    Radius = 256
+    CentreEntity = entity()
+    Centre = CentreEntity:pos()
+    RegionType = "plane"
+    
+    Whitelist[owner():steamID(), number] = 1
+    
+    holoCreate(1)
+    holoCreate(2)
+    holoModel(1, "hqsphere2")
+    holoModel(2, "hqsphere2")
+    holoAlpha(1, 0)
+    holoAlpha(2, 0)
+    holoPos(1, Centre)
+    holoPos(2, Centre)
+    holoParent(1, CentreEntity)
+    holoParent(2, CentreEntity)
+    holoScale(1, vec(Radius / 6, Radius / 6, Radius / 6))
+    holoScale(2, -vec(Radius / 6, Radius / 6, Radius / 6))
+}
+
+if (Enabled) {
+    for (I = 1, maxPlayers()) {
+        Player = entity(I)
+        if (Player &
+            !Whitelist[Player:steamID(), number]) {
+            Direction = Player:pos() - Centre
+            InAirspace = 0
+            if (RegionType == "sphere") {
+                if (Direction:length2() <= Radius * Radius) {
+                    InAirspace = 1
+                }
+            } elseif (RegionType == "plane") {
+                if (Planes:count()) {
+                    InAirspace = 1
+                    for (I = 1, Planes:count()) {
+                        Normal = vec(Planes[I, vector4])
+                        Determinant = Normal:dot(Player:pos()) + Planes[I, vector4]:w()
+                        if (Determinant < Direction:length()) {
+                            Direction = -Normal * Determinant
+                        }
+                        if (Determinant <= 0) {
+                            InAirspace = 0
+                            break
+                        }
+                    }
+                }
+            }
+            if (InAirspace) {
+                if (RegionType == "sphere") {
+                    Player:applyPlayerForce(Direction:normalized() / Direction:length() * 100000)
+                } elseif (RegionType == "plane") {
+                    Player:applyPlayerForce(Direction * 100000)
+                }
+            }
+        }
+    }
+}
+
+@expand chat_begin_handler
+} elseif (Command == "auth") {
+    Player = findPlayerByName(Arguments)
+    if (Player) {
+        Whitelist[Player:steamID(), number] = 1 - Whitelist[Player:steamID(), number]
+        if (Whitelist[Player:steamID(), number]) {
+            printColor(vec(255, 255, 255), Player:name() + " is now authorized.")
+        } else {
+            printColor(vec(255, 255, 255), Player:name() + "'s authorization has been revoked.")
+        }
+    }
+} elseif (Command == "enable") {
+    Enabled = 1 - Enabled
+    if (Enabled) {
+        printColor(vec(255, 255, 255), "Airspace is now private.")
+    } else {
+        printColor(vec(255, 255, 255), "Airspace is no longer private.")
+    }
+} elseif (Command == "plane") {
+    Index = Planes:count() + 1
+    Normal = LastSpoke:eye()
+    holoCreate(10 + Index)
+    holoAlpha(10 + Index, 128)
+    holoPos(10 + Index, LastSpoke:pos())
+    holoAng(10 + Index, Normal:toAngle())
+    holoScale(10 + Index, vec(0.1, 24, 24))
+    D = -LastSpoke:pos():dot(Normal)
+    Planes:pushVector4(vec4(Normal, D))
+@expand chat_end_handler

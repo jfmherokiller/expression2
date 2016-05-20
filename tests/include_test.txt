@@ -1,0 +1,10 @@
+@name include_test
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+#include "tests/include_test2"
+
+print(N)
+local N = 3

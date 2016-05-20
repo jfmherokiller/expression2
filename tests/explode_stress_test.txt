@@ -1,0 +1,10 @@
+@name Explode Stress Test
+@inputs
+@outputs
+@persist
+@trigger
+
+print("^a^b%-%d][e.f":explode("%%%"))
+print("":explode("%"))
+print("":explode(""))
+print("abcdefghi":explode(""))

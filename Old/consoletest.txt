@@ -1,0 +1,33 @@
+@name ConsoleTest
+@inputs Bluescreen Memory:wirelink
+@outputs
+@persist 
+@trigger
+
+Memory:writeString("                              ", 0, 0, 777, 9)
+Memory:writeString("                              ", 0, 1, 777, 9)
+Memory:writeString("                              ", 0, 2, 777, 9)
+Memory:writeString("                              ", 0, 3, 777, 9)
+Memory:writeString("                              ", 0, 4, 777, 9)
+Memory:writeString("                              ", 0, 5, 777, 9)
+Memory:writeString("                              ", 0, 6, 777, 9)
+Memory:writeString("                              ", 0, 7, 777, 9)
+Memory:writeString("                              ", 0, 8, 777, 9)
+Memory:writeString("                              ", 0, 9, 777, 9)
+Memory:writeString("                              ", 0, 10, 777, 9)
+Memory:writeString("                              ", 0, 11, 777, 9)
+Memory:writeString("                              ", 0, 12, 777, 9)
+Memory:writeString("                              ", 0, 13, 777, 9)
+Memory:writeString("                              ", 0, 14, 777, 9)
+Memory:writeString("                              ", 0, 15, 777, 9)
+Memory:writeString("                              ", 0, 16, 777, 9)
+Memory:writeString("                              ", 0, 17, 777, 9)
+Memory:writeString(" FAIL ", 12, 2, 9, 777)
+Memory:writeString("  Shit broke. Again. Abandon", 0, 4, 777, 9)
+Memory:writeString("  all hope.", 0, 5, 777, 9)
+Memory:writeString("  * You can try to reboot.", 0, 7, 777, 9)
+Memory:writeString("  * It probably won't work.", 0, 8, 777, 9)
+Memory:writeString("  * Good luck with launching", 0, 9, 777, 9)
+Memory:writeString("    your rocket.", 0, 10, 777, 9)
+Memory:writeString("Keyboard not found!", 2, 12, 777, 9)
+Memory:writeString("Press any key to continue", 2, 14, 777, 9)

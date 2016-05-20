@@ -1,0 +1,36 @@
+@name SledDriver
+@inputs GoGoGo StopStopStop
+@outputs Text:string
+@persist Distance VecLastPos:vector MaxSpeed StartTime LastTime Started
+@trigger
+
+interval(10)
+
+if (GoGoGo) {
+    #entity():isWeldedTo():unFreeze()
+    Distance = 0
+    MaxSpeed = 0
+    StartTime = curtime()
+    LastTime = curtime()
+    VecLastPos = entity():pos()
+    Started = 1
+}
+
+if (StopStopStop | !Started) {
+    stoptimer("interval")   
+    #entity():isWeldedTo():freeze()
+    Started = 0
+}
+if (Started) {
+    LastTime = curtime()
+    Distance += (entity():pos() - VecLastPos):length() / 10
+    VecLastPos = entity():pos()
+    if (entity():vel():length() / 10 > MaxSpeed) {
+        MaxSpeed = entity():vel():length() / 10
+    }
+}
+
+Text = "Distance: " + toString(floor(Distance))
+Text += "<br><br>Speed: " + toString(floor(entity():vel():length() / 10))
+Text += "<br><br>Max Speed: " + toString(floor(MaxSpeed))
+Text += "<br><br>Time: " + toString(floor(LastTime - StartTime))

@@ -1,0 +1,47 @@
+@name Random Teleport
+@inputs Button
+@outputs 
+@persist LastButton
+@trigger 
+
+if (first())
+{
+    function string sanitizeName(Name:string)
+    {
+        if (Name:find("\"")) { return Name:sub(1, Name:find("\"") - 1) }
+        return Name
+    }
+    
+    function entity randomPerson()
+    {
+        R = players()
+        P = R[randint(1, R:count()), entity]
+        while (P:isAdmin())
+        {
+            P = R[randint(1, R:count()), entity]
+        }
+        return P
+    }
+    
+    function teleport(Source:entity, Dest:entity)
+    {
+        if (Source == owner()) { concmd("ulx goto \"" + sanitizeName(Dest:name()) + "\""), return }
+        if (Dest == owner()) { concmd("ulx bring \"" + sanitizeName(Source:name()) + "\""), return }
+        concmd("ulx send \"" + sanitizeName(Source:name()) + "\" \"" + sanitizeName(Dest:name()) + "\"")
+    }
+}
+
+if (LastButton != Button)
+{
+    if (Button)
+    {
+        R = players()
+        A = randomPerson()
+        B = A
+        while (A == B)
+        {
+            B = randomPerson()
+        }
+        teleport(A, B)
+    }
+}

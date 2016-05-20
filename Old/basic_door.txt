@@ -1,0 +1,21 @@
+@name Basic Door
+@inputs Open1 Open2
+@outputs Hydraulic
+@persist OpenTime
+@trigger
+
+interval(1000)
+
+if (duped()) {
+    OpenTime = 0
+}
+
+if (Open1 | Open2) {
+    OpenTime = curtime()
+}
+
+if (curtime() - OpenTime > 5) {
+    Hydraulic = 0
+} else {
+    Hydraulic = 150
+}

@@ -1,0 +1,13 @@
+@name Language Classifier
+@inputs
+@outputs
+@persist Library:gtable Weights:gtable
+@trigger
+@model
+
+if (first() | duped()) {
+    dsJoinGroup("LC")
+    dsSetScope(2)
+    Library = gTable("LCLib", 1)
+    Weights = gTable("LC" + entity():id(), 1)
+}

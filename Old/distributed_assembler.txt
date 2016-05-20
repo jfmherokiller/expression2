@@ -1,0 +1,588 @@
+@name Distributed Assembler
+@inputs HydraulicLength
+@outputs Hydraulic
+# Wheels
+@outputs FrontLeftWheel FrontRightWheel BackLeftWheel BackRightWheel
+@persist Turn Drive
+
+# States
+@persist IgnoreSay State SubState
+# State
+# 0 - Idle, waiting for job
+# 1 - Moving
+# 2 - Rotating
+# 3 - Pathfinding
+
+# Pathfinding
+@persist Waypoints:array UnfilteredWaypoints:array CurrentWaypoint TargetPosition:vector
+@persist PathfindingWaypoint PathfindingWaypoint2 # Last one is only used for waypoint culling.
+
+# Movement
+@persist TargetAngle CurrentTargetPosition:vector
+
+# Some shared tables
+@persist SavedConstructions:table # names to (array indices, index count)
+@persist SavedConstructionPropModels:array SavedConstructionPropColors:array SavedConstructionPropPositions:array SavedConstructionPropAngles:array
+# Index 0 of SavedConstructionPropModels indicates the next index to fill.
+@persist UnconstructedProps:array
+
+# Datasignal states
+@persist PrintSwarmCount
+
+# Saving
+@persist ScanOrigin:vector SelectionMode
+# Selection modes
+# 0 - AABB
+# 1 - Sphere
+
+# Selection
+@persist LastMouse1
+@persist SelectedEntities:table SelectedEntityColors:array
+@persist InSelection SelectionStart:vector SelectionEnd:vector
+@trigger 
+
+interval(100)
+runOnChat(1)
+
+# Delayed actions
+CheckAssemblerQueue = 0
+ClearSelectedProps = 0
+CheckWheelOutputs = 0
+
+if (first() | duped()) {
+    holoDeleteAll()
+    
+    gSetGroup("DPrinters")
+    gShare(1)
+    
+    if (!gGetNum("PrinterQueueIndex")) {
+        gSetNum("PrinterQueueIndex", 1)
+    }
+    if (!gGetNum("PrinterQueueNextIndex")) {
+        gSetNum("PrinterQueueNextIndex", 1)
+    }
+    if (!gGetNum("AssemblerQueueIndex")) {
+        gSetNum("AssemblerQueueIndex", 1)
+    }
+    if (!gGetNum("AssemblerQueueNextIndex")) {
+        gSetNum("AssemblerQueueNextIndex", 1)
+    }
+    
+    dsJoinGroup("DPrinters")
+    dsJoinGroup("DAssemblers")
+    dsSetScope(2)
+    
+    SavedConstructions = table()
+    SavedConstructionPropModels = array()
+    SavedConstructionPropColors = array()
+    SavedConstructionPropPositions = array()
+    SavedConstructionPropAngles = array()
+    SavedConstructionPropModels:setNumber(0, 1)
+    UnconstructedProps = array()
+    
+    Assemblers = dsProbe("DAssemblers")
+    if (Assemblers:entity(1) & Assemblers:entity(1) != entity()) {
+        dsSendDirect("AssemblerRequestSharedData", Assemblers:entity(1), entity())
+    } elseif (Assemblers:entity(2) & Assemblers:entity(2) != entity()) {
+        dsSendDirect("AssemblerRequestSharedData", Assemblers:entity(2), entity())
+    }
+    
+    rangerPersist(1)
+    rangerFilter(entity())
+    
+    Hydraulic = 0
+    # Wheels
+    FrontLeftWheel = 0
+    FrontRightWheel = 0
+    BackLeftWheel = 0
+    BackRightWheel = 0
+    
+    Turn = 0
+    Drive = 0
+    
+    # State
+    State = 0
+    
+    # Pathfinding
+    Waypoints = array()
+    CurrentWaypoint = 1
+    TargetPosition = entity():pos()
+    PathfindingWaypoint = 1
+    PathfindingWaypoint2 = 1
+    
+    # Movement
+    TargetAngle = entity():angles():yaw() + 180
+    if (TargetAngle > 180) {
+        TargetAngle -= 360
+    }
+    CurrentTargetPosition = entity():pos()
+    
+    PrintSwarmCount = 0
+    
+    # Entity selection
+    LastMouse1 = 0
+    SelectedEntities = table()
+    SelectedEntityColors = array()
+    
+    CheckWheelOutputs = 1
+}
+
+# Datasignal next tick code
+if (PrintSwarmCount) {
+    hint("There are " + gGetNum("AssemblerSwarmCount") + " construction bots active.", 10)
+    PrintSwarmCount = 0
+}
+
+if (dsClk()) {
+    if (dsClkName() == "AssemblerIgnoreSay") {
+        IgnoreSay++
+    } elseif (dsClkName() == "AssemblerPingSwarm") {
+        gSetNum("AssemblerSwarmCount", gGetNum("AssemblerSwarmCount") + 1)
+    } elseif (dsClkName() == "AssemblerQueueJobAdded") {
+        CheckAssemblerQueue = 1
+    } elseif (dsClkName() == "AssemblerRequestSharedData") {
+        dsSendDirect("AssemblerSendSavedConstructionsTable", dsGetSender(), SavedConstructions)
+        dsSendDirect("AssemblerSendSavedConstructionPropModels", dsGetSender(), SavedConstructionPropModels)
+        dsSendDirect("AssemblerSendSavedConstructionPropColors", dsGetSender(), SavedConstructionPropColors)
+        dsSendDirect("AssemblerSendSavedConstructionPropPositions", dsGetSender(), SavedConstructionPropPositions)
+        dsSendDirect("AssemblerSendSavedConstructionPropAngles", dsGetSender(), SavedConstructionPropAngles)
+        dsSendDirect("AssemblerSendUnconstructedPropArray", dsGetSender(), UnconstructedProps)
+    } elseif (dsClkName() == "AssemblerSendSavedConstructionsTable") {
+        SavedConstructions = dsGetTable()
+    } elseif (dsClkName() == "AssemblerSendSavedConstructionPropModels") {
+        SavedConstructionPropModels = dsGetArray()
+    } elseif (dsClkName() == "AssemblerSendSavedConstructionPropColors") {
+        SavedConstructionPropColors = dsGetArray()
+    } elseif (dsClkName() == "AssemblerSendSavedConstructionPropPositions") {
+        SavedConstructionPropPositions = dsGetArray()
+    } elseif (dsClkName() == "AssemblerSendSavedConstructionPropAngles") {
+        SavedConstructionPropAngles = dsGetArray()
+    } elseif (dsClkName() == "AssemblerSendUnconstructedPropArray") {
+        UnconstructedProps = dsGetArray()
+        CheckAssemblerQueue = 1
+    } elseif (dsClkName() == "PrinterJobCompleted") {
+        # Pick up item, move it to target position.
+        Item = dsGetEntity()
+        hint("Printer job completed.", 10)
+    }
+} elseif (chatClk()) {
+    Authorized = 0
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        Authorized = 1
+    }
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IgnoreSay) {
+            IgnoreSay--
+        } elseif (IsCmd) {
+            hideChat(1)
+            if (Command == "build") {
+                EyeTrace = owner():eyeTrace()
+                if (Params == "") {
+                    hint("You need to specify a construction to build.", 10)
+                    hint("!listsaves will give you a list of constructions saved.", 10)
+                } else {
+                    if (!SavedConstructions:vector2(Params:lower()):y()) {
+                        hint("No such construction saved.", 10)
+                    } else {
+                        if (EyeTrace:hit()) {
+                            BuildPos = EyeTrace:position()
+                            holoCreate(3)
+                            holoPos(3, BuildPos)
+                            holoScale(3, vec(0.5, 0.5, 0.05))
+                            holoAng(3, EyeTrace:hitNormal():toAngle() + ang(90, 0, 0))
+                            holoMaterial(3, "models/cheeze/buttons2/multiply")
+                            findExcludeEntity(holoEntity(3))
+                            
+                            BaseIndex = SavedConstructions:vector2(Params:lower()):x()
+                            PropCount = SavedConstructions:vector2(Params:lower()):y()
+                            GTableIndex = gGetNum("AssemblerQueueNextIndex")
+                            for (I = BaseIndex, BaseIndex + PropCount) {
+                                gSetNum("AssemblerQueuePropTemplate_" + (GTableIndex + I - BaseIndex), I)
+                                gSetVec("AssemblerQueuePropPosition_" + (GTableIndex + I - BaseIndex), BuildPos + SavedConstructionPropPositions:vector(I))
+                            }
+                            gSetNum("AssemblerQueueNextIndex", GTableIndex + PropCount)
+                            
+                            dsSend("AssemblerQueueJobAdded", "DAssemblers", 1)
+                            CheckAssemblerQueue = 1
+                        }
+                    }
+                }
+            } elseif (Command == "clearselection") {
+                ClearSelectedProps = 1
+            } elseif (Command == "isweldedto") {
+                Entities = entity():getConstraints()
+                hint(toString(Entities:count()) + " entities.", 10)
+            } elseif (Command == "listsaves") {
+                SaveList = SavedConstructions:keys()
+                if (!SaveList:count()) {
+                    hint("You have no saved constructions.", 10)
+                } else {
+                    Message = "Saved constructions: "
+                    for (I = 1, SaveList:count()) {
+                        Message += SaveList:string(I)
+                        if (I < SaveList:count()) {
+                            Message += ", "
+                        }
+                    }
+                    hint(Message, 10)
+                }
+            } elseif (Command == "pathto") {
+                EyeTrace = owner():eyeTrace()
+                if (EyeTrace:hit()) {
+                    TargetPosition = EyeTrace:position():setZ(entity():pos():z())
+                    State = 3
+                    SubState = 0
+                }
+            } elseif (Command == "save") {
+                if (!SelectedEntities:keys():count()) {
+                    hint("No entities selected to be saved.", 10)
+                } else {
+                    if (Params == "") {
+                        hint("You must give a name to this construction.", 10)
+                    } else {
+                        BaseIndex = SavedConstructionPropModels:number(0)
+                        SaveCount = 0
+                        SelectedEntityList = SelectedEntities:keys()
+                        for (I = 1, SelectedEntityList:count()) {
+                            EntityToSave = SelectedEntities:entity(SelectedEntityList:string(I))
+                            if (EntityToSave) {
+                                SavedConstructionPropModels:setString(BaseIndex + SaveCount, EntityToSave:model())
+                                SavedConstructionPropColors:setVector4(BaseIndex + SaveCount, SelectedEntityColors:vector4(EntityToSave:id()))
+                                SavedConstructionPropPositions:setVector(BaseIndex + SaveCount, EntityToSave:pos() - ScanOrigin)
+                                SavedConstructionPropAngles:setAngle(BaseIndex + SaveCount, EntityToSave:angles())
+                                SaveCount++
+                            }
+                        }
+                        SavedConstructionPropModels:setNumber(0, BaseIndex + SaveCount)
+                        if (SaveCount) {
+                            SavedConstructions:setVector2(Params:lower(), vec2(BaseIndex, SaveCount))
+                            hint("Saved " + SaveCount + " entities.", 10)
+                        } else {
+                            hint("No entities were saved. All selected entities are invalid.", 10)
+                        }
+                        ClearSelectedProps = 1
+                    }   
+                }             
+            } elseif (Command == "scanorigin") {
+                EyeTrace = owner():eyeTrace()
+                if (EyeTrace:hit()) {
+                    ScanOrigin = EyeTrace:position()
+                    
+                    holoCreate(2)
+                    holoPos(2, ScanOrigin)
+                    holoScale(2, vec(0.5, 0.5, 0.05))
+                    holoAng(2, EyeTrace:hitNormal():toAngle() + ang(90, 0, 0))
+                    holoMaterial(2, "models/cheeze/buttons2/multiply")
+                    findExcludeEntity(holoEntity(2))
+                }
+            } elseif (Command == "selection") {
+                if (Params:lower() == "aabb" |
+                    Params:lower() == "box" |
+                    Params:lower() == "cube" |
+                    Params:lower() == "cuboid" |
+                    Params:lower() == "rectangle") {
+                    SelectionMode = 0
+                } elseif (Params:lower() == "circle" |
+                    Params:lower() == "sphere") {
+                    SelectionMode = 1
+                }
+            } elseif (Command == "swarmcount") {
+                gSetNum("AssemblerSwarmCount", 1)
+                dsSend("AssemblerPingSwarm", "DAssemblers", entity())
+                PrintSwarmCount = 1
+            } elseif (Command == "velocity") {
+                hint("Velocity: " + toString(round(entity():vel())), 10)
+            }
+            hint("Received command " + Command, 10)
+            dsSend("AssemblerIgnoreSay", "DAssemblers", 1)
+        }
+    }
+} elseif (clk("interval")) {
+    if (owner():weapon():type() == "weapon_crowbar" |
+        owner():weapon():type() == "weapon_physcannon" |
+        owner():weapon():type() == "weapon_physgun") {
+        if (owner():keyAttack1()) {
+            EyeTrace = owner():eyeTrace()
+            if (!LastMouse1) {
+                # Mouse down.
+                SelectionStart = EyeTrace:position()
+                holoCreate(1)
+                holoColor(1, vec(0, 0, 255))
+                holoAlpha(1, 128)
+                holoPos(1, SelectionStart)
+                if (SelectionMode == 1) {
+                    holoModel(1, "hqsphere")
+                }
+                findExcludeEntity(holoEntity(1))
+                findExcludeEntities(entity():getConstraints())
+                InSelection = 1
+            }
+            SelectionEnd = EyeTrace:position()
+            Radius = 0
+            if (SelectionMode == 0) {
+                SelectionEnd = SelectionEnd:setZ(SelectionEnd:z() + 128)
+                holoPos(1, (SelectionStart + SelectionEnd) * 0.5)
+                Scale = (SelectionEnd - SelectionStart) / 12
+                Scale = Scale:setX(abs(Scale:x())):setY(abs(Scale:y())):setZ(abs(Scale:z()))
+                holoScale(1, Scale)
+            } else {
+                Radius = (SelectionEnd - SelectionStart):length()
+                holoScale(1, vec(Radius, Radius, Radius) / 6)
+            }
+            
+            # Now add entities to selection
+            if (findCanQuery()) {
+                if (SelectionMode == 0) {
+                    findInBox(SelectionStart, SelectionEnd)
+                } else {
+                    findInSphere(SelectionStart, Radius)
+                }
+                FoundEntities = findToArray()
+                for (I = 1, FoundEntities:count()) {
+                    if (!SelectedEntities:entity(toString(FoundEntities:entity(I):id()))) {
+                        SelectedEntities:setEntity(toString(FoundEntities:entity(I):id()), FoundEntities:entity(I))
+                        SelectedEntityColors:setVector4(FoundEntities:entity(I):id(), FoundEntities:entity(I):getColor4())
+                        FoundEntities:entity(I):setColor(0, 255, 0)
+                    }
+                }
+            }
+        } elseif (LastMouse1) {
+            # Mouse up.
+            holoDelete(1)
+            InSelection = 0
+        }
+        if (owner():keyAttack2()) {
+            # Clear selection
+            holoDelete(1)
+            ClearSelectedProps = 1
+            InSelection = 0
+        }
+    } elseif (InSelection) {
+        InSelection = 0
+        holoDelete(1)
+    }
+    LastMouse1 = owner():keyAttack1()
+    
+    # Movement
+    if (State == 1 | State == 2) {
+        # Rotation and translation
+        if (SubState == 0) {
+            TargetPosition = Waypoints:vector(CurrentWaypoint + 1)
+            SubState = 1
+        } elseif (SubState == 1) {
+            CheckWheelOutputs = 1
+            
+            # Calculate target angle
+            TargetAngle = (Waypoints:vector(CurrentWaypoint + 1) - entity():pos()):toAngle():yaw()
+            DeltaAngle = TargetAngle - entity():angles():yaw() + 180
+            if (abs(DeltaAngle) < 5) {
+                Turn = 0
+                Drive = 1
+            } else {
+                if (DeltaAngle > 180) {
+                    DeltaAngle -= 360
+                }
+                if (DeltaAngle > 180) {
+                    DeltaAngle -= 360
+                }
+                if (DeltaAngle < -180) {
+                    DeltaAngle += 360
+                }
+                if (DeltaAngle > 0) {
+                    Turn = -1
+                } else {
+                    Turn = 1
+                }
+                if (abs(DeltaAngle) > 30) {
+                    Drive = -0.5
+                } else {
+                    Drive = 0.5
+                }
+            }
+            if ((entity():pos() - Waypoints:vector(CurrentWaypoint + 1)):length() < 50) {
+                Drive = 0
+                State = 2
+                SubState = 0
+                CurrentWaypoint++
+                TargetPosition = Waypoints:vector(CurrentWaypoint + 1)
+            }
+        }
+    } elseif (State == 3) {
+        # Pathfinding
+        while (ops() < 1000) {
+            if (SubState == 0) {
+                holoCreate(10, entity():pos())
+                holoMaterial(10, "models/cheeze/buttons2/0")
+                holoCreate(11, TargetPosition)
+                UnfilteredWaypoints:clear()
+                CurrentWaypoint = 1
+                UnfilteredWaypoints:pushVector(entity():pos())
+                PathfindingWaypoint = 1
+                rangerFilter(entity():getConstraints())
+                
+                SubState = 1
+            } elseif (SubState == 1) {
+                PathfindingTarget = TargetPosition
+                if (PathfindingWaypoint + 1 <= UnfilteredWaypoints:count()) {
+                    PathfindingTarget = UnfilteredWaypoints:vector(PathfindingWaypoint + 1)
+                }
+                
+                Ranger = rangerOffsetHull(UnfilteredWaypoints:vector(PathfindingWaypoint), PathfindingTarget, entity():boxMin(), entity():boxMax())
+                if (Ranger:hit()) {
+                    # print("Hit from " + toString(round(UnfilteredWaypoints:vector(PathfindingWaypoint))) + " to " + toString(round(PathfindingTarget)) + " at " + toString(round(Ranger:position())))
+                    PathfindingWaypoint++
+                    holoCreate(11 + PathfindingWaypoint, Ranger:position())
+                    holoMaterial(11 + PathfindingWaypoint, "models/cheeze/buttons2/" + ((PathfindingWaypoint - 1) % 10))
+                    UnfilteredWaypoints:setVector(PathfindingWaypoint, Ranger:position())
+                    HitNormal = Ranger:hitNormal():setZ(0):normalized()
+                    Left = HitNormal:rotate(ang(0, -90, 0))
+                    Right = HitNormal:rotate(ang(0, 90, 0))
+                    holoAng(11 + PathfindingWaypoint, HitNormal:toAngle())
+                    holoCreate(12 + PathfindingWaypoint, Ranger:position() + Left * 64)
+                    holoCreate(13 + PathfindingWaypoint, Ranger:position() + Right * 64)
+                    UnfilteredWaypoints:setVector(PathfindingWaypoint + 1, Ranger:position() + Left * 64)
+                } else {
+                    # print("No hit from " + toString(round(Waypoints:vector(PathfindingWaypoint))) + " to " + toString(round(PathfindingTarget)) + " at " + toString(round(Ranger:position())))
+                    PathfindingWaypoint++
+                    holoCreate(11 + PathfindingWaypoint, PathfindingTarget)
+                    holoMaterial(11 + PathfindingWaypoint, "models/cheeze/buttons2/" + ((PathfindingWaypoint - 1) % 10))
+                    UnfilteredWaypoints:setVector(PathfindingWaypoint, PathfindingTarget)
+                    if (PathfindingTarget == TargetPosition) {
+                        SubState = 2
+                    }
+                }
+                if (PathfindingWaypoint > 72) {
+                    SubState = -1
+                }
+            } elseif (SubState == 2) {
+                hint("Finished pathfinding round 1.", 10)
+                SubState = 3
+            } elseif (SubState == 3) {
+                # Initialize filtering
+                PathfindingWaypoint = 1
+                PathfindingWaypoint2 = 3
+                Waypoints = array()
+                Waypoints:pushVector(UnfilteredWaypoints:vector(1))
+                SubState = 4
+            } elseif (SubState == 4) {
+                while (SubState == 4 & opcounter() < 1000) {
+                    Ranger = rangerOffsetHull(Waypoints:vector(Waypoints:count()), UnfilteredWaypoints:vector(PathfindingWaypoint2), entity():boxMin(), entity():boxMax())
+                    if (Ranger:hit() & (UnfilteredWaypoints:vector(PathfindingWaypoint2) - Ranger:position()) != vec(0, 0, 0)) {
+                        # concmd("echo Hit on waypoint " + PathfindingWaypoint + ", " + PathfindingWaypoint2 + ".")
+                        PathfindingWaypoint = PathfindingWaypoint2 - 1
+                        PathfindingWaypoint2++
+                        Waypoints:pushVector(UnfilteredWaypoints:vector(PathfindingWaypoint))
+                    } else {
+                        concmd("echo No hit on waypoint " + PathfindingWaypoint + ", " + PathfindingWaypoint2 + ".")
+                        PathfindingWaypoint2++
+                    }
+                    if (PathfindingWaypoint2 > UnfilteredWaypoints:count()) {
+                        SubState = 5
+                        Waypoints:pushVector(UnfilteredWaypoints:vector(UnfilteredWaypoints:count()))
+                    }
+                }
+            } elseif (SubState == 5) {
+                hint("Finished culling pathfinding waypoints.", 10)
+                for (I = 1, Waypoints:count()) {
+                    holoCreate(24 + I, Waypoints:vector(I) + vec(0, 0, 16))
+                    holoMaterial(24 + I, "models/cheeze/buttons2/" + ((I - 1) % 10) )
+                }
+                SubState = 6
+            } elseif (SubState == 6) {
+                State = 2
+                SubState = 0
+                CurrentWaypoint = 1
+            } elseif (SubState == -1) {
+                hint("Failed to find path with < 72 points.", 10)
+                SubState = 3
+            }
+            break
+        }
+    }
+}
+
+if (CheckAssemblerQueue) {
+    if (gGetNum("AssemblerQueueIndex") < gGetNum("AssemblerQueueNextIndex")) {
+        hint("Stuck object onto printer queue.", 10)
+        PrinterQueueNextIndex = gGetNum("PrinterQueueNextIndex")
+        gSetStr("PrinterQueueModel_" + PrinterQueueNextIndex, SavedConstructionPropModels:string(gGetNum("AssemblerQueuePropTemplate_" + gGetNum("AssemblerQueueIndex"))))
+        gSetEnt("PrinterQueueEntity_" + PrinterQueueNextIndex, entity())
+        gSetNum("PrinterQueueNextIndex", PrinterQueueNextIndex + 1)
+        dsSend("PrinterQueueJobAdded", "DPrinters", entity())
+        gSetNum("AssemblerQueueIndex", gGetNum("AssemblerQueueIndex") + 1)
+    }
+}
+
+if (ClearSelectedProps) {
+    SelectedEntityList = SelectedEntities:keys()
+    for (I = 1, SelectedEntityList:count()) {
+        SelectedEntities:setEntity(SelectedEntityList:string(I), noentity())
+        entity(SelectedEntityList:string(I):toNumber()):setColor(SelectedEntityColors:vector4(SelectedEntityList:string(I):toNumber()))
+        SelectedEntityColors:remove(SelectedEntityList:string(I):toNumber())
+    }
+}
+
+if (CheckWheelOutputs) {
+    BackLeftWheel = int(Drive)
+    BackRightWheel = int(Drive)
+    
+    if (Turn == 1) {
+        FrontLeftWheel = 1
+        FrontRightWheel = -1
+        if (Drive >= 0) {
+            BackLeftWheel = 1
+        } else {
+            BackRightWheel = -1
+        }
+    } elseif (Turn == -1) {
+        FrontLeftWheel = -1
+        FrontRightWheel = 1
+        if (Drive >= 0) {
+            BackRightWheel = 1
+        } else {
+            BackLeftWheel = -1
+        }
+    } else {
+        FrontLeftWheel = int(Drive)
+        FrontRightWheel = int(Drive)
+    }
+    
+    if (BackLeftWheel == 0 &
+        BackRightWheel == 0 &
+        FrontLeftWheel == 0 &
+        FrontRightWheel == 0) {
+        DotProduct = entity():vel():dot(-entity():forward())
+        if (abs(DotProduct) > 4) {
+            if (DotProduct > 0) {
+                DotProduct = -1
+            } else {
+                DotProduct = 1
+            }
+            BackLeftWheel = DotProduct
+            BackRightWheel = DotProduct
+            FrontLeftWheel = DotProduct
+            FrontRightWheel = DotProduct
+        }
+    } else {
+        # Apply force to jiggle it.
+        if (Drive > 0) {
+            entity():applyForce(TargetPosition - entity():pos())
+        } else {
+            entity():applyForce(entity():pos() - TargetPosition)
+        }
+    }
+}

@@ -1,0 +1,149 @@
+@name Hologramaphonifier V3.1
+@persist [AList PList SList CList MoList MaList]:array
+@persist [Mode Name Said]:string Iteration MaxIteration Ents:array
+#RING RING RING RING RING RING RING
+#BANANAPHONE
+
+#DESCRIPTION OF HOW TO HOLOGRAMAPHONIFY
+#Usage: Fire chip at parent prop, mouseover props you want to be children and hit R.
+#Continue R'ing props until done (then Z undo). When pasting, be sure to paste onto your old parent prop model!
+#You may repaste the chip and resume, preserving the old children data, but keep the same Parent!
+if(first()) {
+      #Savename
+    Name = "fire_tower"
+      #This reads your previous save, for adding things on later
+    ContinuePreviousSave = 0
+    
+      #Uncomment the Mode you want
+    #Mode = "holosave"
+    Mode = "holopaste"
+    #Mode = "realpaste"   #Pastes actual prop_physics, so you can edit the colors
+    
+    #NOTE: You can say 'holo drop' to finish up (or just undo the chip)
+    #NOTE: You can say 'holo drop delete' to finish up AND remove all selected props
+    
+    
+    
+    if(!Name) {print("HEY YOU FORGOT TO PUT IN A NAME DUMMY")}
+    White = vec(200,200,200), Purple = vec(120,100,200)
+    runOnChat(1)
+    runOnLast(1)
+    
+    if(ContinuePreviousSave | Mode:right(5) == "paste") {
+        Tab = fileReadTable("holograms/"+Name)
+        PList = Tab["p", array]
+        AList = Tab["a", array]
+        CList = Tab["c", array]
+        MoList = Tab["mo", array]
+        MaList = Tab["ma", array]
+        SList = Tab["s", array]
+    } else{PList = array(), AList = array(), CList = array(), MoList = array(), MaList = array(), SList = array()}
+    
+    if(Mode == "holosave") {
+        owner():printColor(White, "Press ", Purple, "R", White, " to save the aimed-at entity to "+Name+".")
+        owner():printColor(White, "Say ", Purple, "holo drop", White, " or ",Purple,"press z",White," to remove the Hologramaphonifier & Save.")
+        owner():printColor(White, "Say ", Purple, "holo drop delete", White, " to remove the chip and delete selected ents.")
+        runOnKeys(owner())
+    }
+    elseif(Mode:right(5) == "paste") {
+        if(Mode == "realpaste") {
+            owner():printColor(White, "Say ", Purple, "holo drop delete", White, " to remove the chip and spawned ents.")
+            owner():printColor(White, "Say ", Purple, "holo drop delete save", White, " to also save any changes made to the ents.")
+        }
+        else{
+            owner():printColor(White, "Say ", Purple, "holo drop", White, " to remove the Hologramaphonifier.")
+        }
+    
+        for(Num=0, floor(PList:count() / 10)) {
+            timer(Num:toString(), 1005*Num)
+        }
+        timer("initial", 20)
+        Iteration = -1
+        MaxIteration = Num + 1
+    }
+}
+elseif(chatClk() & lastSpoke() == owner() & owner():lastSaid():lower():left(9) == "holo drop") {selfDestruct()}
+elseif(last()) {
+    
+    if(Mode == "holopaste") {
+        print("Hologramaphonifier shutdown!")
+        exit()
+    }
+    elseif(Mode == "realpaste" & owner():lastSaid():lower():find("save")) {
+        PList = array(), AList = array(), CList = array(), MoList = array(), MaList = array(), SList = array()
+        for(K=1, Ents:count()) {
+            E = Ents[K, entity]
+            if(E) {
+                PList:pushVector(welded():toLocal(E:pos()))
+                AList:pushAngle(welded():toLocal(E:angles()))
+                CList:pushVector4(E:getColor4())
+                SList:pushVector(E:getScale())
+                MoList:pushString(E:model())
+                MaList:pushString(E:getMaterial())
+            }
+        }
+        print("Rerecorded "+PList:count()+" entities! Saved to "+Name)
+    }
+    elseif(Mode == "holosave") {
+        foreach(K,Col:vector4 = CList) {
+             Ents[K,entity]:setColor(Col)
+        }
+        print("Done, Saved "+PList:count()+" entities to "+Name)
+    }
+    
+    Tab = table()
+    Tab:setValue("p", PList)
+    Tab:setValue("a", AList)
+    Tab:setValue("s", SList)
+    Tab:setValue("c", CList)
+    Tab:setValue("ma", MaList)
+    Tab:setValue("mo", MoList)
+    fileWriteTable("holograms/"+Name, Tab)
+    
+    if(owner():lastSaid():lower():find("delete") | owner():lastSaid():lower():find("remove")) {for(K=1,Ents:count()) {Ents[K,entity]:propDelete()}}
+}
+elseif(duped()) {timer("Wait", 10000)}
+elseif(clk("Wait")) {reset()}
+elseif(Mode:right(5) == "paste") {
+    Iteration++
+    if(Iteration == MaxIteration) {
+        print("Paste of " + Name + " complete! ")
+    }
+    elseif(Mode == "holopaste") {
+        for(K=1 + (Iteration*10), min(PList:count(), (Iteration+1)*10)) {
+            holoCreate(K, welded():toWorld(PList[K,vector]), SList[K,vector], welded():toWorld(AList[K,angle]), vec(CList[K,vector4]))
+            holoAlpha(K, CList[K,vector4]:w())
+            holoParent(K, welded())
+            holoModelCustom(K, MoList[K, string])
+            holoMaterial(K, MaList[K, string])
+        }
+    }
+    elseif(Mode == "realpaste") {
+        for(K=1 + (Iteration*10), min(PList:count(), (Iteration+1)*10)) {
+            E = propSpawn(MoList[K, string], welded():toWorld(PList[K,vector]), welded():toWorld(AList[K,angle]))
+            E:setColor(CList[K,vector4])
+            E:setScale(SList[K,vector])
+            E:setMaterial(MaList[K, string])
+            E:freeze(1)
+            Ents:pushEntity(E)
+        }
+    }
+}
+elseif(Mode == "holosave") {
+    if(changed(owner():keyR()) & owner():keyR()) {
+        E = owner():aimEntity()
+        if(E & E:getColor() != vec(0,254,0)) {
+            PList:pushVector(welded():toLocal(E:pos()))
+            AList:pushAngle(welded():toLocal(E:angles()))
+            CList:pushVector4(E:getColor4())
+            SList:pushVector(E:getScale())
+            MoList:pushString(E:model())
+            MaList:pushString(E:getMaterial())
+            
+            Ents:pushEntity(E)
+            E:setColor(vec4(0,254,0,255))
+            hint("Recorded " + E:model():explode("/"):popString() + "!",7)
+        }
+    }
+}
+

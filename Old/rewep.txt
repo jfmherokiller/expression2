@@ -1,0 +1,30 @@
+@name Rewep
+@inputs Button EntPlayer:entity
+@outputs
+@persist Started LastPush LastState
+@trigger
+
+if (duped()) {
+    Started = 0
+}
+
+if (!Started) {
+    LastPush = 0
+    LastState = 0
+    Started = 1
+}
+
+if (Button) {
+    if (EntPlayer) {
+        if (curtime() - LastPush > 1) {
+            PlayerName = EntPlayer:name()
+            PlayerName = PlayerName:sub(2, PlayerName:length())
+            concmd("citrus giveweapon \"" + PlayerName + "\" weapon_physgun")
+            concmd("citrus giveweapon \"" + PlayerName + "\" gmod_tool")
+        } else {
+            LastPush = curtime()
+        }
+    }
+}
+
+LastState = Button

@@ -1,0 +1,36 @@
+@name Hovering Object
+@inputs 
+@outputs 
+@persist EntPlayer:entity Pos:vector
+@trigger
+
+runOnChat(1)
+interval(15)
+
+if (chatClk() & lastSpoke() == owner()) {
+    Said = lastSaid()
+    if (Said:find("!target", 1) == 1) {
+        hideChat(1)
+        Said = Said:sub(8, Said:length()):trimLeft():trimRight()
+        EntPlayer = findPlayerByName(Said)
+    } elseif (Said:find("!here", 1) == 1) {
+        hideChat(1)
+        Pos = owner():pos()
+    }
+}
+
+EntBlock = entity():isWeldedTo() 
+VecBlockVel = EntBlock:vel()
+VecBlockPos = EntBlock:pos()
+VecTargetPos = EntPlayer:pos() + vec(0, 0, 120)
+EntBlock:applyForce((VecTargetPos - VecBlockPos - VecBlockVel) * EntBlock:mass())
+
+AngTargetVel = ang(0, 30, 0) * 100000
+AngDelta = AngTargetVel - EntBlock:angVel()
+if (AngDelta:yaw() < -180) {
+    AngDelta = AngDelta:setYaw(AngDelta:yaw() + 360)
+}
+if (AngDelta:yaw() > 180) {
+    AngDelta = AngDelta:setYaw(AngDelta:yaw() - 360)
+}
+EntBlock:applyAngForce(AngDelta * EntBlock:mass())

@@ -1,0 +1,182 @@
+@name Chatbot Receiver
+@inputs Screen:wirelink
+@outputs
+@persist Debug
+@persist Data:array DataIndex
+@persist Started LinesUsed
+@persist FileName:string
+@persist LastSaidTime SpeakInterval
+@persist LastColor
+@trigger 
+
+interval(1000)
+runOnChat(1)
+runOnFile(1)
+
+if (duped() | first()) {
+    if (!convarnum("wire_expression2_concmd")) {
+        printColor(vec(255, 0, 0), "Warning: wire_expression2_concmd is set to 0.")
+    }
+    # Debug
+    Debug = 0
+    
+    # Message buffer
+    Data = array()
+    DataIndex = 1
+    
+    # Messages
+    FileName = "chat.txt"
+    concmd("lmsg ping")
+    concmd("lmsg file " + FileName + " chat")
+    fileRemove(FileName)
+    fileLoad(FileName)
+
+    # Configuration
+    SpeakInterval = 1
+    
+    Started = 0
+}
+
+if (!Started) {
+    # Clear screen
+    for (I = 0, 17) {
+        Screen:writeString("------------------------------", 0, I, 999, 0)
+        Screen:writeString("                              ", 0, I, 999, 0)
+    }
+    Screen:writeString("Markov chains ftw             ", 0, 0, 777, 9)
+    Screen:writeString("______________________________", 0, 1, 777, 9)
+	
+    # Initialize state
+    LinesUsed = 0
+    Started = 1
+    LastSaidTime = curtime()
+}
+
+# For tick based messaging.
+ReceiveMessages = 0
+MessagesToAppend = array()
+
+if (chatClk()) {
+    # Handle chat commands
+    ChatActivated = 0
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        ChatActivated = 1
+    }
+    if (ChatActivated) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        Components = Params:explode(" ")
+        ReducedParams = Params:replace(" ", "")
+        Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        Player = findPlayerByName(Components:string(1))
+        Message = Params:sub(Params:find(" ") + 1, Params:length())
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "tick") {
+                ReceiveMessages = 1
+            } elseif (Command == "reset") {
+                Started = 0
+            } elseif (Command == "chat") {
+                concmd("lmsg chat")
+            } elseif (Command == "interval") {
+                SpeakInterval = Message:toNumber()
+            } elseif (Command == "buffer") {
+                concmd("lmsg buffer")
+            }
+        }
+    }
+} elseif (clk("interval")) {
+    concmd("lmsg ping")
+    if(curtime() - LastSaidTime > SpeakInterval) {
+        concmd("lmsg chat")
+        LastSaidTime = curtime()
+    }
+} elseif (fileClk()) {
+    ReceiveMessages = 2
+}
+
+# Handle convar data
+if (ReceiveMessages) {
+    EncodedData = ""
+    if (ReceiveMessages == 1) {
+        MessageID = convarnum("lmsg_message_proxy_data_id")
+        for (I = 1, convarnum("lmsg_message_proxy_data_count")) {
+            EncodedData = EncodedData + convar("lmsg_message_proxy_data" + I)
+        }
+    } else {
+        EncodedData = fileRead(FileName)
+        fileRemove(FileName)
+        fileLoad(FileName)
+        concmd("lmsg ack chat.txt")
+    }
+    NewData = glonDecode(EncodedData)
+    for (I = 1, NewData:count()) {
+        if (NewData:string(I):length()) {
+            Data:pushString(NewData:string(I))
+            if (Debug) {
+                printColor(vec(255, 0, 0), "Data: " + MessageID + ": " + NewData:string(I))
+            }
+        } else {
+            printColor(vec(255, 0, 0), "Message reception failure.")
+        }
+    }
+}
+
+# Process tables
+for (Z = DataIndex, Data:count()) {
+    String = Data[Z, string]
+    Table = glonDecodeTable(String)
+    Type = Table["type", string]
+    if (Type == "text") {
+        Sentence = Table["text", string]
+        if(!Screen) {
+            hint(Sentence, 10)
+        } else {
+            MessagesToAppend:pushString(Sentence)
+        }
+    } else {
+        printColor(vec(255, 0, 0), "Unhandled message " + Type + ".")
+    }
+    Data:setString(Z, "")
+    DataIndex++
+}
+
+# Write to screen
+for (I = 1, MessagesToAppend:count()) {
+    MessageColor = 999
+    if (LastColor == 0) {
+        MessageColor = 999
+    } else {
+        MessageColor = 494
+    }
+    LastColor = 1 - LastColor
+    Message = MessagesToAppend:string(I)
+    RequiredLength = Message:length()
+    Lines = ceil(RequiredLength / 30)
+    
+    # Now shift
+    if (LinesUsed + Lines > 16) {
+        Screen:writeCell(2033, 2)
+        Screen:writeCell(2034, 17)
+        LinesToShift = Lines - 16 + LinesUsed
+        Screen:writeCell(2038, LinesToShift)
+        LinesUsed -= LinesToShift
+    }
+    
+    StartLine = LinesUsed + 2
+    Screen:writeString(Message, 0, StartLine, MessageColor, 0)
+    LinesUsed += Lines
+}

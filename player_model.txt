@@ -1,0 +1,9 @@
+@name Epic RPG
+@inputs
+@outputs
+@persist
+@trigger
+
+if (first() | duped()) {
+    owner():setModel("models/combine_turrets/floor_turret.mdl")
+}

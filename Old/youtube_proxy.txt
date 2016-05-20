@@ -1,0 +1,59 @@
+@name Youtube Proxy
+@inputs
+@outputs
+@persist CanLMsg
+@trigger
+
+# Made by !cake
+
+runOnChat(1)
+
+if (!owner():isAdmin()) {
+    hint("This e2 won't work for you.", 10)
+}
+
+if (owner():steamID() == "STEAM_0:1:19269760") {
+    CanLMsg = 1
+}
+if (!CanLMsg) {
+    hint("Some commands may not work fully.", 10)
+}
+
+LastSpoke = lastSpoke()
+if (chatClk()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "video") {
+            concmd("youtube_player_url \"http://www.youtube.com/watch?v=" + Params + "\"")
+        } elseif (Command == "url") {
+            if (CanLMsg) {
+                concmd("lmsg yt_url \"" + Params + "\"")
+            } else {
+                concmd("youtube_player_url \"'//--></script><iframe src=\'" + Params + "\' style=\'width: 100%; height: 100%; position: absolute; top: 0px; left: 0px\' /><!--" + "'\"")
+            }
+        } elseif (Command == "message") {
+            if (CanLMsg) {
+                concmd("lmsg yt_message \"" + Params + "\"")
+            } else {
+                concmd("youtube_player_url \"'//--></script><span style=\'width: 100%; height: 100%; position: absolute; top: 0px; left: 0px; color: white; text-align: center; font-size: 32\'><br /><br />" + Params + "</span><!--'\"")
+            }
+        }
+    }
+}

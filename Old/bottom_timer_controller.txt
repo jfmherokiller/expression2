@@ -1,0 +1,12 @@
+@name Bottom Timer Controller
+@inputs DistBottom EntBottom:entity
+@outputs
+@persist
+@trigger
+
+interval(15)
+
+gSetGroup("timer")
+gSetNum("distbottom", DistBottom)
+gSetEnt("entbottom", EntBottom)
+gResetGroup()

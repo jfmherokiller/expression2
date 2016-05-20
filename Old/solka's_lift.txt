@@ -1,0 +1,125 @@
+@name Solka's Lift
+@inputs F0 F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 F13 F14 F15 CurrentHeight
+@outputs SmoothTargetHeight TargetFloor CurrentFloor
+@outputs W0 W1 W2 W3 W4 W5 W6 W7 W8 W9 W10 W11 W12 W13 W14 W15
+@persist TargetHeight TargetFloor CurrentFloor LastHeight
+@persist FloorHeights:array
+@trigger
+
+FloorCount = 15
+if (!FloorHeights:count()) {
+    for (I = 0, FloorCount) {
+        FloorHeights:setNumber(I, I * 143)
+    }
+}
+
+if (inputClk()) {
+    NewTargetFloor = -1
+    if (F0) {
+        NewTargetFloor = 0
+    } elseif (F1) {
+        NewTargetFloor = 1
+    } elseif (F2) {
+        NewTargetFloor = 2
+    } elseif (F3) {
+        NewTargetFloor = 3
+    } elseif (F4) {
+        NewTargetFloor = 4
+    } elseif (F5) {
+        NewTargetFloor = 5
+    } elseif (F6) {
+        NewTargetFloor = 6
+    } elseif (F7) {
+        NewTargetFloor = 7
+    } elseif (F8) {
+        NewTargetFloor = 8
+    } elseif (F9) {
+        NewTargetFloor = 9
+    } elseif (F10) {
+        NewTargetFloor = 10
+    } elseif (F11) {
+        NewTargetFloor = 11
+    } elseif (F12) {
+        NewTargetFloor = 12
+    } elseif (F13) {
+        NewTargetFloor = 13
+    } elseif (F14) {
+        NewTargetFloor = 14
+    } elseif (F15) {
+        NewTargetFloor = 15
+    }
+    if (NewTargetFloor != -1) {
+        TargetHeight = FloorHeights:number(NewTargetFloor)
+        SmoothTargetHeight = TargetHeight
+    }
+    ClosestDist = 32768
+    ClosestFloor = -1
+    for (I = 0, FloorCount) {
+        if (abs(CurrentHeight - FloorHeights:number(I)) < ClosestDist) {
+            ClosestDist = abs(CurrentHeight - FloorHeights:number(I))
+            ClosestFloor = I
+        }
+    }
+    CurrentFloor = ClosestFloor
+    W0 = 1
+    W1 = 1
+    W2 = 1
+    W3 = 1
+    W4 = 1
+    W5 = 1
+    W6 = 1
+    W7 = 1
+    W8 = 1
+    W9 = 1
+    W10 = 1
+    W11 = 1
+    W12 = 1
+    W13 = 1
+    W14 = 1
+    W15 = 1
+    if (CurrentFloor == TargetFloor) {
+        if (TargetFloor == 0) {
+            W0 = 0
+        } elseif (TargetFloor == 1) {
+            W1 = 0
+        } elseif (TargetFloor == 2) {
+            W2 = 0
+        } elseif (TargetFloor == 3) {
+            W3 = 0
+        } elseif (TargetFloor == 4) {
+            W4 = 0
+        } elseif (TargetFloor == 5) {
+            W5 = 0
+        } elseif (TargetFloor == 6) {
+            W6 = 0
+        } elseif (TargetFloor == 7) {
+            W7 = 0
+        } elseif (TargetFloor == 8) {
+            W8 = 0
+        } elseif (TargetFloor == 9) {
+            W9 = 0
+        } elseif (TargetFloor == 10) {
+            W10 = 0
+        } elseif (TargetFloor == 11) {
+            W11 = 0
+        } elseif (TargetFloor == 12) {
+            W12 = 0
+        } elseif (TargetFloor == 13) {
+            W13 = 0
+        } elseif (TargetFloor == 14) {
+            W14 = 0
+        } elseif (TargetFloor == 15) {
+            W15 = 0
+        }
+    }
+    Delta = TargetHeight - CurrentHeight
+    DeltaHeight = CurrentHeight - LastHeight
+    if (abs(DeltaHeight) < 2) {
+        if (Delta > 0) {
+            SmoothTargetHeight += min(Delta, 1)
+        } else {
+            SmoothTargetHeight -= min(-Delta, 1)
+        }
+    }    
+    LastHeight = CurrentHeight
+}

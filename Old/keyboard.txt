@@ -1,0 +1,10 @@
+@name Keyboard
+@inputs Screen:wirelink
+@inputs Key
+@persist Text:string
+
+if (Key > 32 & Key < 127) {
+    Text += toChar(Key)
+    Screen:writeString(Text, 0, 0)
+}
+

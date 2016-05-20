@@ -1,0 +1,123 @@
+@define dhcp_client_preinit
+@persist DHCPSentRequest
+@end
+@define dhcp_preinit
+@persist DHCPAllocations:table
+@end
+
+@define dhcp_request_address
+if (!DHCPSentRequest & !IPAddress) {
+    findIncludeClass ("gmod_wire_expression2")
+		  findInSphere (entity ():pos (), 256)
+		  Routers = findToArray ()
+		  Router = noentity ()
+		  RouterDistance = 16384
+		  for (I = 1, Routers:count ()) {
+			     if (Routers [I, entity]:getColor() != vec(255, 0, 0) &
+            Routers [I, entity]:getColor() != vec(0, 255, 0)) {
+            if (Routers [I, entity]:getName ():find("Router")) {
+                if ((Routers [I, entity]:pos () - entity ():pos ()):length () < RouterDistance) {
+                    Router = Routers [I, entity]
+                    RouterDistance = (Routers [I, entity]:pos () - entity ():pos ()):length ()
+                }
+        				}
+        }
+    }
+    if (Router) {
+        Connections:pushEntity (Router)
+			     dsSendDirect ("Network", Router, array (Router, entity (), 0, 0, "DHCPRequest"))
+			     DHCPSentRequest = 1
+    }
+}
+@end
+
+@define dhcp_release
+for (I = 1, Connections:count ()) {
+    dsSendDirect ("Network", Connections [I, entity], array (Connections [I, entity], entity (), 0, IPAddress, "DHCPRelease", IPAddress, IPBlockMask))
+}
+Connections:clear ()
+@end
+
+@define dhcp_drop_all
+I = 1
+ConnectionsToDrop = table ()
+while (I <= IPTable:count ()) {
+    if (DHCPAllocations [toString (IPTable [I, vector2]:x ()), vector2]:y ()) {
+        dsSendDirect ("Network", IPTableEntities [I, entity], array (IPTableEntities [I, entity], entity (), IPTable [I, vector2]:x (), IPAddress, "DHCPDrop"))
+        DHCPAllocations [toString (IPTable [I, vector2]:x ()), vector2] = vec2 ()
+        IPTable:remove (I)
+        ConnectionsToDrop [toString (IPTableEntities [I, entity]:id ()), number] = 1
+        IPTableEntities:remove (I)
+        I--
+    }
+    I++
+}
+I = 1
+while (I <= Connections:count ()) {
+    if (ConnectionsToDrop [toString (Connections [I, entity]:id ()), number]) {
+        Connections:remove (I)
+        I--
+    }
+    I++
+}
+DHCPAllocations:clear ()
+@end
+
+@define dhcp_server_ds_handlers
+} elseif (Type == "DHCPAccept") {
+    AcceptedIP = Message[6, number]
+		  IPString = floor(AcceptedIP / 256 / 256 / 256) + "." + floor(AcceptedIP / 256 / 256 % 256) + "." + floor(AcceptedIP / 256 % 256) + "." + (AcceptedIP % 256)
+		  Connections:pushEntity (SrcMAC)
+		  IPTable:pushVector2 (vec2 (AcceptedIP, 1))
+		  IPTableEntities:pushEntity (SrcMAC)
+		  
+		  DHCPAllocations [toString (AcceptedIP), vector2] = vec2 (Message [7, number], SrcMAC:id ())
+		
+		  print(SrcMAC:id () + " has accepted block " + IPString + "/" + Message[7, number])
+} elseif (Type == "DHCPRelease") {
+		  if (DHCPAllocations [toString (SrcIP), vector2]:y () == SrcMAC:id ()) {
+			     DHCPAllocations [toString (SrcIP), vector2] = vec2 ()
+			     printTable (DHCPAllocations)
+			     for (I = 1, Connections:count ()) {
+				        if (Connections [I, entity] == SrcMAC) {
+					           Connections:remove (I)
+					           break
+				        }
+			     }
+			     for (I = 1, IPTableEntities:count ()) {
+				        if (IPTableEntities [I, entity] == SrcMAC) {
+					           IPTable:remove (I)
+					           IPTableEntities:remove (I)
+					           break
+				        }
+			     }
+		  }
+} elseif (Type == "DHCPRequest") {
+		  AllocatedIP = IPAddress + 1
+		  while (DHCPAllocations [toString (AllocatedIP), vector2]:x ()) {
+			     AllocatedIP++
+		  }
+		  dsSendDirect("Network", SrcMAC, array(SrcMAC, entity(), SrcIP, IPAddress, "DHCPAllocate", AllocatedIP, 32))
+@end
+@define dhcp_client_ds_handlers
+} elseif (Type == "DHCPAllocate") {
+		  DHCPSentRequest = 0
+		  IPAddress = Message[6, number]
+		  IPBlockMask = Message[7, number]
+		  @expand net_update_name
+		  
+		  IPTable:pushVector2 (vec2 (0, 2 ^ 32))
+		  IPTableEntities:pushEntity (SrcMAC)
+		  
+		  IPString = floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." + (IPAddress % 256)
+		  print("Received IP block from " + SrcMAC:id () + ": " + IPString + "/" + Message[7, number])
+		  dsSendDirect("Network", SrcMAC, array(SrcMAC, entity(), SrcIP, IPAddress, "DHCPAccept", Message[6, number], Message[7, number]))
+} elseif (Type == "DHCPDrop") {
+		  IPAddress = 0
+		  IPBlockMask = 32
+		  @expand net_update_name
+		  
+		  IPTable:clear ()
+		  IPTableEntities:clear ()
+		  Connections:clear ()
+@end

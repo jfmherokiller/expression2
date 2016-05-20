@@ -1,0 +1,16 @@
+@name SteamID Check
+@inputs
+@outputs
+@persist
+@trigger
+@model
+
+if (first() | duped()) {
+    for (I = 1, maxPlayers()) {
+        Player = entity(I)
+        if (Player) {
+            print("Checking " + Player:name() + "...")
+        }
+        Player:steamID()
+    }
+}

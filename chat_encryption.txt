@@ -1,0 +1,261 @@
+@name Chat Encryption
+@inputs 
+@outputs 
+@persist Algorithms:table Algorithm:string Parameter:string
+@persist Whitelist:string ToSay:string
+@persist Input:string Output:string
+@trigger 
+
+runOnChat(1)
+
+@define base_decode Input Output
+    I = 1
+    Output = ""
+    while (I <= Input:length()) {
+        Part = Input:sub(I, I + 1)
+        C1 = toByte(Part[1])
+        C2 = toByte(Part[2])
+        if (C1 >= 48 & C1 <= 57) {
+            C1 -= 48
+        }
+        if (C1 >= 65 & C1 <= 90) {
+            C1 -= 55
+        }
+        if (C2 >= 48 & C2 <= 57) {
+            C2 -= 48
+        }
+        if (C2 >= 65 & C2 <= 90) {
+            C2 -= 55
+        }
+        Output += format("%c", C1 * Parameter:toNumber() + C2)
+        I += 2
+    }
+@end
+
+@define base64_decode Input Output
+    I = 1
+    Output = ""
+    B = array()
+    while (I <= Input:length()) {
+        Part = Input:sub(I, I + 3)
+        B[1, number] = toByte(Part[1])
+        B[2, number] = toByte(Part[2])
+        B[3, number] = toByte(Part[3])
+        B[4, number] = toByte(Part[4])
+        Discard = 0
+        for (I = 1, 4) {
+            N = B[I, number]
+            if (N >= 65 & N <= 90) {
+                N -= 65
+            } elseif (N >= 97 & N <= 122) {
+                N -= 71
+            } elseif (N >= 48 & N <= 57) {
+                N += 4
+            } elseif (N == 43) {
+                N = 62
+            } elseif (N == 47) {
+                N = 63
+            } elseif (N == 61 & I >= 3) {
+                Discard++
+            }
+            B[I, number] = N
+        }
+        Buffer = ""
+        Buffer += toChar(B[1, number] * 4 + floor(B[2, number] / 16))
+        Buffer += toChar(bAnd(B[2, number] * 16, 240) + floor(B[3, number] / 4))
+        Buffer += toChar(bAnd(B[3, number] * 64, 192) + B[4, number])
+        Buffer = Buffer:sub(1, 3 - Discard)
+        Output += Buffer
+        
+        I += 4
+    }
+@end
+
+@define base64_encode Input Output
+    Symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+    Output = ""
+    BitsStored = 0
+    Accumulator = 0
+    for (I = 1, Input:length()) {
+        Accumulator = Accumulator * 256 + toByte(Input, I)
+        BitsStored += 8
+        
+        while (BitsStored >= 6) {
+            Output += Symbols[bAnd(bShr(Accumulator, BitsStored - 6), 63) + 1]
+            BitsStored -= 6
+        }
+        Accumulator = bAnd(Accumulator, 255)
+    }
+    if (BitsStored) {
+        Accumulator = bShl(Accumulator, 6 - BitsStored)
+        Output += Symbols[bAnd(Accumulator, 63) + 1]
+    }
+    Output += "=":repeat((4 - Output:length()) % 4)
+@end
+
+@define dec_decode Input Output
+    Parts = Input:explode(" ")
+    Output = ""
+    for (I = 1, Parts:count()) {
+        Char = Parts[I, string]:toNumber()
+        if (Char < 128) {
+            Output += format("%c", Char)
+        } elseif (Char < 2048) {
+            Output += format("%c%c", 192 + bShr(Char, 6), 128 + bAnd(Char, 63))
+        } elseif (Char < 65536) {
+            Output += format("%c%c%c", 224 + bShr(Char, 12), 128 + bAnd(bShr(Char, 6), 63), 128 + bAnd(Char, 63))
+        }
+    }
+@end
+
+@define dec_encode Input Output
+    Output = ""
+    for (I = 1, Input:length()) {
+        Dec = toString(toByte(Input[I]))
+        Dec = "0":repeat(3 - Dec:length()) + Dec
+        Output += Dec + " "
+    }
+@end
+
+@define hex_decode Input Output
+    I = 1
+    Output = ""
+    while (I <= Input:length()) {
+        Part = Input:sub(I, I + 1)
+        C1 = toByte(Part[1])
+        C2 = toByte(Part[2])
+        if (C1 >= 48 & C1 <= 57) {
+            C1 -= 48
+        }
+        if (C1 >= 65 & C1 <= 90) {
+            C1 -= 55
+        }
+        if (C2 >= 48 & C2 <= 57) {
+            C2 -= 48
+        }
+        if (C2 >= 65 & C2 <= 90) {
+            C2 -= 55
+        }
+        Output += format("%c", C1 * 16 + C2)
+        I += 2
+    }
+@end
+
+@define hex_encode Input Output
+    Output = ""
+    for (I = 1, Input:length()) {
+        Output += format("%.2X ", toByte(Input[I]))
+    }
+    Output = Output:trim()
+@end
+
+@define reverse Input Output
+    Output = Input:reverse()
+@end
+
+@define rot13 Input Output
+    Symbols = "NOPQRSTUVWXYZABCDEFGHIJKLM"
+    Output = ""
+    for (I = 1, Input:length()) {
+        Char = toByte(Input[I])
+        UpperChar = toByte(Input[I]:upper())
+        if (UpperChar >= 65 &
+            UpperChar <= 90) {
+            if (Char == UpperChar) {
+                Output += Symbols[UpperChar - 64]
+            } else {
+                Output += Symbols[UpperChar - 64]:lower()
+            }
+        } else {
+            Output += toChar(Char)
+        }
+    }
+@end
+
+if (first() | duped()) {
+    Algorithms["none", string] = "none"
+    
+    Algorithms["base64_decode", string] = "base64_encode"
+    Algorithms["base64_encode", string] = "base64_decode"
+    Algorithms["base_decode", string] = "base_encode"
+    Algorithms["base_encode", string] = "base_decode"
+    Algorithms["dec_decode", string] = "dec_encode"
+    Algorithms["dec_encode", string] = "dec_decode"
+    Algorithms["hex_decode", string] = "hex_encode"
+    Algorithms["hex_encode", string] = "hex_decode"
+    Algorithms["reverse", string] = "reverse"
+    Algorithms["rot13", string] = "rot13"
+    
+    Algorithm = "rot13"
+    Parameter = ""
+}
+
+if (chatClk() & !dsClk()) {
+    LastSaid = lastSaid()
+    LastSpoke = lastSpoke()
+    if (lastSpoke() == owner()) {
+        if (LastSaid[1] == "!" |
+            LastSaid[1] == "/" |
+            LastSaid[1] == "-" |
+            LastSaid[1] == "." |
+            LastSaid[1] == "#") {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "algorithm" |
+                Command == "a") {
+                if (Arguments == "") {
+                    printColor(vec(255, 255, 255), "The current algorithm is: " + Algorithm + ".")
+                } else {
+                    if (Algorithms[Arguments:lower(), string]) {
+                        Algorithm = Arguments
+                        printColor(vec(255, 255, 255), "Algorithm set to: " + Algorithm + ".")
+                    } else {
+                        printColor(vec(255, 255, 255), "Algorithm " + Arguments + " not found.")
+                    }
+                }
+            } elseif (Command == "params") {
+                Parameter = Arguments
+            }
+        } else {
+            if (Whitelist != LastSaid) {
+                Output = ""
+                if (Algorithm == "base64_encode") {
+                    @expand base64_encode LastSaid Output
+                } elseif (Algorithm == "hex_encode") {
+                    @expand hex_encode LastSaid Output
+                } elseif (Algorithm == "reverse") {
+                    @expand reverse LastSaid Output
+                } elseif (Algorithm == "rot13") {
+                    @expand rot13 LastSaid Output
+                }
+                if (Output) {
+                    hideChat(1)
+                    ToSay = Output
+                    Whitelist = ToSay
+                    timer("say", 600)
+                }
+            } else {
+                Whitelist = ""
+            }
+        }
+    } else {
+        Inverse = Algorithms[Algorithm, string]
+        Output = ""
+        if (Inverse == "rot13") {
+            @expand rot13 LastSaid Output
+        }
+        if (Output) {
+            printColor(vec(128, 128, 255), LastSpoke:name(), vec(255, 255, 255), ": " + Output)
+        }
+    }
+}
+
+if (clk("say")) {
+    if (ToSay) {
+        concmd("say \"" + ToSay + "\"")
+        ToSay = ""
+    }
+}

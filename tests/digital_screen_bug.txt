@@ -1,0 +1,13 @@
+@name Digital Screen Bug
+@inputs Screen:wirelink
+@outputs 
+@persist 
+@trigger 
+
+runOnChat(1)
+
+Screen[1048574] = 1
+Screen[1048569] = 1000
+for (I = 1, 1000) {
+    Screen[random(0, 999)] = random(2500, 2750)
+}

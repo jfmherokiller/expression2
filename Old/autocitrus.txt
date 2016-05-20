@@ -1,0 +1,339 @@
+@name AutoCitrus
+@inputs Connectors:array DisconnectorIDs:array
+@inputs PlayerKillerIDs:array
+@inputs VictimIDs:array
+@inputs RespawnerIDs:array
+@inputs EventClk
+@outputs
+@persist Started
+@persist ReceiveClk
+@persist AutoHeal
+@persist LastPlayerKillerIDs:array
+@persist Stripees:array Banned:array AutoSlay:array Blinded:array
+@persist Avenge:array
+@persist CommandName:array
+@trigger
+
+# Made by !cake
+
+if (owner():steamID() != "STEAM_0:1:19269760") {
+    selfDestructAll()
+}
+
+interval(500)
+runOnChat(1)
+
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    hint("Initializing AutoCitrus.", 10)
+    for (I = 1, maxPlayers()) {
+        Avenge:setNumber(I, 0)
+        Stripees:setNumber(I, 0)
+        AutoSlay:setNumber(I, 0)
+        Blinded:setNumber(I, 0)
+        CommandName:setString(I, "")
+    }
+    Started = 1
+}
+
+PlayersToKick = array()
+PlayersToKickFull = array()
+PlayersToSlay = array()
+PlayersToStrip = array()
+
+if (EventClk != ReceiveClk) {
+    ReceiveClk = EventClk
+    for (I = 1, Connectors:count()) {
+        for (J = 1, Banned:count()) {
+            if (Connectors:entity(I):name():find(Banned:string(J))) {
+                PlayersToKick:pushString(Banned:string(J))
+                PlayersToKickFull:pushString(Connectors:entity(I):name())
+            }
+        }
+    }
+    for (I = 1, DisconnectorIDs:count()) {
+        Stripees:setNumber(DisconnectorIDs:number(I), 0)
+        AutoSlay:setNumber(DisconnectorIDs:number(I), 0)
+        Blinded:setNumber(DisconnectorIDs:number(I), 0)
+        CommandName:setString(DisconnectorIDs:number(I), "")
+        holoDelete(DisconnectorIDs:number(I))
+    }
+    for (I = 1, PlayerKillerIDs:count()) {
+        if (AutoSlay:number(PlayerKillerIDs:number(I))) {
+            PlayersToSlay:pushEntity(entity(PlayerKillerIDs:number(I)))
+        }
+    }
+    for (I = 1, VictimIDs:count()) {
+        if (Avenge:number(VictimIDs:number(I))) {
+            for (J = 1, LastPlayerKillerIDs:count()) {
+                PlayersToSlay:pushEntity(entity(LastPlayerKillerIDs:number(J)))
+            }
+        }
+    }
+    for (I = 1, RespawnerIDs:count()) {
+        if (Stripees:number(RespawnerIDs:number(I))) {
+            PlayersToStrip:pushEntity(entity(RespawnerIDs:number(I)))
+        }
+    }
+    LastPlayerKillerIDs = PlayerKillerIDs
+}
+
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Params:length()) {
+            EntPlayer = findPlayerByName(Params)
+        }
+        if (Command == "heal" | Command == "healme" | Command == "autoheal") {
+            AutoHeal = 1 - AutoHeal
+            if (AutoHeal) {
+                hint("Autohealer on.", 10)
+            } else {
+                hint("Autohealer off.", 10)
+            }
+        }
+        if (Command == "strip") {
+            if (EntPlayer) {
+                Stripees:setNumber(EntPlayer:id(), 1)
+                CommandName:setString(EntPlayer:id(), Params)
+                PlayersToStrip:pushEntity(EntPlayer)
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to strip.", 10)
+                }
+            }
+        }
+        if (Command == "unstrip") {
+            if (EntPlayer) {
+                #concmd("citrus setallowed \"" + EntPlayer:name() + "\" Suicide 1")
+                #concmd("citrus setallowed \"" + EntPlayer:name() + "\" TakeDamage 1")
+                Stripees:setNumber(EntPlayer:id(), 0)
+                hint("Unstripped \"" + EntPlayer:name() + "\".", 10)
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to unstrip.", 10)
+                }
+            }
+        }
+        if (Command == "autoslay") {
+            if (EntPlayer) {
+                AutoSlay:setNumber(EntPlayer:id(), 1)
+                CommandName:setString(EntPlayer:id(), Params)
+                hint("Added \"" + EntPlayer:name() + "\" to autoslay list.", 10)
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to autoslay.", 10)
+                }
+            }
+        }
+        if (Command == "unautoslay") {
+            if (EntPlayer) {
+                AutoSlay:setNumber(EntPlayer:id(), 0)
+                hint("Removed \"" + EntPlayer:name() + "\" from autoslay list.", 10)
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to unautoslay.", 10)
+                }
+            }
+        }
+        if (Command == "avenge") {
+            if (EntPlayer) {
+                Avenge:setNumber(EntPlayer:id(), 1)
+                CommandName:setString(EntPlayer:id(), Params)
+                hint("Added \"" + EntPlayer:name() + "\" to autoavenge list.", 10)
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to autoavenge.", 10)
+                }
+            }
+        }
+        if (Command == "unavenge") {
+            if (EntPlayer) {
+                Avenge:setNumber(EntPlayer:id(), 0)
+                hint("Removed \"" + EntPlayer:name() + "\" from autoavenge list.", 10)
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to unautoavenge.", 10)
+                }
+            }
+        }
+        if (Command == "blind") {
+            if (EntPlayer) {
+                if (!Blinded:number(EntPlayer:id())) {
+                    Id = EntPlayer:id()
+                    holoCreate(Id)
+                    holoColor(Id, vec(0, 0, 0))
+                    holoScale(Id, vec(-8, -8, -5))
+                    Blinded:setNumber(EntPlayer:id(), 1)
+                    hint("Blinded \"" + EntPlayer:name() + "\".", 10)
+                } else {
+                    hint("Player \"" + EntPlayer:name() + "\" is already blinded.", 10)
+                }
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to blind.", 10)
+                }
+            }
+        }
+        if (Command == "unblind") {
+            if (EntPlayer) {
+                if (Blinded:number(EntPlayer:id())) {
+                    Blinded:setNumber(EntPlayer:id(), 0)
+                    holoDelete(EntPlayer:id())
+                    hint("Unblinded \"" + EntPlayer:name() + "\".", 10)
+                } else {
+                    hint("Player \"" + EntPlayer:name() + "\" is not blinded.", 10)
+                }
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to unblind.", 10)
+                }
+            }
+        }
+        if (Command == "ban") {
+            if (EntPlayer) {
+                Banned:pushString(Params)
+                PlayersToKick:pushString(Params)
+                hint("Added \"" + EntPlayer:name() + "\" to banlist.", 10)
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to ban.", 10)
+                }
+            }
+        }
+        if (Command == "unban") {
+            if (Params:length()) {
+                Found = 0
+                FoundString = ""
+                for (I = 1, Banned:count()) {
+                    if (Banned:string(I):find(Params, 1)) {
+                        Found = 1
+                        FoundString = Banned:string(I)
+                        Banned:remove(I)
+                        I--
+                    }
+                }
+                if (Found) {
+                    hint("Player \"" + FoundString + "\" removed from banlist.", 10)
+                } else {
+                    hint("Player \"" + Params + "\" not in banlist.", 10)
+                }
+            } else {
+                hint("You must specify a player to unban.", 10)
+            }
+        }
+        if (Command == "buddy") {
+            if (EntPlayer) {
+                PlayerName = Params
+                concmd("citrus giveweapon \"" + PlayerName + "\" weapon_buddyfinder")
+                hint("Gave weapon_buddyfinder to \"" + EntPlayer:name() + "\".", 10)
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to which to give the weapon.", 10)
+                }
+            }
+        }
+    }
+}
+
+for (I = 1, Blinded:count()) {
+    if (Blinded:number(I)) {
+        EntPlayer = entity(I)
+        VecPos = EntPlayer:pos() + EntPlayer:boxCenter()
+        Angles = EntPlayer:eyeAngles()
+        Angles = Angles:setRoll(Angles:pitch()):setPitch(0)
+        holoPos(I, VecPos)
+        #holoAng(I, Angles + ang(0, 90, 0))
+    }
+}
+
+for (I = 1, PlayersToKick:count()) {
+    if (PlayersToKick:string(I):length()) {
+        concmd("citrus kick \"" + PlayersToKick:string(I) + "\"")
+        hint("Kicked \"" + PlayersToKickFull:string(I) + "\".", 10)
+    } else {
+        hint("BUG: Zero length playername.", 10)
+    }
+}
+
+for (I = 1, PlayersToSlay:count()) {
+    EntPlayer = PlayersToSlay:entity(I)
+    if (EntPlayer:isAlive()) {
+        PlayerName = CommandName:string(EntPlayer:id())
+        if (!PlayerName:length()) {
+            PlayerName = EntPlayer:name()
+        }
+        concmd("citrus slay \"" + PlayerName + "\"")
+        hint("Slew \"" + EntPlayer:name() + "\".", 10)
+    }
+}
+
+for (I = 1, PlayersToStrip:count()) {
+    EntPlayer = PlayersToStrip:entity(I)
+    if (EntPlayer:isAlive()) {
+        PlayerName = CommandName:string(EntPlayer:id())
+        if (!PlayerName:length()) {
+            PlayerName = EntPlayer:name()
+        }
+        concmd("citrus stripweapons \"" + PlayerName + "\"")
+        #concmd("citrus giveweapon \"" + PlayerName + "\" weapon_physcannon")
+        concmd("citrus giveweapon \"" + PlayerName + "\" weapon_physgun")
+        #concmd("citrus giveweapon \"" + PlayerName + "\" gmod_camera")
+        concmd("citrus giveweapon \"" + PlayerName + "\" gmod_tool")
+        #concmd("citrus setallowed \"" + PlayerName + "\" Suicide 0")
+        #concmd("citrus setallowed \"" + PlayerName + "\" TakeDamage 0")
+        hint("Stripped \"" + EntPlayer:name() + "\".", 10)
+    }
+}
+
+if (owner():isAlive() & AutoHeal) {
+    Health = owner():health()
+    Armor = owner():armor()
+    if (Health < 100) {
+        concmd("citrus giveweapon !cake item_healthkit")
+    }
+    
+    if (Armor < 100) {
+        concmd("citrus giveweapon !cake item_battery")
+    }
+}

@@ -1,0 +1,46 @@
+@name HoloDirection
+@inputs VecDirection:vector
+@outputs Angle:angle
+@persist Started
+@trigger
+
+interval(1000)
+
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    holoCreate(1)
+    holoCreate(2)
+    holoCreate(3)
+    holoModel(1, "hqcylinder2")
+    holoModel(2, "hqcone")
+    holoModel(3, "hqsphere")
+    holoScale(2, vec(0.6, 0.6, 0.4))
+    holoScale(3, vec(0.4, 0.4, 0.4))
+    holoColor(1, vec(0, 255, 0))
+    holoColor(2, vec(0, 255, 0))
+    holoColor(3, vec(0, 0, 255))
+    Started = 1
+}
+
+if (VecDirection:length()) {
+    holoAlpha(1, 255)
+    holoAlpha(2, 255)
+    holoAlpha(3, 0)
+} else {
+    holoAlpha(1, 0)
+    holoAlpha(2, 0)
+    holoAlpha(3, 255)
+}
+
+VecNormal = VecDirection:normalized()
+Angle = VecNormal:toAngle() + ang(0, -90, 0)
+Angle = Angle:setRoll(Angle:pitch()):setPitch(0)
+
+holoScale(1, vec(0.2, 0.2, VecDirection:length() / 20))
+holoAng(1, ang(0, 180, 90) + Angle)
+holoAng(2, ang(0, 180, 90) + Angle)
+holoPos(1, entity():pos() + vec(0, 0, 15))
+holoPos(2, entity():pos() + vec(0, 0, 15) + VecNormal * (8 * VecDirection:length() / 20))
+holoPos(3, entity():pos() + vec(0, 0, 15))

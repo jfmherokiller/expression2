@@ -1,0 +1,140 @@
+@name Turing Machine
+@inputs 
+@outputs 
+# Settings
+@persist BlocksPerLine
+@persist SymbolColors:array StateColors:array
+
+# Machine
+@persist StateMap:table
+
+@persist TapeHolos:array NextHoloID
+@persist Tape:array TapeIndex State
+@trigger 
+
+interval(10)
+
+if (first() | duped()) {
+    BlocksPerLine = 32
+    
+    SymbolColors[0, vector] = vec(255, 255, 255)
+    SymbolColors[1, vector] = vec(0, 0, 0)
+    SymbolColors[2, vector] = vec(0, 255, 0)
+    
+    StateColors[-1, vector] = vec(255, 0, 0)
+    StateColors[0, vector] = vec(0, 255, 0)
+    StateColors[1, vector] = vec(0, 0, 255)
+    StateColors[2, vector] = vec(0, 255, 255)
+    StateColors[3, vector] = vec(255, 255, 0)
+    StateColors[4, vector] = vec(128, 255, 0)
+    
+    holoCreate(1)
+    holoModel(1, "hqcone")
+    holoAng(1, ang(0, 0, -90))
+    
+    NextHoloID = 2
+    TapeIndex = 0
+    State = 0
+    
+    # state, value = value, movement, state
+    #[
+    StateMap["00", string] = "1-H"
+    
+    StateMap["00", string] = "1-1"
+    StateMap["01", string] = "1+1"
+    StateMap["10", string] = "1+0"
+    StateMap["11", string] = "1-H"
+    
+    StateMap["00", string] = "1-1"
+    StateMap["01", string] = "1-H"
+    StateMap["10", string] = "0-2"
+    StateMap["11", string] = "1-1"
+    StateMap["20", string] = "1+2"
+    StateMap["21", string] = "1+0"
+    
+    StateMap["00", string] = "1-1"
+    StateMap["01", string] = "1+1"
+    StateMap["10", string] = "1+0"
+    StateMap["11", string] = "0+2"
+    StateMap["20", string] = "1-H"
+    StateMap["21", string] = "1+3"
+    StateMap["30", string] = "1-3"
+    StateMap["31", string] = "0-0"
+    ]#
+    
+    StateMap["00", string] = "1-1"
+    StateMap["01", string] = "1+2"
+    StateMap["10", string] = "1-2"
+    StateMap["11", string] = "1-1"
+    StateMap["20", string] = "1-3"
+    StateMap["21", string] = "0+4"
+    StateMap["30", string] = "1+0"
+    StateMap["31", string] = "1+3"
+    StateMap["40", string] = "1-H"
+    StateMap["41", string] = "0+0"
+    
+    #[
+    StateMap["00", string] = "1-1"
+    StateMap["01", string] = "2+1"
+    StateMap["02", string] = "1-H"
+    StateMap["10", string] = "2+0"
+    StateMap["11", string] = "2-1"
+    StateMap["12", string] = "1+1"
+    
+    #[
+    StateMap["00", string] = "1-1"
+    StateMap["01", string] = "2+0"
+    StateMap["02", string] = "1+2"
+    StateMap["10", string] = "0+0"
+    StateMap["11", string] = "2-1"
+    StateMap["12", string] = "1+1"
+    StateMap["20", string] = "1-H"
+    StateMap["21", string] = "1-0"
+    StateMap["22", string] = "1-2"
+    #[
+    ]#
+}
+
+if (clk("interval") & State != -1) {
+    for (I = 1, 1) {
+        Value = Tape[TapeIndex, number]
+        Command = StateMap[toString(State) + toString(Value), string]
+        
+        # Write a symbol
+        Value = Command[1]:toNumber()
+        Tape[TapeIndex, number] = Value
+        holoColor(TapeHolos[TapeIndex, number], SymbolColors[Value, vector])
+        if (!TapeHolos[TapeIndex, number]) {
+            TapeHolos[TapeIndex, number] = NextHoloID
+            holoCreate(NextHoloID)
+            holoPos(NextHoloID, entity():pos() + vec(0, 0, 192) + vec(12 * (TapeIndex % BlocksPerLine) - 12 * 0.5 * BlocksPerLine, 0, -12 * floor(TapeIndex / BlocksPerLine)))
+            NextHoloID++
+        }
+        
+        # Move along the tape
+        if (Command[2] == "-") {
+            TapeIndex--
+        } elseif (Command[2] == "+") {
+            TapeIndex++
+        }
+        
+        # Change state
+        NewState = Command[3]
+        if (NewState == "H") {
+            State = -1
+        } else {
+            State = NewState:toNumber()
+        }
+        holoPos(1, entity():pos() + vec(0, 0, 192) + vec(12 * (TapeIndex % BlocksPerLine) - 12 * 0.5 * BlocksPerLine, -32, -12 * floor(TapeIndex / BlocksPerLine)))
+        holoColor(1, StateColors[State, vector])
+    }
+}
+
+holoPos(1, entity():pos() + vec(0, 0, 192) + vec(12 * (TapeIndex % BlocksPerLine) - 12 * 0.5 * BlocksPerLine, -32, -12 * floor(TapeIndex / BlocksPerLine)))
+holoColor(1, StateColors[State, vector])
+if (!TapeHolos[TapeIndex, number]) {
+    TapeHolos[TapeIndex, number] = NextHoloID
+    holoCreate(NextHoloID)
+    holoPos(NextHoloID, entity():pos() + vec(0, 0, 192) + vec(12 * (TapeIndex % BlocksPerLine) - 12 * 0.5 * BlocksPerLine, 0, -12 * floor(TapeIndex / BlocksPerLine)))
+    NextHoloID++
+}

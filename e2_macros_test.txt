@@ -1,0 +1,15 @@
+@name E2 Macros Test
+@inputs 
+@outputs 
+@persist 
+@trigger
+
+@import _example
+@define lal
+@define lal2
+@expand init
+@end
+@expand def
+@end
+
+@expand lal

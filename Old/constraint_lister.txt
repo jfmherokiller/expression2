@@ -1,0 +1,40 @@
+@name Constraint Lister
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+runOnChat(1)
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "c" | Command == "constraints") {
+            Entity = owner():aimEntity()
+            ConstraintTypes = array("AdvBallsocket", "Axis", "Ballsocket", "Elastic", "Hydraulic", "Keepupright", "Motor", "Muscle", "NoCollide", "Pulley", "Rope", "Slider", "Weld", "Winch")
+            hint("Prop has " + Entity:hasConstraints() + " constraints.", 10)
+            for (I = 1, ConstraintTypes:count()) {
+                if (Entity:hasConstraints(ConstraintTypes:string(I))) {
+                    hint("Prop has " + Entity:hasConstraints(ConstraintTypes:string(I)) + " " + ConstraintTypes:string(I) + " constraints.", 10)    
+                }
+            }
+        }
+    }
+}

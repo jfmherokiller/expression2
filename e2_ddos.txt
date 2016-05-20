@@ -1,0 +1,48 @@
+@name E2 DDOS
+@inputs
+@outputs
+@persist Data:gtable
+@trigger
+@model
+
+if (first() | duped()) {
+    runOnChat(1)
+    runOnTick(1)
+    Data = gTable("DDOS")
+}
+
+if (chatClk() & !dsClk() & !signalClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid[1] == "!" |
+            LastSaid[1] == "/" |
+            LastSaid[1] == "#" |
+            LastSaid[1] == "." |
+            LastSaid[1] == ">") {
+            hideChat(1)
+            if(Data["LastCommand", number] != curtime()) {
+                Data["LastCommand", number] = curtime()
+                LastSaid = LastSaid:sub(2)
+                Parts = LastSaid:explode(" ")
+                Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+                Command = Parts[1, string]
+                if (Command == "end") {
+                    Data["DDOS", number] = 0
+                } elseif (Command == "start") {
+                    Data["DDOS", number] = 1
+                } elseif (Command == "target") {
+                    Target = owner():aimEntity()
+                    Data["Target", entity] = Target
+                    print("Target is now " + toString(Target) + " (" + Target:owner():name() +").")
+                }
+            }
+        }
+    }
+}
+
+Target = Data["Target", entity]
+if (Data["DDOS", number] & Target) {
+    while(perf()) {
+        dsSendDirect("Derpaherp", Target, "")
+    }
+}

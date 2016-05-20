@@ -1,0 +1,21 @@
+@name Lua memory
+@inputs 
+@outputs 
+@persist I T:table
+@trigger 
+
+if (first() | duped())
+{
+    runOnTick(1)
+    I = 1
+}
+
+Start = systime()
+while (systime() - Start < 0.010)
+{
+    local C = toString(I) + "0"
+    T[I, string] = C:repeat(64 * 1024)
+    setName(C)
+    
+    I = I + 1
+}

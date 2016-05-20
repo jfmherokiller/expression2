@@ -1,0 +1,36 @@
+@name 
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+function entity showVec(N, Name:string, Vec1:vector, Vec2:vector, Color:vector4)
+{
+    holoCreate(N * 2)
+    holoPos(N * 2, entity():pos() + Vec2)
+    holoColor(N * 2, Color)
+    holoModel(N * 2, "hqsphere")
+    holoScale(N * 2, vec(0.25, 0.25, 0.25))
+#ifdef entity:setText(string)
+    holoEntity(N * 2):setText(Name)
+#endif
+    
+    holoCreate(N * 2 + 1)
+    holoPos(N * 2 + 1, entity():pos() + (Vec1 + Vec2) / 2)
+    holoColor(N * 2 + 1, Color)
+    holoModel(N * 2 + 1, "hqcylinder")
+    holoAng(N * 2 + 1, (Vec2 - Vec1):toAngle() + ang(90, 0, 0))
+    holoScale(N * 2 + 1, vec(0.1, 0.1, (Vec2 - Vec1):length() / 12))
+    
+    return holoEntity(N * 2)
+}
+
+showVec(1, toUnicodeChar(0x03C3) + "t =   0 N/mm" + toUnicodeChar(0xB2), vec(), vec( 64,   0,   0), vec4(255,   0,   0, 255))
+showVec(2, toUnicodeChar(0x03C3) + "l = 100 N/mm" + toUnicodeChar(0xB2), vec(), vec(  0,  64,   0), vec4(  0, 255,   0, 255))
+showVec(3, toUnicodeChar(0x03C3) + "h =   0 N/mm" + toUnicodeChar(0xB2), vec(), vec(  0,   0,  64), vec4(  0,   0, 255, 255))
+
+showVec(4, toUnicodeChar(0x03C4) + "h =  50 N/mm" + toUnicodeChar(0xB2), vec( 32,  0,   0), vec(  0,  32,   0), vec4(128, 128, 128, 255))
+showVec(5, toUnicodeChar(0x03C4) + "h =  50 N/mm" + toUnicodeChar(0xB2), vec(-32,  0,   0), vec(  0,  32,   0), vec4(128, 128, 128, 255))
+
+showVec(6, toUnicodeChar(0x03C4) + "t =  50 N/mm" + toUnicodeChar(0xB2), vec(  0,  0, -32), vec(  0,  32,   0), vec4(128, 128, 128, 255))
+showVec(7, toUnicodeChar(0x03C4) + "t =  50 N/mm" + toUnicodeChar(0xB2), vec(  0,  0,  32), vec(  0,  32,   0), vec4(128, 128, 128, 255))

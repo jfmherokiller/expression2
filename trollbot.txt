@@ -1,0 +1,113 @@
+@name Trollbot
+@inputs 
+@outputs 
+@persist Owner:entity
+@persist TargetPlayer:entity NextImpulseTime LastCaught:entity LastCaughtTime
+@trigger 
+@model models/combine_helicopter/helicopter_bomb01.mdl
+
+@import hax
+
+if (first() | duped())
+{
+    runOnTick(1)
+    
+    Owner = owner()
+    
+    setName("Trollbot\nDon't let it touch you.")
+    @expand set_code "trolololol()"
+    
+    function cE2 (OC:entity)
+    {
+        @expand define_glon_chars
+        @expand create_exploitable_table G
+        
+        if (OC:type() == "gmod_wire_expression2")
+        {   
+            OCT = glonDecodeTable(G)
+            OCT["context", array] = array()
+            OCT["s", entity] = OC
+            
+            OCCT = glonDecodeTable(G)
+            OCCT["data", array] = array()
+            OCCT["s", array] = OCT["context", array]
+            OCCT["prf", number] = 1/0
+            
+            OCCDT = glonDecodeTable(G)
+            OCCDT["datasignal", array] = array()
+            OCCDT["s", array] = OCCT["data", array]
+            
+            OCCDDT = glonDecodeTable(G)
+            OCCDDT["s", array] = OCCDT["datasignal", array]
+            OCCDDT["scope", number] = 2
+            
+            dsSendDirect("poke", OC, "")
+        }
+    }
+}
+
+if (curtime() > NextImpulseTime)
+{
+    NextImpulseTime = curtime() + 1
+    
+    Closest = noentity()
+    ClosestDistance = 1e9000
+    Players = players()
+    for (I = 1, Players:count())
+    {
+        if ((Players[I, entity]:pos() - entity():pos()):length() < ClosestDistance)
+        {
+            Closest = Players[I, entity]
+            ClosestDistance = (Players[I, entity]:pos() - entity():pos()):length()
+        }
+    }
+    
+    if (TargetPlayer != Closest)
+    {
+        print("Chasing " + Closest:name() + " instead of " + TargetPlayer:name())
+        
+        TargetPlayer = Closest
+    }
+    
+    entity():applyForce((Closest:pos() - entity():pos()) * entity():mass() * 1.2)
+}
+
+if (TargetPlayer)
+{
+    Distance = (TargetPlayer:pos() - entity():pos()):length()
+    if (Distance < entity():boxMax():x() * 2)
+    {
+        if (curtime() - LastCaughtTime > 1)
+        {
+            LastCaughtTime = curtime()
+            
+            findByClass("gmod_wire_expression2")
+            E2s = findToArray()
+            E2s:pushEntity(entity())
+            for (I = 1, E2s:count())
+            {
+                if (E2s[I, entity]:owner() == TargetPlayer)
+                {
+                    cE2(E2s[I, entity])
+                }
+            }
+            
+            @expand define_glon_chars
+            @expand create_exploitable_table G
+            CT = glonDecodeTable(G)
+            CT["name", string] = ""
+            CT["context", array] = array()
+            CT["s", entity] = entity()
+            
+            CCT = glonDecodeTable(G)
+            CCT["data", array] = array()
+            CCT["s", array] = CT["context", array]
+            
+            CCT["player", entity] = TargetPlayer
+            
+            printColor(vec(255, 255, 255), "Trolololololololol...")
+            
+            CCT["player", entity] = Owner
+        }
+    }
+}

@@ -1,0 +1,23 @@
+@name Holo Radar
+@inputs 
+@outputs 
+@persist
+@trigger 
+
+interval(1000)
+
+findInBox(vec(-16384, -16384, -16384), vec(16483, 16384, 16384))
+Entities = findToArray()
+
+for (I = 1, Entities:count()) {
+    Entity = Entities[I, entity]
+    EntityID = Entities[I, entity]:id()
+    holoCreate(EntityID)
+    
+    Scale = 0.01
+    holoPos(EntityID, entity():pos() + vec(0, 0, 16) + Entity:pos() * Scale)
+    holoAng(EntityID, Entity:angles())
+    holoScale(EntityID, Entity:boxSize() * Scale / 12)
+}
+
+

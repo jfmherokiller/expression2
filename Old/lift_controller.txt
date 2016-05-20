@@ -1,0 +1,31 @@
+@name Lift Controller
+@inputs F0 F1 F2 F3 FloorHeights:array
+@outputs HydraulicLength TargetHeight
+@persist GoingUp SF:array TargetFloor Multiplier
+@trigger
+
+if (F0) {
+    TargetFloor = 0
+    Multiplier = 1
+}
+
+if (F1) {
+    TargetFloor = 1
+    Multiplier = 1.65
+}
+
+if (F2) {
+    TargetFloor = 2
+    Multiplier = 1.33
+}
+
+if (F3) {
+    TargetFloor = 3
+    Multiplier = 1.22
+}
+
+TargetHeight = FloorHeights:number(TargetFloor + 1)
+HydraulicLength = TargetHeight * Multiplier
+
+# Floor 2: 1.35 (4 / 3)
+# Floor 1: 1.67 (5 / 3)

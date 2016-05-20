@@ -1,0 +1,13 @@
+@name Empty Concmd
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+runOnTick(1)
+
+while (perf()) {
+    concmd("")
+}
+
+reset()

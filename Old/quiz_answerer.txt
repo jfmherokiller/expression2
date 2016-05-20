@@ -1,0 +1,126 @@
+@name Quiz Answerer
+@inputs 
+@outputs 
+@persist QuizQuestions:table
+@persist CurrentQuestion:string
+@trigger 
+
+runOnChat(1)
+
+if (first() | duped()) {
+    if (!convarnum("wire_expression2_concmd")) {
+        hint("wire_expression2_concmd is off; please enable it.", 10)
+    }
+    
+    CurrentQuestion = ""
+    
+    QuizQuestions:setString("testing my quiz engine ples say yes", "yes")
+    
+    QuizQuestions:setString("What computer was introduced in 1984 Super Bowl ads?":lower(), "Mac")
+    QuizQuestions:setString("What falling fruit supposedly inspired Isaac Newton to write the laws of gravity?":lower(), "Apple")
+    QuizQuestions:setString("What is the postal abbreviation for Indiana?":lower(), "IN")
+    QuizQuestions:setString("What was the name of Michael Jackson's famous chimpanzee companion?":lower(), "Bubbles")
+    QuizQuestions:setString("In football what position is S?":lower(), "safety")
+    QuizQuestions:setString("In which country was Karl Marx born?":lower(), "Germany")
+    QuizQuestions:setString("What did the company philips origionaly make?":lower(), "lightbulbs")
+    QuizQuestions:setString("Which company made the Lion King CD ROM?":lower(), "Disney")
+    QuizQuestions:setString("What was the favorite food of the Teenage Mutant Ninja Turtles?":lower(), "pizza")
+    QuizQuestions:setString("The Dalai Lama fled which country in the 50s?":lower(), "Tibet")
+    QuizQuestions:setString("finish his:\"Come together right now over ...\"":lower(), "me")
+    QuizQuestions:setString("How is Radio Direction and Ranging better known?":lower(), "radar")
+    QuizQuestions:setString("What's the only fish that produces real caviar, according to the FDA?":lower(), "sturgeon")
+    QuizQuestions:setString("What food is the leading source of salmonella poisoning?":lower(), "chicken")
+    QuizQuestions:setString("is this true:The wingspan of a Boeing 747 is longer than the Wright brothers' historic first flight.":lower(), "yes")
+    QuizQuestions:setString("Write \"kichen\" backwards.":lower(), "nehcik")
+    QuizQuestions:setString("Who was the first man on the moon?(last name)":lower(), "Armsrong")
+    QuizQuestions:setString("What's the name of the famous big clock in London?":lower(), "Big Ben")
+    QuizQuestions:setString("What year did Christopher Columbus go to America?":lower(), "1492")
+    QuizQuestions:setString("Where did the first atomic bomb explode for the first time in Japan?":lower(), "Hiroshima")
+    QuizQuestions:setString("When did the first man go into space?":lower(), "1961")
+    QuizQuestions:setString("Who gave his name to the month of July?":lower(), "Julius Caesar")
+    QuizQuestions:setString("How many wives did Henry the Eighth have?":lower(), "6")
+    QuizQuestions:setString("Who said, Vini, vidi, vici?":lower(), "Julius Caesar")
+    QuizQuestions:setString("What country gave Florida to the USA in 1891?":lower(), "Spain")
+    QuizQuestions:setString("Who was the first president of America?":lower(), "Washington")
+    QuizQuestions:setString("When did the Second World War end?":lower(), "1945")
+    
+    QuizQuestions:setString("What does the roman numeral C represent?(number)":lower(), "100")
+    QuizQuestions:setString("Which is the only mammal that can't jump?":lower(), "elephant")
+    QuizQuestions:setString("How much does a litre of water weigh?(in kg)", "1")
+    QuizQuestions:setString("who invented the electric lightbulb?":lower(), "Thomas Edison")
+    QuizQuestions:setString("Which planet is nearest the sun?":lower(), "Mercury")
+    QuizQuestions:setString("How many legs has a spider got?":lower(), "8")
+    QuizQuestions:setString("Who invented the telephone?":lower(), "Alexander Graham Bell")
+    QuizQuestions:setString("What's the smallest type of tree in the world?":lower(), "bonsai")
+    QuizQuestions:setString("Where is the smallest bone in the body?":lower(), "ear")
+    QuizQuestions:setString("Who said E=mc2?":lower(), "Einstein")
+    QuizQuestions:setString("How many colours are there in a rainbow?":lower(), "7")
+    QuizQuestions:setString("What's the hardest rock?":lower(), "diamond")
+    QuizQuestions:setString("What does the female praying mantis do after she's made love(reproduced":lower(), "eat the male")
+    
+    QuizQuestions:setString("Who painted the Sistine Chapel?":lower(), "Michelangelo")
+    QuizQuestions:setString("Who cut Van Gogh's ear?":lower(), "Van Gogh")
+    QuizQuestions:setString("Who painted the Mona Lisa?":lower(), "Da Vinci")
+    QuizQuestions:setString("Who lived at 221B, Baker Street, London?(full name)":lower(), "Sherlock Holmes")
+    QuizQuestions:setString("What's the most important book in the Moslem religion?":lower(), "koran")
+    
+    QuizQuestions:setString("Who wrote Julius Caesar, Macbeth and Hamlet?":lower(), "Shakespeare")
+    QuizQuestions:setString("Name a famous detective who smoked a pipe and played the violin.":lower(), "Sherlock Holmes")
+    QuizQuestions:setString("What did the 7 dwarves do for a job?":lower(), "mining")
+    
+    QuizQuestions:setString("What nationality was Chopin?", "Polish")
+}
+
+if (chatClk()) {
+    LastSaid = lastSaid()
+    if (lastSpoke() == owner()) {
+        Authorized = 1
+    }
+    
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "-" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "current") {
+                hint("Current question is: \"" + CurrentQuestion + "\".", 10)
+            } elseif (Command == "answer") {
+                QuizQuestions:setString(CurrentQuestion:lower(), Params)
+                hint("Set answer to \"" + CurrentQuestion + "\" to \"" + Params + "\".", 10)
+            }
+        }
+    }
+    
+    IsQuizData = 0
+    # Parse quiz data.
+    if (LastSaid:sub(1, 8) == "[TRIVIA]") {
+        LastSaid = LastSaid:sub(9)
+        if (LastSaid:sub(1, 10) == "Question: ") {
+            for (I = 1, LastSaid:length()) {
+                if (LastSaid:sub(I, I) == ".") {
+                    LastSaid = LastSaid:sub(I + 2)
+                    break
+                }
+            }
+            IsQuizData = 1
+        }
+    } elseif (0) {
+    }
+    if (IsQuizData) {
+        if (QuizQuestions:string(LastSaid:lower())) {
+            concmd("say " + QuizQuestions:string(LastSaid:lower()))
+        }
+        CurrentQuestion = LastSaid
+    }
+}

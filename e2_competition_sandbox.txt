@@ -1,0 +1,109 @@
+@name E2 Competition Sandbox
+@inputs 
+@outputs 
+@persist ThreadID Hypervisor:entity
+@persist RunningTest Input:table InputFunction:function Output:table
+@persist
+@trigger 
+
+interval(100)
+runOnChat(1)
+
+BroadcastOutputQueue = array()
+DebugOutputQueue = array()
+if (first() | duped()) {
+    dsJoinGroup("E2 Competition Hypervisor")    # Thread-hypervisor communication
+    dsSetScope(2)
+    
+    ThreadID = 0
+    
+    RunningTest = 0
+    Input = table()
+    Output = table()
+    
+    dsSend("RegisterThread", "E2 Competition Hypervisor", entity())
+}
+
+if (!dsClk() & clk("interval")) {
+    if (RunningTest & opcounter() <= 400) {
+#ifdef clk(string) # functionsWorking()
+        Verifier = Input["Verifier", function]
+        Verifier(Input, Output)
+#else
+        VerifierCode = Input["Verifier", code]
+        Inputs = table()
+        Inputs["InputGeneric1", generic] = generic(Input)
+        Inputs["OutputGeneric1", generic] = generic(Output)
+        VerifierCode:exec(Inputs)
+#endif
+        if (Output:number("IsDone")) {
+            RunningTest = 0
+            Output:setNumber("ThreadID", ThreadID)
+            dsSendDirect("SandboxDone", Hypervisor, Output)
+        }
+    }
+}
+
+if (dsClk()) {
+    if (dsGetGroup() == "E2 Competition Hypervisor") {
+        if (dsClkName() == "DiscoverThreads") {
+            Hypervisor = dsGetSender()
+            dsSendDirect("RegisterThread", Hypervisor, entity())
+        }
+    }
+    if (dsClkName() == "SandboxAbort") {
+        RunningTest = 0
+        Input = table()
+        InputFunction = nofunction()
+        Output = table()
+    }
+    if (dsClkName() == "SandboxFunction") {
+        Input = dsGetTable()
+        InputFunction = Input["Function", function]
+        
+        Output = table()
+        RunningTest = 1
+    }
+    if (dsClkName() == "ThreadSetThreadID") {
+        if (!Hypervisor | Hypervisor == dsGetSender()) {
+            Hypervisor = dsGetSender()
+            ThreadID = dsGetNumber()
+        }
+    }
+} elseif (chatClk()) {
+    Authorized = 0
+    LastSaid = lastSaid()
+    if (lastSpoke() == owner()) {
+        Authorized = 1
+    }
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "threadid") {
+                DebugOutputQueue:pushString("Thread ID of " + entity():id() + " is " + ThreadID + ".")
+            }
+        }
+    }
+}
+
+for (I = 1, BroadcastOutputQueue:count()) {
+    hint("say " + BroadcastOutputQueue:string(I), 10)
+}
+
+for (I = 1, DebugOutputQueue:count()) {
+    hint(DebugOutputQueue:string(I), 10)
+}
+

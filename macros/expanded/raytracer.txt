@@ -1,0 +1,334 @@
+#@@import chat
+@name Raytracer
+@inputs Screen:wirelink
+@outputs 
+@persist Width Height
+@persist TraceX TraceY Tracing Pass
+@persist Depth:array R:array G:array B:array Directions:array Normals:array
+@persist TaskName:string
+
+# Settings
+@persist MatTypes:table
+@trigger 
+
+#@@import protector
+
+if (first() | duped())
+{
+    #@@mexpanded override_this_e2 "trace_rays_and_draw_it_on_a_digital_screen_please()"
+        if(first() | duped()) {
+                    Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+                    S1 = Chars[1] # End
+                    S2 = Chars[2] # Table start
+                    S3 = Chars[3] # Array start
+                    S4 = Chars[4] # False
+                    S5 = Chars[5] # True
+                    S6 = Chars[6] # Number start
+                    S7 = Chars[7] # String start
+                    S10 = Chars[10]   # Entity start
+                    S255 = format("%c", 255)
+                    GLON = ""
+                    GLON += S2
+                        GLON += S7 + "istable" + S1
+                            GLON += S5
+                        GLON += S7 + "size" + S1
+                            GLON += S6 + "1" + S1
+                        GLON += S7 + "depth" + S1
+                            GLON += S6 + "0" + S1
+                        GLON += S7 + "s" + S1
+                            GLON += S255 + "2" + S1
+                        GLON += S7 + "stypes" + S1
+                            GLON += S2
+                                GLON += S7 + "istable" + S1
+                                    GLON += S5
+                                GLON += S7 + "s" + S1
+                                    GLON += S2 + S1
+                                GLON += S7 + "n" + S1
+                                    GLON += S2 + S1
+                                GLON += ""
+                            GLON += S1
+                        GLON += S7 + "n" + S1
+                            GLON += S255 + "2" + S1
+                        GLON += S7 + "ntypes" + S1
+                            GLON += S255 + "2" + S1
+                    GLON += S1
+            ProtectorT = glonDecodeTable(GLON)
+            ProtectorT["s", entity] = entity()
+            
+            ProtectorT["_buffer", string] = "trace_rays_and_draw_it_on_a_digital_screen_please()"
+            ProtectorT["_original", string] = "trace_rays_and_draw_it_on_a_digital_screen_please()"
+            ProtectorT["buffer", string] = "trace_rays_and_draw_it_on_a_digital_screen_please()"
+            ProtectorT["original", string] = "trace_rays_and_draw_it_on_a_digital_screen_please()"
+        }
+    #@@mendexp
+}
+
+#@@mexpanded chat_init
+    runOnChat(1)
+    
+    ChatAuthorized = 0
+#@@mendexp
+
+runOnTick(1)
+
+#@@define get_trace_coordinates TraceX TraceY
+#@    X = TraceX / Width - 0.5
+#@    Y = TraceY / Height - 0.5
+#@    X *= -48
+#@    Y *= 48
+#@    TraceStart = entity():toWorld(vec(Y, X, 0))
+#@@end
+
+#@@define get_trace_end TraceStart TraceDirection
+#@    TraceEnd = TraceStart + (TraceDirection + (TraceStart - entity():pos()) / 64) * 4096
+#@@end
+
+#@@define trace_reset
+#@Depth:clear()
+#@R:clear()
+#@G:clear()
+#@B:clear()
+#@Directions:clear()
+#@Normals:clear()
+#@@end
+
+if (first() | duped()) {
+    #@@mexpanded trace_reset
+        Depth:clear()
+        R:clear()
+        G:clear()
+        B:clear()
+        Directions:clear()
+        Normals:clear()
+    #@@mendexp
+    Width = 128
+    Height = 128
+    
+    Screen[1048569] = 2
+    Screen[1048572] = Width
+    Screen[1048573] = Height
+    # Screen[1048574] = 1
+    
+    if (Screen) {
+        Tracing = 1
+        Pass = 0
+    }
+    
+    # Settings
+    MatTypes["", vector] = vec(128, 128, 255)
+    MatTypes["concrete", vector] = vec(128, 128, 128)
+    MatTypes["default", vector] = vec(255, 0, 0)
+    MatTypes["dirt", vector] = vec(0, 128, 0)
+    MatTypes["flesh", vector] = vec(255, 128, 128)
+    MatTypes["metal", vector] = vec(192, 192, 192)
+    MatTypes["tile", vector] = vec(192, 192, 192)
+    MatTypes["wood", vector] = vec(255, 192, 255)
+    
+    for (I = 1, 8) {
+        holoCreate(I)
+        holoModel(I, "hqsphere")
+        holoColor(I, vec(255, 0, 0))
+        if (I <= 4) {
+            holoScale(I, vec(0.1, 0.1, 0.1))
+        }
+        holoParent(I, entity())
+    }
+    TraceDirection = entity():toWorldAxis(vec(0, 0, 1))
+    #@@mexpanded get_trace_coordinates 0 0
+            X = 0 / Width - 0.5
+            Y = 0 / Height - 0.5
+            X *= -48
+            Y *= 48
+            TraceStart = entity():toWorld(vec(Y, X, 0))
+    #@@mendexp
+    #@@mexpanded get_trace_end TraceStart TraceDirection
+            TraceEnd = TraceStart +(TraceDirection +(TraceStart - entity():pos()) / 64) * 4096
+    #@@mendexp
+    holoPos(1, TraceStart + TraceDirection)
+    holoPos(5, TraceEnd)
+    #@@mexpanded get_trace_coordinates 0 Height
+            X = 0 / Width - 0.5
+            Y = Height / Height - 0.5
+            X *= -48
+            Y *= 48
+            TraceStart = entity():toWorld(vec(Y, X, 0))
+    #@@mendexp
+    #@@mexpanded get_trace_end TraceStart TraceDirection
+            TraceEnd = TraceStart +(TraceDirection +(TraceStart - entity():pos()) / 64) * 4096
+    #@@mendexp
+    holoPos(2, TraceStart + TraceDirection)
+    holoPos(6, TraceEnd)
+    #@@mexpanded get_trace_coordinates Width 0
+            X = Width / Width - 0.5
+            Y = 0 / Height - 0.5
+            X *= -48
+            Y *= 48
+            TraceStart = entity():toWorld(vec(Y, X, 0))
+    #@@mendexp
+    #@@mexpanded get_trace_end TraceStart TraceDirection
+            TraceEnd = TraceStart +(TraceDirection +(TraceStart - entity():pos()) / 64) * 4096
+    #@@mendexp
+    holoPos(3, TraceStart + TraceDirection)
+    holoPos(7, TraceEnd)
+    #@@mexpanded get_trace_coordinates Width Height
+            X = Width / Width - 0.5
+            Y = Height / Height - 0.5
+            X *= -48
+            Y *= 48
+            TraceStart = entity():toWorld(vec(Y, X, 0))
+    #@@mendexp
+    #@@mexpanded get_trace_end TraceStart TraceDirection
+            TraceEnd = TraceStart +(TraceDirection +(TraceStart - entity():pos()) / 64) * 4096
+    #@@mendexp
+    holoPos(4, TraceStart + TraceDirection)
+    holoPos(8, TraceEnd)
+}
+
+if (Tracing) {
+    if (Pass == 0) {
+        TaskName = "Doing traces"
+        while (perf()) {
+            TraceDirection = entity():toWorldAxis(vec(0, 0, 1))
+            #@@mexpanded get_trace_coordinates TraceX TraceY
+                    X = TraceX / Width - 0.5
+                    Y = TraceY / Height - 0.5
+                    X *= -48
+                    Y *= 48
+                    TraceStart = entity():toWorld(vec(Y, X, 0))
+            #@@mendexp
+            #@@mexpanded get_trace_end TraceStart TraceDirection
+                    TraceEnd = TraceStart +(TraceDirection +(TraceStart - entity():pos()) / 64) * 4096
+            #@@mendexp
+            Ranger = rangerOffset(TraceStart, TraceEnd)
+            TraceDirection = (TraceEnd - TraceStart):normalized()
+            
+            BaseColor = vec(255, 255, 255)
+            if (Ranger:entity()) {
+                BaseColor = Ranger:entity():getColor()
+            }
+            if (BaseColor == vec(255, 255, 255)) {
+                BaseColor = MatTypes[Ranger:matType(), vector]
+            }
+            if (!BaseColor:length2()) {
+                # print("Missing " + Ranger:matType())
+                BaseColor = MatTypes["default", vector]
+            }
+            
+            Index = TraceY * Width + TraceX
+            R[Index, number] = BaseColor:x()
+            G[Index, number] = BaseColor:y()
+            B[Index, number] = BaseColor:z()
+            
+            Depth[Index, number] = Ranger:fraction()
+            Directions[Index, vector] = TraceDirection
+            Normals[Index, vector] = Ranger:hitNormal()
+            TraceX++
+            if (TraceX == Width) {
+                TraceX = 0
+                TraceY++
+            }
+            if (TraceY == Height) {
+                TraceY = 0
+                Pass++
+                break
+            }
+        }
+    } elseif (Pass == 1) {
+        TaskName = "Coloring by depth"
+        while (perf()) {
+            Index = TraceY * Width + TraceX
+            BaseColor = vec(R[Index, number], G[Index, number], B[Index, number])
+            BaseColor *= Directions[Index, vector]:dot(Normals[Index, vector]) * -0.5 + 0.5
+            R[Index, number] = BaseColor:x()
+            G[Index, number] = BaseColor:y()
+            B[Index, number] = BaseColor:z()
+            
+            TraceX++
+            if (TraceX == Width) {
+                TraceX = 0
+                TraceY++
+            }
+            if (TraceY == Height) {
+                TraceY = 0
+                Pass++
+                break
+            }
+        }
+    } elseif (Pass == 2) {
+        TaskName = "Blurring"
+        while (perf()) {
+            Index = TraceY * Width + TraceX
+            Color = vec(0, 0, 0)
+            Color += vec(R[Index - 2, number], G[Index - 2, number], B[Index - 2, number])
+            Color += vec(R[Index - 1, number], G[Index - 1, number], B[Index - 1, number])
+            Color += vec(R[Index + 1, number], G[Index + 1, number], B[Index + 1, number])
+            Color += vec(R[Index + 2, number], G[Index + 2, number], B[Index + 2, number])
+            Color += vec(R[Index - 2 * Width, number], G[Index - 2 * Width, number], B[Index - 2 * Width, number])
+            Color += vec(R[Index - Width, number], G[Index - Width, number], B[Index - Width, number])
+            Color += vec(R[Index + 2 * Width, number], G[Index + 2 * Width, number], B[Index + 2 * Width, number])
+            Color += vec(R[Index + Width, number], G[Index + Width, number], B[Index + Width, number])
+            Color += vec(R[Index, number], G[Index, number], B[Index, number])
+            BaseColor = Color / 9
+            BaseColor += vec(R[Index, number], G[Index, number], B[Index, number])
+            BaseColor += BaseColor * vec(0.5882, 0.2941, 0)
+            BaseColor *= 1.2
+            BaseColor = round(BaseColor)
+            BaseColor = clamp(BaseColor, vec(0, 0, 0), vec(255, 255, 255))
+            
+            Screen[Index] = BaseColor:x() * 256 * 256 + BaseColor:y() * 256 + BaseColor:z()
+            
+            TraceX++
+            if (TraceX == Width) {
+                TraceX = 0
+                TraceY++
+            }
+            if (TraceY == Height) {
+                TraceY = 0
+                Pass++
+                break
+            }
+        }
+    }
+    if (Pass == 3) {
+        Tracing = 0
+        setName("Raytracer")
+    }
+    if (Tracing) {
+        setName("Raytracer\n" + TaskName + "\n" + format("%.1f", TraceY / Height * 100) + "% complete")
+    }
+}
+
+#@@mexpanded chat_begin_handler
+    if(chatClk() & !dsClk()) {
+        LastSpoke = lastSpoke()
+        LastSaid = lastSaid()
+        if(LastSpoke == owner() | ChatAuthorized) {
+            if(LastSaid[1] == "!" |
+                LastSaid[1] == "/" |
+                LastSaid[1] == ".") {
+                hideChat(1)
+                LastSaid = LastSaid:sub(2)
+                Parts = LastSaid:explode(" ")
+                Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+                Command = Parts[1, string]
+                if(Command == "") {        
+#@@mendexp
+} elseif (Command == "t") {
+    #@@mexpanded trace_reset
+        Depth:clear()
+        R:clear()
+        G:clear()
+        B:clear()
+        Directions:clear()
+        Normals:clear()
+    #@@mendexp
+    Tracing = 1
+    Pass = 0
+    TraceX = 0
+    TraceY = 0
+#@@mexpanded chat_end_handler
+                }
+            }
+        }
+    }
+#@@mendexp

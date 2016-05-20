@@ -1,0 +1,36 @@
+@name RocketStats
+@inputs EntRocket:entity Start Reset
+@outputs Speed Distance MaxSpeed Altitude
+@persist Distance VecLastPos:vector Started MaxSpeed BaseAltitude
+@trigger
+
+interval(10)
+
+if (Start & !Started) {
+    Distance = 0
+    MaxSpeed = 0
+    VecLastPos = EntRocket:pos()
+    BaseAltitude = EntRocket:pos():z()
+    #EntRocket:unFreeze()
+    Started = 1
+}
+
+if (Reset) {
+    Started = 0
+}
+
+Distance += (EntRocket:pos() - VecLastPos):length() / 10
+VecLastPos = EntRocket:pos()
+Speed = EntRocket:vel():length() / 10
+Altitude = (EntRocket:pos():z() - BaseAltitude) / 10
+if (Speed > MaxSpeed) {
+    MaxSpeed = Speed
+}
+
+if (!Started) {
+    Distance = 0
+    Speed = 0
+    MaxSpeed = 0
+    Altitude = 0
+    stoptimer("interval")
+}

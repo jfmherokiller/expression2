@@ -1,0 +1,197 @@
+@name Lua Console 2
+@inputs Screen:wirelink
+@outputs
+@persist SessionID
+@persist NextPipeID
+@persist PipeCount Pipes:array PipeNextSequenceIDs:array
+@persist StreamBuffer:string BufferNeedsProcessing
+@persist MessageTypeQueue:array MessageDataQueue:array MessageQueueNeedsProcessing
+
+# EGP
+@persist Screens:array
+@persist NextEGPLine
+@persist EGPLineCount EGPLineHeight EGPLinesFilled
+@persist LineQueue:array LineQueueNeedsProcessing
+@trigger 
+
+interval(100)
+    
+if (first() | duped())
+{
+    setName("Lua->E2 data channel")
+    
+    SessionID = -1
+    
+    function number hexToDecimal(Hex:string)
+    {
+        Value = 0
+        for (I = 1, Hex:length())
+        {
+            Value *= 16
+            
+            Char = Hex[I]:lower()
+            if (Char == "a") { Value += 10 }
+            elseif (Char == "b") { Value += 11 }
+            elseif (Char == "c") { Value += 12 }
+            elseif (Char == "d") { Value += 13 }
+            elseif (Char == "e") { Value += 14 }
+            elseif (Char == "f") { Value += 15 }
+            else { Value += Char:toNumber() }
+        }
+        
+        return Value
+    }
+    
+    function initializeScreen()
+    {
+        Screen:egpClear()
+        
+        NextEGPLine = 1
+        EGPLinesFilled = 0
+        EGPLineHeight = 12
+        EGPLineCount = 512 / EGPLineHeight
+        
+        for (I = 1, EGPLineCount)
+        {
+            Screen:egpText(I, "", vec2(8, (I - 1) * EGPLineHeight))
+            Screen:egpFont(I, "Courier New", EGPLineHeight)
+        }
+    }
+    
+    function appendLine(Line:string)
+    {
+        if (EGPLinesFilled >= EGPLineCount)
+        {            
+            for (I = 1, EGPLineCount)
+            {
+                Screen:egpPos(I, Screen:egpPos(I) - vec2(0, EGPLineHeight))
+            }
+            Screen:egpPos(NextEGPLine, vec2(8, (EGPLineCount - 1) * EGPLineHeight))
+        }
+        
+        Screen:egpSetText(NextEGPLine, Line)
+        NextEGPLine++
+        EGPLinesFilled++
+        
+        if (NextEGPLine > EGPLineCount)
+        {
+            NextEGPLine = 1
+        }
+    }
+    
+    initializeScreen()
+}
+
+if (inputClk())
+{
+    printColor(vec(0, 0, 128), "[LC] Screen connected.")
+    initializeScreen()
+}
+
+if (SessionID != convarnum("e2pipe_rst"))
+{
+    printColor(vec(0, 0, 128), "[LC] New session with ID " + toString(convarnum("e2pipe_rst")) + ".")
+    
+    SessionID = convarnum("e2pipe_rst")
+    PipeCount = 10
+    Pipes = array()
+    PipeNextSequenceIDs = array()
+    BufferNeedsProcessing = 0
+    NextPipeID = 0
+    
+    initializeScreen()
+}
+
+if (convar("e2pipe_" + NextPipeID)[1] == toString(PipeNextSequenceIDs[NextPipeID, number]))
+{
+    StreamBuffer += convar("e2pipe_" + NextPipeID):sub(2)
+    BufferNeedsProcessing = 1
+    
+    PipeNextSequenceIDs[NextPipeID, number] = (PipeNextSequenceIDs[NextPipeID, number] + 1) % 10
+    NextPipeID = (NextPipeID + 1) % PipeCount
+}
+
+if (BufferNeedsProcessing)
+{
+    while (perf() & StreamBuffer:length() > 6)
+    {
+        ContainerLength = hexToDecimal(StreamBuffer:sub(1, 4))
+        if (StreamBuffer:length() >= ContainerLength + 4)
+        {
+            StreamBuffer = StreamBuffer:sub(6)
+            MessageType = StreamBuffer:sub(1, StreamBuffer:find("|") - 1)
+            StreamBuffer = StreamBuffer:sub(StreamBuffer:find("|") + 1)
+            ContainerLength -= 2 + MessageType:length()
+            
+            Data = StreamBuffer:sub(1, ContainerLength)
+            StreamBuffer = StreamBuffer:sub(ContainerLength + 1)
+            
+            MessageTypeQueue:pushString(MessageType)
+            MessageDataQueue:pushString(Data)
+            MessageQueueNeedsProcessing = 1
+        }
+        else
+        {
+            BufferNeedsProcessing = 0
+            break
+        }
+    }
+    
+    if (StreamBuffer:length() <= 6)
+    {
+        BufferNeedsProcessing = 0
+    }
+}
+
+if (MessageQueueNeedsProcessing)
+{
+    while (perf() & MessageTypeQueue:count() > 0)
+    {
+        Type = MessageTypeQueue[1, string]
+        Data = MessageDataQueue[1, string]
+        MessageTypeQueue:remove(1)
+        MessageDataQueue:remove(1)
+        
+        if (Type == "print")
+        {
+            Data = Data:replace("\\\\", "\\")
+            Data = Data:replace("\\n", "\n")
+            Data = Data:replace("\\r", "")
+            Data = Data:replace("\\t", "\t")
+            Data = Data:replace("\\q", "\"")
+            Data = Data:replace("\\s", "'")
+            
+            Lines = Data:explode("\n")
+            for (I = 1, Lines:count())
+            {
+                LineQueue:pushString(Lines[I, string])
+            }
+            LineQueueNeedsProcessing = 1
+        }
+    }
+    
+    if (MessageTypeQueue:count() == 0)
+    {
+        MessageQueueNeedsProcessing = 0
+    }
+}
+
+if (LineQueueNeedsProcessing)
+{
+    LinesAdded = 0
+    while (perf() & LineQueue:count())
+    {
+        appendLine(LineQueue[1, string])
+        LineQueue:remove(1)
+        LinesAdded++
+        if (LinesAdded > 1)
+        {
+            break
+        }
+    }
+    
+    if (LineQueue:count() == 0)
+    {
+        LineQueueNeedsProcessing = 0
+    }
+}

@@ -1,0 +1,10 @@
+@name Test
+@inputs 
+@outputs 
+@persist
+@trigger 
+
+runOnTick(1)
+
+for (I = 1, 1600) {
+}

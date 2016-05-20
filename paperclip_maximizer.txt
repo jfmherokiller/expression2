@@ -1,0 +1,274 @@
+@name Paperclip Maximizer
+@inputs
+@outputs
+@persist CanTargetPlayers CanNomOtherPlayers
+@persist Volumes:table
+@persist Model:string
+@persist StoredVolume
+@persist State
+@persist LastSearchTime Target:entity EntityBlacklist:table EntityWhitelist:table
+@persist Found:array DistanceSquared WhitelistDistanceSquared FoundEntity:entity WhitelistFoundEntity:entity ProcessIndex
+@persist NomStartTime LastDamageTime ToSpawn LastNommed:entity CachedVolume
+@persist StartWaitTime
+@trigger
+@model models/combine_helicopter/helicopter_bomb01.mdl
+
+runOnTick(1)
+
+# It's a state machine!
+# 0 - Look for target
+# 0.5 - Processing found entities
+# 1 - Moving to target
+# 2 - Nomming target
+# 3 - Nommed target, produce gnomes
+
+if (duped() | first()) {
+    entity():propFreeze(0)
+    entity():setColor(random(0, 255), random(0, 255), random(0, 255))
+    
+    CanNomOtherPlayers = 0
+    CanTargetPlayers = 1
+#ifdef e:setDamage(number)
+    CanTargetPlayers = 1
+#endif
+    
+    Volumes:clear()
+    EntityBlacklist["ambient_generic", number] = 1
+    EntityBlacklist["beam", number] = 1
+    EntityBlacklist["env_ar2explosion", number] = 1
+    EntityBlacklist["env_fogcontroller", number] = 1
+    EntityBlacklist["env_shake", number] = 1
+    EntityBlacklist["env_spark", number] = 1
+    EntityBlacklist["env_tonemapcontroller", number] = 1
+    EntityBlacklist["point_spotlight", number] = 1
+    EntityBlacklist["spotlight_end", number] = 1
+    # EntityBlacklist["gmod_wire_hologram", number] = 1
+    EntityWhitelist["npc_monk", number] = 1
+    EntityWhitelist["player", number] = 1
+    EntityWhitelist["prop_physics", number] = 1
+    EntityWhitelist["prop_physics_multiplayer", number] = 1
+    EntityWhitelist["prop_ragdoll", number] = 1
+    Model = "models/props_junk/gnome.mdl"
+    # Model = "models/props_junk/watermelon01.mdl"
+    # Model = "models/props_interiors/VendingMachineSoda01a.mdl"
+    Model = Model:lower()
+#ifdef propSpawn(string)
+    Entity = propSpawn(Model)
+#else
+    Entity = propSpawn(Model, 1)
+#endif
+    Volumes[Model, number] = Entity:volume()
+    hint(toString(Entity:volume()), 10)
+    Entity:propDelete()
+
+    State = 0
+    
+    StoredVolume = 0
+
+    LastSearchTime = 0
+    Target = noentity()
+    ToSpawn = 0
+    
+    LastNommed = noentity()
+}
+
+if (State == 0) {
+    if (curtime() - LastSearchTime > 1) {
+        findInBox(vec(-16384, -16384, -16384), vec(16384, 16384, 16384))
+        Found = findToArray()
+        State = 0.5
+        DistanceSquared = 16384 * 16384
+        WhitelistDistanceSquared = 16384 * 16384
+        ProcessIndex = 1
+    }
+} elseif (State == 0.5) {
+    if (opcounter() < 1000) {
+        for (I = ProcessIndex, Found:count()) {
+            Entity = Found[I, entity]
+            if (Entity:model():lower() != Model &
+                Entity != LastNommed &
+                (Entity:type() != "player" |
+                 (Entity:isAlive() &
+                  CanTargetPlayers))) {
+                Distance = (Entity:pos() - entity():pos()):length2()
+                if ((CanNomOtherPlayers |
+                    Entity:owner() == owner() |
+                    Entity:owner():trusts(owner())) &
+                    Distance < DistanceSquared) {
+                    DistanceSquared = Distance
+                    FoundEntity = Entity
+                }
+                if (!EntityBlacklist[Entity:type(), number] &
+                    Distance < WhitelistDistanceSquared) {
+                    WhitelistDistanceSquared = Distance
+                    WhitelistFoundEntity = Entity
+                }
+            }
+            ProcessIndex++
+            if (opcounter() > 1000) {
+                break
+            }
+        }
+        if (ProcessIndex == Found:count() + 1) {
+            hint("Finished searching: " + toString(FoundEntity) + " or " + toString(WhitelistFoundEntity), 10)
+            LastSearchTime = curtime()
+            if (WhitelistFoundEntity) {
+                Target = WhitelistFoundEntity
+                State = 1
+            } else {
+                State = 0
+            }
+        }
+    }
+} elseif (State == 1) {
+    if (!Target | (Entity:type() == "player" & !Entity:isAlive())) {
+        State = 0
+    } else {
+        TargetPosition = Target:pos()
+        DeltaPosition = Target:pos() - entity():pos()
+        Distance = DeltaPosition:length()
+        DeltaPosition -= entity():vel()
+        entity():applyForce(DeltaPosition * entity():mass())
+        
+        Ranger = rangerOffset(40, entity():pos(), Target:pos() - entity():pos())
+        if ((Ranger:hit() & Ranger:entity() == Target) | Distance < 40) {
+#ifdef entity:freeze(number)
+            Target:freeze(1)
+#endif
+            State = 2
+            NomStartTime = curtime()
+        }
+    }
+} elseif (State == 2) {
+    if (!Target) {
+        State = 0
+    } else {
+        if (Target:type() == "player" & !Target:isAlive()) {
+            State = 3
+#ifdef e:print(...)
+            Message = "I do not hate you, nor do I love you, but you are made out of atoms which I can use for something else."
+            Target:print(Message)
+#endif
+            CachedVolume = 12000
+            findInSphere(Target:pos(), 100)
+            Found = findToArray()
+            for (I = 1, Found:count()) {
+                hint("Found " + Found[I, entity]:type(), 10)
+                if (Found[I, entity]:type() == "prop_ragdoll") {
+                    Target = Found[I, entity]
+                    State = 1
+                    break
+                }
+            }
+        } else {
+            TargetPosition = Target:pos()
+            DeltaPosition = Target:pos() - entity():pos()
+            Distance = DeltaPosition:length()
+            DeltaPosition -= entity():vel()
+            entity():applyForce(DeltaPosition * entity():mass())
+            
+            Ranger = rangerOffset(40, entity():pos(), Target:pos() - entity():pos())
+            if ((!Ranger:hit() | Ranger:entity() != Target) & Distance > 40) {
+                State = 1
+            } else {
+                if (curtime() - NomStartTime > 2 &
+                    Target:type() != "player") {
+                    State = 3
+                }
+            }
+            if (Target:type() == "player" &
+                curtime() - LastDamageTime > 0.25) {
+#ifdef e:setDamage(number)
+                Target:setDamage(10)
+#endif
+                LastDamageTime = curtime()
+            }
+        }
+    }
+} elseif (State == 3) {
+    CanNom = 0
+    Volume = Target:volume()
+    if (CachedVolume) {
+        Volume = CachedVolume
+        CanNom = 1
+    }
+    if (!Volume) {
+        if (Volumes[Target:model(), number]) {
+            Volume = Volumes[Target:model(), number]
+        } else {
+#ifdef propSpawn(string)
+            Entity = propSpawn(Target:model())
+#else
+            Entity = propSpawn(Target:model(), 1)
+#endif
+            Volume = Entity:volume()
+            Entity:propDelete()
+            
+            if (!Volume) {
+                if (Target:type() == "player") {
+                    Volume = 12000
+                }
+            }
+        }
+    }
+    if (!Volumes[Target:model(), number]) {
+        Volumes[Target:model(), number] = Volume
+    }
+    CachedVolume = Volume
+#ifdef e:setDamage(number)
+    if (Target:type() != "prop_ragdoll") {
+        Target:setDamage(9000)
+    }
+#else
+    Target:propDelete()
+#endif
+#ifdef e:kill()
+    if (Target:type() == "player") {
+        Target:kill()
+    }
+#endif
+    State = 4
+    StartWaitTime = curtime()
+} elseif (State == 4) {
+    if (Target) {
+        if (curtime() - StartWaitTime > 2) {
+            State = 0
+        }
+    } else {
+        if (!Target | Target:type() == "player") {
+            CanNom = 1
+        }
+        LastNommed = Target
+        hint("Nommed object with volume " + toString(CachedVolume) + ".", 10)
+        if (CanNom) {
+            StoredVolume += CachedVolume
+            Number = floor(StoredVolume / Volumes[Model, number])
+            if (Number > 2) {
+                Number = 2
+            }
+            ToSpawn += Number
+            StoredVolume = StoredVolume % Volumes[Model, number]
+        }
+        State = 0
+        Target = noentity()
+        CachedVolume = 0
+    }
+}
+
+if (ToSpawn) {
+#ifdef propSpawn(string)
+    Entity = propSpawn(Model, entity():pos() + vec(0, 0, 32))
+#else
+    Entity = propSpawn(Model, entity():pos() + vec(0, 0, 32), 0)
+#endif
+    while (Entity & ToSpawn) {
+        ToSpawn--
+        if (ToSpawn) {
+#ifdef propSpawn(string)
+            Entity = propSpawn(Model, entity():pos() + vec(0, 0, 32))
+#else
+            Entity = propSpawn(Model, entity():pos() + vec(0, 0, 32), 0)
+#endif
+        }
+    }
+}

@@ -1,0 +1,50 @@
+@name int2digits60
+@inputs Value Threshold1 Threshold2
+@outputs F E D C B A IsZero IsNegative Threshold1Passed Threshold2Passed
+@persist
+@trigger all
+
+if (Value == 0) {
+    IsZero = 1 
+} else {
+    IsZero = 0
+}
+if (Value < 0) {
+    Value = 0
+    IsNegative = 1
+} else {
+    IsNegative = 0
+}
+
+Minutes = floor(Value / 60)
+Seconds = Value % 60
+Milliseconds = Seconds
+Seconds = floor(Seconds)
+Milliseconds -= Seconds
+Milliseconds *= 100
+
+A = Milliseconds % 10
+A = floor(A)
+B = Milliseconds / 10 % 10
+B = floor(B)
+C = Seconds % 10
+C = floor(C)
+D = Seconds / 10 % 10
+D = floor(D)
+E = Minutes % 10
+E = floor(E)
+F = Minutes / 10 % 10
+F = floor(F)
+
+if (Value >= Threshold1) {
+    Threshold1Passed = 1   
+} else {
+    Threshold1Passed = 0
+}
+
+if (Value >= Threshold2) {
+    Threshold2Passed = 1   
+} else {
+    Threshold2Passed = 0
+}
+

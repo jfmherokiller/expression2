@@ -1,0 +1,28 @@
+@name DeLorean
+@inputs Hoverdrive:entity TestJump
+@outputs JumpPos:vector Jump SetJumpTarget Speed
+@persist Started LastJumpTime
+@trigger
+
+interval(50)
+
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    LastJumpTime = curtime()
+    Started = 1
+}
+
+EntCar = entity():isWeldedTo()
+VecForwards = EntCar:toWorld(vec(0, 1, 0)) - EntCar:toWorld(vec(0, 0, 0))
+VecForwards *= 2048
+JumpPos = Hoverdrive:pos() + VecForwards
+SetJumpTarget = 1 - SetJumpTarget
+Speed = toUnit("mph", EntCar:vel():length())
+if (TestJump | (Speed > 50 & EntCar:driver() & curtime() - LastJumpTime > 5)) {
+    LastJumpTime = curtime()
+    Jump = 1
+} else {
+    Jump = 0
+}

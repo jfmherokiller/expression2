@@ -1,0 +1,10 @@
+@name toByte Test
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+String = format("%c%c%c%c", 1, 2, 254, 255)
+for (I = 1, String:length()) {
+    print(toByte(String, I))
+}

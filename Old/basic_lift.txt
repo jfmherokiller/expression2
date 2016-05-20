@@ -1,0 +1,14 @@
+@name basic lift
+@inputs Up Down
+@outputs Height
+@persist Height
+@trigger
+
+interval(10)
+
+if (Up) {
+    Height += 5
+}
+if (Down) {
+    Height -= 5
+}

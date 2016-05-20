@@ -1,0 +1,157 @@
+@name FISIX
+@inputs 
+@outputs 
+@persist G_0 E_0 M_0
+@persist MassScale
+@persist ServerSimulationPeriod
+@persist LastSimulationTime
+@persist LastFindTime FindInterval
+@persist Particles:array
+@trigger 
+
+interval(15)
+
+@define CalculateCentreOfMass CentreOfMass TotalMass Exclude
+    TotalMass = 0
+    CentreOfMass = vec()
+    for (I = 1, Particles:count())
+    {
+        Particle = Particles[I, entity]
+        if (Particle != Exclude)
+        {
+            TotalMass += Particle:mass() * MassScale
+            CentreOfMass += Particle:mass() * MassScale * Particle:pos()
+        }
+    }
+    CentreOfMass /= TotalMass
+@end
+
+@define CalculateForceMagnitude Magnitude M1 M2 Radius
+    Magnitude = G_0 * M1 * M2 / Radius / Radius
+@end
+
+if (first())
+{
+    runOnChat(1)
+    
+    ServerSimulationPeriod = 1
+    LastSimulationTime = curtime()
+    FindInterval = 0.1
+    
+    G_0 = 6.63 * 10^3
+    MassScale = 1
+}
+
+if (chatClk())
+{
+    LastSpoke = lastSpoke()
+    LastSaid = lastSaid()
+    
+    if (LastSaid[1] == "!")
+    {
+        hideChat(1)
+        Command = LastSaid[1]:sub(2):lower()
+        if (Command == "orbit")
+        {
+        }
+        elseif (Command == "showcom")
+        {
+            @expand CalculateCentreOfMass CentreOfMass TotalMass entity()
+            
+            holoCreate(2)
+            holoPos(2, CentreOfMass)
+            holoModel(2, "hqsphere")
+            holoColor(2, vec(255, 0, 0))
+        }
+    }
+}
+else
+{
+    # Push stuff into orbit
+    if (owner():keyUse())
+    {
+        SelectedParticle = owner():aimEntity()
+        if (SelectedParticle:owner() == owner() & SelectedParticle:type() == "prop_physics")
+        {
+            @expand CalculateCentreOfMass CentreOfMass TotalMass SelectedParticle
+            
+            holoCreate(2)
+            holoPos(2, CentreOfMass)
+            holoModel(2, "hqsphere")
+            holoColor(2, vec(255, 0, 0))
+            
+            CentreOfMassVector = SelectedParticle:pos() - CentreOfMass
+            Radius = CentreOfMassVector:length()
+            OtherVector = owner():up()
+            Velocity = CentreOfMassVector:cross(OtherVector):normalized()
+            
+            # a = v^2 / r
+            # v^2 = ar
+            # v = (ar)^0.5
+            SelectedParticleMass = SelectedParticle:mass() * MassScale
+            OtherMass = TotalMass * MassScale
+            @expand CalculateForceMagnitude Force SelectedParticleMass TotalMass Radius
+            Acceleration = Force / SelectedParticleMass
+            Velocity *= sqrt(Radius * Acceleration)
+            
+            DeltaV = Velocity - SelectedParticle:vel()
+            DeltaMomentum = DeltaV * SelectedParticle:mass()
+            DeltaT = ServerSimulationPeriod
+            # DeltaT = curtime() - LastSimulationTime
+            SelectedParticle:applyForce(DeltaMomentum / DeltaT)
+            
+            holoCreate(3)
+            holoPos(3, SelectedParticle:pos() + Velocity:normalized() * 16)
+            holoModel(3, "hqsphere")
+            holoColor(3, vec(255, 0, 0))
+        }
+    }
+    
+    # PHYSICS
+    DeltaT = curtime() - LastSimulationTime
+    for (I = 1, Particles:count())
+    {
+        P1 = Particles[I, entity]
+        for (J = I + 1, Particles:count())
+        {
+            P2 = Particles[J, entity]
+            R = P1:pos():distance(P2:pos())
+            if (R < 32)
+            {
+                P1:propFreeze(1)
+                P2:propFreeze(1)
+            }
+            else
+            {
+                D = (P2:pos() - P1:pos()):normalized()
+                F = G_0 * P1:mass() * P2:mass() * MassScale * MassScale / R / R * DeltaT
+                P1:applyForce(F * D)
+                P2:applyForce(F * -D)
+            }
+        }
+    }
+    LastSimulationTime = curtime()
+    
+    if (curtime() - LastFindTime > 0.1)
+    {
+        findByClass("prop_physics")
+        Props = findToArray()
+        Particles:clear()
+        for (I = 1, Props:count())
+        {
+            if (Props[I, entity]:owner() == owner())
+            {
+                Particles:pushEntity(Props[I, entity])
+                Props[I, entity]:propGravity(0)
+            }
+        }
+        LastFindTime = curtime()
+    }
+    
+    @expand CalculateCentreOfMass CentreOfMass TotalMass entity()
+    
+    holoCreate(1)
+    holoPos(1, CentreOfMass)
+    holoModel(1, "hqsphere")
+    holoColor(1, vec(255, 0, 0))
+}

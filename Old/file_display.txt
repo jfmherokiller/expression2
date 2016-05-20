@@ -1,0 +1,52 @@
+@name File Display
+@inputs Data:string Path:string Monitor0:wirelink Monitor1:wirelink Monitor2:wirelink
+@outputs
+@persist LastDisplay
+@trigger 
+
+if (curtime() - LastDisplay > 0) {
+    stoptimer("interval")
+    LastDisplay = curtime()
+    Monitor0:writeCell(2041, 1)
+    Monitor1:writeCell(2041, 1)
+    Monitor2:writeCell(2041, 1)
+    PathString = "File: " + Path
+    while (PathString:length() < 30) {
+        PathString += " "
+    }
+    PathString = PathString:sub(1, 30)
+    Monitor0:writeString(PathString, 0, 0, 999, 9)
+    Monitor0:writeString("______________________________", 0, 1, 999, 9)
+    X = 0
+    Y = 2
+    M = 0
+    
+    Lines = Data:explode("\n")
+    
+    for (I = 1, Lines:count()) {
+        if (toByte(Lines:string(I):index(Lines:string(I):length())) == 13) {
+            Lines:setString(I, Lines:string(I):sub(1, Lines:string(I):length() - 1))
+        }
+        Lines:setString(I, Lines:string(I):replace("\t", "    "))
+        Length = Lines:string(I):length()
+        if (M == 0) {
+            Monitor0:writeString(Lines:string(I), X, Y, 777, 0)
+        } elseif (M == 1) {
+            Monitor1:writeString(Lines:string(I), X, Y, 777, 0)
+        } elseif (M == 2) {
+            Monitor2:writeString(Lines:string(I), X, Y, 777, 0)
+        }
+        Y++
+        AdditionalLines = Length / 30
+        Y += floor(AdditionalLines)
+        if (Y >= 18) {
+            Y = 0
+            M++
+            if (M >= 3) {
+                I = Lines:count()
+            }
+        }
+    }
+} else {
+    interval(500)
+}

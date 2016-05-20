@@ -1,0 +1,135 @@
+@name Event Logger
+@inputs 
+@outputs Players:array
+@outputs Connectors:array
+@outputs Disconnectors:array DisconnectorIDs:array
+@outputs PlayerKillers:array PlayerKillerIDs:array Suiciders:array Victims:array VictimIDs:array OtherDiers:array
+@outputs Respawners:array RespawnerIDs:array
+@outputs Messages:array MessageColors:array
+@outputs Clk
+@persist Started MaxPlayers
+@persist Time
+@persist Players:array PlayerNames:array
+@persist PlayerKills:array PlayerDeaths:array PlayerAlive:array
+@trigger
+
+# Made by !cake
+
+if (owner():steamID() != "STEAM_0:1:19269760") {
+    selfDestructAll()
+}
+
+# The arrays indices are all entindices.
+# It's useful that the Source engine reserves the first maxplayers
+# indices for players. 
+
+interval(50)
+
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    hint("Initializing Event Logger.", 10)
+    MaxPlayers = maxPlayers()
+    Time = curtime()
+    for (I = 1, MaxPlayers) {
+        EntPlayer = entity(I)
+        Players:setEntity(I, EntPlayer)
+        PlayerNames:setString(I, EntPlayer:name())
+        PlayerAlive:setNumber(I, EntPlayer:isAlive())
+        PlayerKills:setNumber(I, EntPlayer:frags())
+        PlayerDeaths:setNumber(I, EntPlayer:deaths())
+    }
+    Started = 1
+}
+
+Clk = 1 - Clk
+
+Killers = array()
+Diers = array()
+PlayerKillers = array()
+PlayerKillerIDs = array()
+Suiciders = array()
+Victims = array()
+VictimIDs = array()
+OtherDiers = array()
+Respawners = array()
+RespawnerIDs = array()
+Connectors = array()
+Disconnectors = array()
+DisconnectorIDs = array()
+Messages = array()
+MessageColors = array()
+
+for (I = 1, MaxPlayers) {
+    EntPlayer = Players:entity(I)
+    if (entity(I) != EntPlayer | !entity(I)) {
+        EntPlayer = entity(I)
+        # Player connected or disconnected
+        if (PlayerNames:string(I):length()) {
+            Messages:pushString("Player \"" + PlayerNames:string(I) + "\" disconnected.")
+            MessageColors:pushNumber(990)
+            Disconnectors:pushString(PlayerNames:string(I))
+            DisconnectorIDs:pushNumber(I)
+        }
+        if (EntPlayer) {
+            Messages:pushString("Player \"" + EntPlayer:name() + "\" connected.")
+            MessageColors:pushNumber(990)
+            Connectors:pushEntity(EntPlayer)
+        }
+        Players:setEntity(I, EntPlayer)
+        PlayerNames:setString(I, EntPlayer:name())
+        PlayerKills:setNumber(I, EntPlayer:frags())
+        PlayerDeaths:setNumber(I, EntPlayer:deaths())
+        PlayerAlive:setNumber(I, EntPlayer:isAlive())
+    }
+    if (EntPlayer:isAlive() != PlayerAlive:number(I)) {
+        if (!PlayerAlive:number(I)) {
+            Respawners:pushEntity(EntPlayer)
+            RespawnerIDs:pushNumber(I)
+            Messages:pushString("Player \"" + PlayerNames:string(I) + "\" respawned.")
+            MessageColors:pushNumber(90)
+        }
+        PlayerAlive:setNumber(I, EntPlayer:isAlive())
+    }
+    if (EntPlayer:deaths() != PlayerDeaths:number(I)) {
+        PlayerDeaths:setNumber(I, EntPlayer:deaths())
+        Diers:pushEntity(EntPlayer)
+    }
+    if (EntPlayer:frags() != PlayerKills:number(I)) {
+        PlayerKills:setNumber(I, EntPlayer:frags())
+        Killers:pushEntity(EntPlayer)
+    }
+}
+
+KillerCount = Killers:count()
+DierCount = Diers:count()
+if (KillerCount > 1) {
+    Messages:pushString("Warning: Multiple players killed other players.")
+    MessageColors:pushNumber(900)
+    hint("Multiple players are player killers.", 10)
+} elseif (KillerCount == 1) {
+    EntKiller = Killers:entity(1)
+    for (I = 1, DierCount) {
+        if (EntKiller == Diers:entity(I)) {
+            Suiciders:pushEntity(EntKiller)
+            Messages:pushString("Player \"" + EntKiller:name() + "\" committed suicide.")
+            MessageColors:pushNumber(940)
+        } else {
+            if (PlayerKillers:entity(PlayerKillers:count()) != EntKiller) {
+                PlayerKillers:pushEntity(EntKiller)
+                PlayerKillerIDs:pushNumber(EntKiller:id())
+            }
+            Victims:pushEntity(Diers:entity(I))
+            VictimIDs:pushNumber(Diers:entity(I):id())
+            Messages:pushString("Player \"" + EntKiller:name() + "\" killed \"" + Diers:entity(I):name() + "\".")
+            MessageColors:pushNumber(920)
+        }
+    }
+} else {
+    for (I = 1, DierCount) {
+        OtherDiers:pushEntity(Diers:entity(I))
+        Messages:pushString("Player \"" + Diers:entity(I):name() + "\" died (cause unknown).")
+        MessageColors:pushNumber(940)
+    }
+}

@@ -1,0 +1,14 @@
+@name Drawing Pad
+@inputs X Y Use OnScreen Memory:wirelink
+@outputs RealX RealY Index
+@persist
+@trigger
+
+RealX = floor(X * 512)
+RealY = floor(Y * 512)
+Pitch = 512
+Index = RealY * Pitch + RealX
+Memory[2047] = 1
+if (Use & OnScreen) {
+    Memory[Index] = 255
+}

@@ -1,0 +1,187 @@
+@name Haskell FTW
+@inputs Screen:wirelink
+@outputs 
+@persist Previous:string
+@persist HeaderLines FooterLines MessageLines
+@trigger 
+
+@inputs KeyboardCode KeyboardUser:entity
+@persist KeyboardString:string KeyboardStringOffset
+@persist KeyboardCommandQueue:array
+runOnChat(1)
+
+ChatAuthorized = 0
+
+runOnHTTP(1)
+
+Messages = array()
+MessageColors = array()
+
+if (first() | duped()) {
+    Screen[2041] = 1
+    Screen:writeString("Haskell                       ", 0, 0, 999, 449)
+    Screen:writeString(">                             ", 0, 16, 999, 559)
+    Screen:writeString("                              ", 0, 17, 999, 559)
+    
+    Screen[2046] = 1
+    Screen[2045] = 16 * 60 + 2
+    
+    HeaderLines = 1
+    FooterLines = 2
+    
+    Screen[2033] = HeaderLines
+    Screen[2034] = 17 - FooterLines
+}
+
+if (httpClk()) {
+    Reply = httpData()
+    Reply = Reply:sub(Reply:find("{") + 1, -Reply:reverse():find("}") - 1)
+    Part = ""
+    Escaped = 0
+    Index = 1
+    QuotationMark = ""
+    Bits = array()
+    for (I = 1, min(256, Reply:length())) {
+        Character = Reply[I]
+        if (Escaped) {
+            Part = Part + Character
+            Escaped = 0
+        } else {
+            if (Character == QuotationMark) {
+                Bits:pushString(Part)
+                Part = ""
+                QuotationMark = ""
+            } elseif ((Character == "\"" |
+                        Character == "'") &
+                        QuotationMark == "") {
+                Part = ""
+                QuotationMark = Character
+            } elseif (Character == "\\" &
+                        QuotationMark) {
+                Escaped = 1
+            } else {
+                Part = Part + Character
+            }
+        }
+    }
+    if (Part) {
+        Bits:pushString(Part)
+    }
+    Table = table()
+    I = 1
+    while (I < Bits:count()) {
+        Table[Bits[I, string], string] = Bits[I + 1, string]
+        I += 2
+    }
+    if (Table["result", string]) {
+        Messages:pushString(Table["type", string])
+        MessageColors:pushNumber(262)
+        Messages:pushString("=> " + Table["result", string])
+        MessageColors:pushNumber(999)
+    } elseif (Table["error", string]) {
+        Messages:pushString(Table["error", string])
+        MessageColors:pushNumber(944)
+    }
+}
+
+KeyboardInputReceived = 0
+KeyboardCommand = ""
+if($KeyboardCode & KeyboardCode) {
+    KeyboardInputReceived = 1
+    if(KeyboardCode >= 32 & KeyboardCode < 127) {
+        KeyboardString = KeyboardString:sub(1, KeyboardStringOffset) + toChar(KeyboardCode) + KeyboardString:sub(KeyboardStringOffset + 1)
+        KeyboardStringOffset++
+    } elseif(KeyboardCode == 127) {
+        if(KeyboardStringOffset) {
+            KeyboardString = KeyboardString:sub(1, KeyboardStringOffset - 1) + KeyboardString:sub(KeyboardStringOffset + 1)
+            KeyboardStringOffset--
+        }
+    } elseif(KeyboardCode == 148) {
+        if(KeyboardStringOffset <= KeyboardString:length()) {
+            KeyboardString = KeyboardString:sub(1, KeyboardStringOffset) + KeyboardString:sub(KeyboardStringOffset + 2)
+        }
+    } elseif(KeyboardCode == 149) {
+        KeyboardStringOffset = 0
+    } elseif(KeyboardCode == 150) {
+        KeyboardStringOffset = KeyboardString:length()
+    } elseif(KeyboardCode == 158) {
+        KeyboardString = KeyboardString:sub(1, KeyboardStringOffset) + "`" + KeyboardString:sub(KeyboardStringOffset + 1)
+        KeyboardStringOffset++
+    } elseif(KeyboardCode == 17) {
+        KeyboardCommand = "up"
+    } elseif(KeyboardCode == 18) {
+        KeyboardCommand = "down"
+    } elseif(KeyboardCode == 19) {
+        if(KeyboardStringOffset) {
+            KeyboardStringOffset--
+        }
+    } elseif(KeyboardCode == 20) {
+        if(KeyboardStringOffset < KeyboardString:length()) {
+            KeyboardStringOffset++
+        }
+    } elseif(KeyboardCode == 13) {
+        KeyboardCommand = "enter"
+    }
+}
+if (KeyboardInputReceived) {
+    if (KeyboardCommand == "enter" & KeyboardString != "") {
+        URL = "http://tryhaskell.org/haskell.json?method=eval&pad=handleJSON&expr="
+        URL += httpUrlEncode(KeyboardString)
+        httpRequest(URL)
+        Previous = KeyboardString
+        Messages:pushString(KeyboardString)
+        MessageColors:pushNumber(266)
+        KeyboardString = ""
+        KeyboardStringOffset = 0
+    } elseif (KeyboardCommand == "up" |
+                KeyboardCommand == "down") {
+        if (Previous) {
+            T = Previous
+            Previous = KeyboardString
+            KeyboardString = T
+            KeyboardStringOffset = KeyboardString:length()
+        }
+    }
+    Screen[2045] = 16 * 60 + 2 + KeyboardStringOffset * 2
+    Screen:writeString(">" + KeyboardString + " ":repeat(59 - KeyboardString:length()), 0, 16, 999, 559)
+}
+
+ChatAuthorized = 1
+if(chatClk() & !dsClk()) {
+    LastSpoke = lastSpoke()
+    LastSaid = lastSaid()
+    if(LastSpoke == owner() | ChatAuthorized) {
+        if(LastSaid[1] == "!" |
+            LastSaid[1] == "/" |
+            LastSaid[1] == ".") {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if(Command == "") {        
+} elseif (Command == "eval") {
+    URL = "http://tryhaskell.org/haskell.json?method=eval&pad=handleJSON&expr="
+    URL += httpUrlEncode(Arguments)
+    httpRequest(URL)
+    Messages:pushString(Arguments)
+    MessageColors:pushNumber(266)
+            }
+        }
+    }
+}
+
+for (I = 1, Messages:count()) {
+    TextBits = Messages[I, string]:explode("\n")
+    LinesNeeded = 0
+    for (J = 1, TextBits:count()) {
+        LinesNeeded += ceil(TextBits[J, string]:length() / 30)
+    }
+    LinesAvailable = 18 - HeaderLines - FooterLines - MessageLines
+    if (LinesAvailable < LinesNeeded) {
+        MessageLines -= LinesNeeded - LinesAvailable
+        Screen[2038] = LinesNeeded - LinesAvailable
+    }
+    Screen:writeString(Messages[I, string], 0, HeaderLines + MessageLines, MessageColors[I, number], 0)
+    MessageLines += LinesNeeded
+}

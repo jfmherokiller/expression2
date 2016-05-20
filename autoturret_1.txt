@@ -1,0 +1,20 @@
+@name Autoturret 1
+@inputs TurretWL:wirelink
+@outputs Fire
+@persist
+@trigger 
+
+interval(1000)
+
+Player = findPlayerByName("!cake")
+
+Turret = TurretWL:entity()
+Wheel = Turret:isConstrainedTo()
+Trace = rangerOffset(Turret:pos(), Turret:pos() + Turret:forward() * 1000)
+Fire = Trace:entity():isPlayer()
+
+AimDirection = Player:pos() - Wheel:pos()
+TargetAngle = AimDirection:toAngle():yaw()
+CurrentAngle = Turret:forward():toAngle():yaw()
+
+Wheel:setAng(ang(0, TargetAngle, -180))

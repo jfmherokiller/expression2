@@ -1,0 +1,227 @@
+@name Brainfuck Interpreter
+@inputs ConsoleScreen:wirelink LastKey
+@outputs 
+@persist Code:string CompiledCode:array CodeLength CompiledCodeLength
+@persist CompileCode CompilerOffset CompilerBracketStack:array
+@persist LastCodeOffset CodeOffset LastCompiledCodeOffset CompiledCodeOffset IsRunning
+@persist KeyboardCodeOffset
+
+@persist RealOutputOffset OutputOffset
+
+@persist Memory:array MemoryPointer
+
+# Profiler
+@persist CompileTime RunTime
+@persist ProfilerStartTime ProfilerEndTime
+
+# Display settings
+@persist CodeLines
+@trigger 
+
+interval(10)
+runOnChat(1)
+
+UpdateCode = 0
+
+if (first() | duped()) {
+    # Hello world
+    Code = "++++++++++[>+++++++>++++++++++>+++>+<<<<-]>++.>+.+++++++..+++.>++.<<+++++++++++++++.>.+++.------.--------.>+.>."
+    # Lists square numbers
+    Code = "++++[>+++++<-]>[<+++++>-]+<+[>[>+>+<<-]++>>[<<+>>-]>>>[-]++>[-]+>>>+[[-]++++++>>>]<<<[[<++++++++<++>>-]+<.<[>----<-]<]<<[>>>>>[>>>[-]+++++++++<[>-<-]+++++++++>[-[<->-]+[<<<]]<[>+<-]>]<<-]<<-]"
+    # Another text message
+    # Code = "+++[>+++++<-]>[>+>+++>+>++>+++++>++<[++<]>---]>->-.[>++>+<<--]>--.--.+.>>>++.<<.<------.+.+++++.>>-.<++++.<--.>>>.<<---.<.-->-.>+.[+++++.---<]>>[.--->]<<.<+.++.++>+++[.<][.]<++."
+    # Multiply 6 by 5
+    # Code = "++++++[>+++++<-]>"
+    # 99 bottles of beer
+    # Code = "+++++++++>+++++++++>>>++++++[<+++>-]+++++++++>+++++++++>>>>>>+++++++++++++[<++++++>-]>+++++++++++[<++++++++++>-]<+>>++++++++[<++++>-]>+++++++++++[<++++++++++>-]<->>+++++++++++[<++++++++++>-]<+>>>+++++[<++++>-]<-[<++++++>-]>++++++++++[<++++++++++>-]<+>>>+++++++[<+++++++>-]>>>++++++++[<++++>-]>++++++++[<++++>-]>+++++++++++[<+++++++++>-]<->>++++++++[<++++>-]>+++++++++++[<++++++++++>-]<+>>++++++++[<++++>-]>>+++++++[<++++>-]<+[<++++>-]>++++++++[<++++>-]>>+++++++[<++++>-]<+[<++++>-]>>++++++++++++[<+++++++++>-]++++++++++>>++++++++++[<++++++++++>-]<+>>++++++++++++[<+++++++++>-]>>++++++++++++[<+++++++++>-]>>++++++[<++++>-]<-[<+++++>-]>++++++++++++[<++++++++>-]<+>>>>++++[<++++>-]<+[<+++++++>-]>++++++++[<++++>-]>++++++++[<++++>-]>+++++++++++[<++++++++++>-]<+>>++++++++++[<++++++++++>-]<+>>>++++[<++++>-]<+[<++++++>-]>+++++++++++++[<++++++++>-]>++++++++[<++++>-]>>+++++++[<++++>-]<+[<++++>-]>+++++++++++[<+++++++++>-]<->>++++++++[<++++>-]>++++++++++[<++++++++++>-]<+>>+++++++++++[<++++++++++>-]>++++++++++[<++++++++++>-]<+>>+++++++++++[<++++++++++>-]<+>>>+++++[<++++>-]<-[<++++++>-]>++++++++[<++++>-]>++++++++++>>>>++++++++++++[<+++++++>-]++++++++++>>++++++++++++[<++++++++>-]<+>>++++++++++[<++++++++++>-]>++++++++++++[<+++++++++>-]<->>+++++++++++[<++++++++++>-]>++++++++++[<++++++++++>-]<+>>+++++++++++++[<+++++++++>-]>++++++++[<++++>-]>+++++++++++[<++++++++++>-]<+>>>>+++++[<++++>-]<-[<++++++>-]>+++++++++++[<++++++++++>-]<+>>++++++++++++[<++++++++>-]<+>>+++++++++++[<++++++++++>-]>++++++++[<++++>-]>++++++++++[<++++++++++>-]<+>>>+++++++[<++++>-]<+[<++++>-]>>>+++++[<+++>-]<[<+++++++>-]>>+++++[<+++>-]<[<+++++++>-]>++++++++[<++++>-]>>+++++++[<++++>-]<+[<++++>-]>>++++++[<++++>-]<-[<+++++>-]>>>++++++[<++++>-]<-[<+++++>-]>++++++++[<++++>-]>++++++++++++[<++++++++>-]<+>>++++++++++[<++++++++++>-]>>++++[<++++>-]<[<+++++++>-]>+++++++++++[<++++++++++>-]<+>>++++++++[<++++>-]>>++++[<++++>-]<+[<+++++++>-]>++++++++++[<++++++++++>-]>+++++++++++[<++++++++++>-]>+++++++++++[<++++++++++>-]>++++++++[<++++>-]>++++++++++++[<++++++++>-]<+[<]<[<]<[<]<[<]<<<<[<]<[<]<[<]<[<]<<<<[<]<<<<<<[>>[<<[>>>+>+<<<<-]>>>[<<<+>>>-]<[>+<-]>>-[>-<[-]]>+[<+>-]<<<]>>[<<<<[-]>>>>>>>[>]>.>>>[.>>]>[>]>>[.>>]<[.<<]<[<]<<.>>>[.>>]>[>]>>[.>>]>.>>>[.>>]>[>]>>[.>>]>>[.>>]<[.<<]<<<<[<]<[<]<[<]<[<]<<<<[<]>[.>]>>>>[.>>]>>[.>>]>>[.>>]<[.<<]<[<]<<<<[<]<<-]<<<<[[-]>>>[<+>-]<<[>>+>+<<<-]>>>[<<<+>>>-]<[<<<++++++++[>++++++<-]>>>[-]]++++++++[<++++++>-]<<[.>.>]>[.>>]>>>[>]>>>>[.>>]>>[.>>]>>[.>>]<[.<<]<[<]<<<<[<]<<<<<[.>.>]>[.>>]<<<[-]>[-]>>>>>[>]>>>>[.>>]>>[.>>]>>[.>>]>.>>>[.>>]>>[.>>]>[>]>>[.>>]<[.<<]<<<<[<]<[<]<[<]<[<]<<<<[<]<<<<<<]<<[>+>+<<-]>>[<<+>>-]<[>-<[-]]>+[<+>-]<[<++++++++++<->>-]<<[>>+>+>+<<<<-]>>[<<+>>-]<-[>+>+>>+<<<<-]>[<+>-]>>>[<<[>>>+>+<<<<-]>>>[<<<+>>>-]<[>+<-]>>-[>-<[-]]>+[<+>-]<<<]>>[<<<<[-]>>>>>>>[>]>.>>>[.>>]>[>]>>[.>>]<[.<<]<[<]<<<<[<]<<-]<<<<[[-]>>>[<+>-]<<[>>+>+<<<-]>>>[<<<+>>>-]<[<<<++++++++[>++++++<-]>>>[-]]++++++++[<++++++>-]<<[.>.>]>[.>>]<<<[-]>[-]>>>>>[>]>>>>[.>>]>>[.>>]>>[.>>]<[.<<]<[<]<<<<[<]<<<<<<]++++++++++.[-]<<<[>>+>+>+<<<<-]>>[<<+>>-]<[>+>+>>+<<<<-]>[<+>-]>]"
+    CodeLength = Code:length()
+    CompiledCode = array()
+    CompiledCodeLength = 0
+    
+    CompileCode = 0
+    CompilerOffset = 1
+    CompilerBracketStack = array()
+    
+    LastCodeOffset = 1
+    CodeOffset = 1
+    LastCompiledCodeOffset = 1
+    CompiledCodeOffset = 1
+    IsRunning = 0
+    
+    KeyboardCodeOffset = 1
+    
+    RealOutputOffset = 0
+    OutputOffset = 0
+    
+    Memory = array()
+    MemoryPointer = 2048
+    
+    CompileTime = 0
+    RunTime = 0
+    ProfilerStartTime = systime()
+    ProfilerEndTime = systime()
+    
+    CodeLines = 8
+    
+    UpdateCode = 1
+    CompileCode = 1
+    
+    ConsoleScreen:writeCell(2041, 1)
+    ConsoleScreen:writeCell(2033, 1)
+    ConsoleScreen:writeCell(2034, 17 - CodeLines)
+    ConsoleScreen:writeString("Brainfuck Pseudocompiler      ", 0, 0, 999, 9)
+    for (I = 18 - CodeLines, 17) {
+        ConsoleScreen:writeString("                              ", 0, I, 999, 444)
+    }
+}
+
+if (LastKey) {
+    UpdateCode = 1
+}
+
+if (chatClk()) {
+    Authorized = 0
+    if (lastSpoke() == owner()) {
+        Authorized = 1
+    }
+    if (Authorized) {
+        LastSaid = lastSaid()
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "-" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "pause") {
+                IsRunning = 0
+            } elseif (Command == "pointer") {
+                hint("Pointer is at " + MemoryPointer, 10)
+            } elseif (Command == "profiler") {
+                hint("Compile time is " + format("%.3f", CompileTime), 10)
+                hint("Run time is " + format("%.3f", RunTime) + ".", 10)
+            } elseif (Command == "testmodulo") {
+                hint("-1 % 256 == " + (-1 % 256), 10)
+            } elseif (Command == "unpause") {
+                IsRunning = 1
+            }
+        }
+    }
+}
+
+if (UpdateCode) {
+    for (I = 0, CodeLines - 1) {
+        Segment = Code:sub(1 + I * 30, (I + 1) * 30)
+        if (Segment:length() < 30) {
+            Segment += " ":repeat(30 - Segment:length())
+        }
+        ConsoleScreen:writeString(Segment, 0, 18 - CodeLines + I, 999, 444)
+    }
+}
+
+if (CompileCode) {
+    ProfilerStartTime = systime()
+    while (CompilerOffset <= CodeLength & opcounter() < 5000) {
+        Symbol = Code:sub(CompilerOffset, CompilerOffset)
+        if (Symbol == ">") {
+            PreviousCompilerOffset = CompilerOffset
+            while (Code:sub(CompilerOffset, CompilerOffset) == ">") {
+                CompilerOffset++
+            }
+            CompiledCode:pushVector4(vec4(1, CompilerOffset - PreviousCompilerOffset, PreviousCompilerOffset - 1, CompilerOffset - PreviousCompilerOffset))
+            CompilerOffset--
+        } elseif (Symbol == "<") {
+            PreviousCompilerOffset = CompilerOffset
+            while (Code:sub(CompilerOffset, CompilerOffset) == "<") {
+                CompilerOffset++
+            }
+            CompiledCode:pushVector4(vec4(1, PreviousCompilerOffset - CompilerOffset, PreviousCompilerOffset - 1, CompilerOffset - PreviousCompilerOffset))
+            CompilerOffset--
+        } elseif (Symbol == "+") {
+            PreviousCompilerOffset = CompilerOffset
+            while (Code:sub(CompilerOffset, CompilerOffset) == "+") {
+                CompilerOffset++
+            }
+            CompiledCode:pushVector4(vec4(2, CompilerOffset - PreviousCompilerOffset, PreviousCompilerOffset - 1, CompilerOffset - PreviousCompilerOffset))
+            CompilerOffset--
+        } elseif (Symbol == "-") {
+            PreviousCompilerOffset = CompilerOffset
+            while (Code:sub(CompilerOffset, CompilerOffset) == "-") {
+                CompilerOffset++
+            }
+            CompiledCode:pushVector4(vec4(2, PreviousCompilerOffset - CompilerOffset, PreviousCompilerOffset - 1, CompilerOffset - PreviousCompilerOffset))
+            CompilerOffset--
+        } elseif (Symbol == ".") {
+            CompiledCode:pushVector4(vec4(3, 0, CompilerOffset - 1, 1))
+        } elseif (Symbol == ",") {
+            CompiledCode:pushVector4(vec4(4, 0, CompilerOffset - 1, 1))
+        } elseif (Symbol == "[") {
+            CompiledCode:pushVector4(vec4(5, 0, CompilerOffset - 1, 1))
+            CompilerBracketStack:pushNumber(CompiledCode:count())
+        } elseif (Symbol == "]") {
+            Bracket = CompilerBracketStack:popNumber()
+            CompiledCode:pushVector4(vec4(6, Bracket, CompilerOffset - 1, 1))
+            CompiledCode:setVector4(Bracket, CompiledCode:vector4(Bracket):setY(CompiledCode:count()))
+        }
+        CompilerOffset++
+    }
+    ProfilerEndTime = systime()
+    CompileTime += ProfilerEndTime - ProfilerStartTime
+    CompiledCodeLength = CompiledCode:count()
+    if (CompilerOffset > CodeLength) {
+        CompileCode = 0
+    }
+}
+
+if (IsRunning) {
+    ConsoleScreen:writeCell((18 - CodeLines) * 30 * 2 + CompiledCode:vector4(LastCompiledCodeOffset):z() * 2 + 1, 444999)
+    ProfilerStartTime = systime()
+    while (CompiledCodeOffset <= CompiledCodeLength & opcounter() < 5000) {
+        LastCompiledCodeOffset = CompiledCodeOffset - 1
+        SymbolData = CompiledCode:vector4(CompiledCodeOffset)
+        Opcode = SymbolData:x()
+        if (Opcode == 1) {
+            MemoryPointer += SymbolData:y()
+        } elseif (Opcode == 2) {
+            Memory:setNumber(MemoryPointer, (Memory:number(MemoryPointer) + SymbolData:y()) % 256)
+        } elseif (Opcode == 3) {
+            # Output
+            Line = 1 + floor(OutputOffset / 30)
+            if (Line - 1 >= 17 - CodeLines) {
+                ConsoleScreen:writeCell(2038, 1)
+                OutputOffset -= 30
+                Line--
+                ConsoleScreen:writeString("                              ", 0, Line, 999, 0)
+            }
+            ConsoleScreen:writeString(format("%c", Memory:number(MemoryPointer)), OutputOffset % 30, Line, 999, 0)
+            RealOutputOffset++
+            OutputOffset++
+        } elseif (Opcode == 4) {
+            # Input
+        } elseif (Opcode == 5) {
+            if (!Memory:number(MemoryPointer)) {
+                CompiledCodeOffset = SymbolData:y()
+            }
+        } elseif (Opcode == 6) {
+            if (Memory:number(MemoryPointer)) {
+                CompiledCodeOffset = SymbolData:y()
+            }
+        }
+        CompiledCodeOffset++
+    }
+    if (CompiledCodeOffset > CompiledCodeLength) {
+        IsRunning = 0
+    } else {
+        ConsoleScreen:writeCell((18 - CodeLines) * 30 * 2 + CompiledCode:vector4(LastCompiledCodeOffset):z() * 2 + 1, 400999)
+    }
+    ProfilerEndTime = systime()
+    RunTime += ProfilerEndTime - ProfilerStartTime
+}

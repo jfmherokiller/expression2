@@ -1,0 +1,32 @@
+@name Interpreter
+@inputs 
+@outputs 
+@persist TreeLib:table LastTreeIndex:number
+@trigger 
+
+# Tree
+TreeLib = table()
+TreeLib["AddNode", function] = function(ParentNode:gtable, ChildNode:gtable) {
+    ParentNode["Child" + ParentNode["ChildCount", number], gtable] = TreeLib["CreateNode", function]()[gtable]
+    ParentNode["ChildCount", number] = ParentNode["ChildCount", number] + 1
+}
+
+function CreateNode () {
+    TreeName = "Tree" + LastTreeIndex
+    LastTreeIndex++
+    Table = gTable(TreeName)
+    Table["ChildCount", number] = 0
+    return Table
+}
+
+function GetNodeChildCount (TreeNode:gtable) {
+    return TreeNode["ChildCount", number]
+}
+
+function Tokenize (Code:string) {
+    Symbols = array()
+    Current = ""
+    for (I = 0, Code:length()) {
+        Code[I]
+    }
+}

@@ -1,0 +1,8 @@
+@name Tests/Multiline
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+print("ABC\")#\
+")

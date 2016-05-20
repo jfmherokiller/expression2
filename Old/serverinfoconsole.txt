@@ -1,0 +1,58 @@
+@name ServerInfoConsole
+@inputs Memory:wirelink
+@outputs 
+@persist 
+@trigger 
+
+interval(1000)
+
+ShowPlrDamage = 0
+PlrDamage = 1
+if (convarnum("sbox_godmode")) {
+    PlrDamage = 0
+}
+NumPlayers = numPlayers()
+MaxPlayers = maxPlayers()
+FindCount = findByClass("Player")
+Ping = 0
+
+# Header
+Memory:writeString("                              ", 0, 0, 111, 999)
+Memory:writeString("                              ", 0, 1, 111, 999)
+Memory:writeString(hostname(), 0, 0, 111, 999)
+
+Memory:writeString(gamemode() + ": " + map() + "   ", 0, 3, 999, 0)
+Memory:writeString("Gravity: " + gravity() + "   ", 0, 4, 999, 0)
+Memory:writeString("Players: ", 0, 6, 999, 0)
+if (MaxPlayers - NumPlayers < 2) {
+    Memory:writeString(NumPlayers + " of " + MaxPlayers + "   ", 9, 6, 900, 0)
+} else {
+    Memory:writeString(NumPlayers + " of " + MaxPlayers + "   ", 9, 6, 999, 0)
+}
+
+if (ShowPlrDamage) {
+    Memory:writeString("Player damage: ", 0, 7, 999, 0)
+    if (PlrDamage) {
+        Memory:writeString("Enabled ", 15, 7, 900, 0)
+    } else {
+        Memory:writeString("Disabled", 15, 7, 90, 0)
+    }
+}
+for (I = 1, FindCount) {
+    Ping += findResult(I):ping() / FindCount
+}
+
+PingColor = 90
+if (Ping > 50) {
+    PingColor = 990
+}
+if (Ping > 100) {
+    PingColor = 960
+}
+if (Ping > 133) {
+    PingColor = 900
+}
+Memory:writeString("Average Ping: ", 0, 5, 999, 0)
+Memory:writeString(toString(floor(Ping)) + "   ", 14, 5, PingColor, 0)
+
+Memory:writeString("Note: A high average ping may be because a player lives far away from the server.         ", 0, 15, 999, 9)

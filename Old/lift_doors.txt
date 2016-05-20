@@ -1,0 +1,11 @@
+@name Lift Doors
+@inputs Floor NearestFloor TargetFloor Distance
+@outputs HydraulicLength
+@persist
+@trigger
+
+if (NearestFloor == Floor & TargetFloor == Floor & Distance < 5) {
+    HydraulicLength = 0
+} else {
+    HydraulicLength = 92
+}

@@ -1,0 +1,34 @@
+@name RocketLauch
+@inputs Launch Reset
+@outputs TimeLeft Thrusters
+@persist StartTime Started
+@trigger 
+
+interval(50)
+
+if (!StartTime) {
+    TimeLeft = 30
+}
+
+if (Launch & !Started) {
+    Started = 1
+    StartTime = curtime()
+} else {
+    if (Reset) {
+        Started = 0
+        StartTime = 0
+        TimeLeft = 30
+    }
+}
+
+if (Started) {
+    TimeLeft = 30 - curtime() + StartTime
+} else {
+    stoptimer("interval")
+}
+
+if (TimeLeft < 0) {
+    Thrusters = 1
+} else {
+    Thrusters = 0
+}

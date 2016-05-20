@@ -1,0 +1,9 @@
+@name PlayerColor
+@inputs 
+@outputs
+@persist
+@trigger 
+
+interval(10)
+Value = sin(curtime() * 25) * 127.5 + 127.5
+owner():setColor(255 - Value, 255, 255)

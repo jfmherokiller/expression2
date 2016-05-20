@@ -1,0 +1,259 @@
+@name GPUHardMode
+@inputs EGP:wirelink
+@outputs 
+@persist VertexBuffer:array IndexBuffer:array ColorBuffer:array
+@persist TransformedVertices:array ScreenVertices:array
+@persist ModelPos:vector ModelAngle:angle
+@persist CameraPos:vector CameraAngle:angle
+@persist Model:matrix4 View:matrix4 Projection:matrix4
+@persist ModelViewProjection:matrix4
+
+# Rendering
+@persist FrameStartTime FrameTime FrameRate
+@persist RenderStage RenderIndex
+# Stages
+# 0 - Setup
+# 1 - Transforming vertices
+# 2 - Sending vertices to EGP
+
+# Cache
+@persist Origin3:vector
+@persist WhiteColor3:vector BlackColor3:vector
+@persist 
+@persist PrimitiveStart:array PrimitiveCount:array PrimitiveType:array
+@trigger 
+
+if (first() | duped())
+{
+    runOnTick(1)
+
+    function resetEGP ()
+    {
+        EGP:egpClear()
+        EGP:egpDrawTopLeft(1)
+        EGP:egpBox(100, vec2(0, 0), vec2(512, 20))
+        EGP:egpColor(100, vec(128, 128, 255))
+        EGP:egpText(101, "GPU Hard Mode", vec2(4, 0))
+        EGP:egpText(102, "0 fps", vec2(512, 20))
+        EGP:egpAlign(102, 2)
+    }
+    if (EGP) { resetEGP() }
+    
+    function angle eulerAngle_fromVector(V:vector)
+    {
+        return ang(asin(V:z() / V:length()), atan(V:y(), V:x()), 0)
+    }
+
+    function matrix4 matrix4x4_orthographic (Width, Height, Near, Far)
+    {
+        return matrix4(
+            0,                -2 / Width, 0,           0,
+            0,                 0,         2 / Height,  0,
+            2 / (Far - Near),  0,         0,          -(Far + Near) / (Far - Near),
+            0,                 0,         0,           1
+        )
+    }
+
+    function matrix4 matrix4x4_perspective(Fovy, AspectWidthOverHeight, Near, Far)
+    {
+        local F = 1 / Near * tan(Fovy / 2)
+        return matrix4(
+            0,                    -F / AspectWidthOverHeight,   0,    0,
+            0,                    0,                            F,    0,
+            1 / (Far - Near),     0,                            0,    -Near / (Far - Near),
+            1,                    0,                            0,    0
+        )
+    }
+    
+    function matrix4 matrix4x4_rotate(Angle:angle)
+    {
+        local Sinp = sin(Angle:pitch())
+        local Cosp = cos(Angle:pitch())
+        local Siny = sin(Angle:yaw())
+        local Cosy = cos(Angle:yaw())
+        local Sinr = sin(Angle:roll())
+        local Cosr = cos(Angle:roll())
+        
+        return matrix4(
+            Cosp * Cosy,  Sinp * Cosy * Sinr - Siny * Cosr, -Sinp * Cosy * Cosr - Siny * Sinr, 0,
+            Cosp * Siny,  Sinp * Siny * Sinr + Cosy * Cosr, -Sinp * Siny * Cosr + Cosy * Sinr, 0,
+            Sinp,        -Cosp * Sinr,                       Cosp * Cosr,                      0,
+            0, 0, 0, 1
+        )
+    }
+
+    function matrix4 matrix4:multiply (M:matrix4)
+    {
+        local Ret = matrix4()
+        for (Y = 1, 4)
+        {
+            for (X = 1, 4)
+            {
+                Ret = Ret:setElement(X, Y, This:element(1, Y) * M:element(X, 1) + This:element(2, Y) * M:element(X, 2) + This:element(3, Y) * M:element(X, 3) + This:element(4, Y) * M:element(X, 4))
+            }
+        }
+        return Ret
+    }
+
+    function vector4 matrix4:multiply (V:vector4)
+    {
+        return vec4(
+            This:element(1, 1) * V:x() + This:element(2, 1) * V:y() + This:element(3, 1) * V:z() + This:element(4, 1) * V:w(),
+            This:element(1, 2) * V:x() + This:element(2, 2) * V:y() + This:element(3, 2) * V:z() + This:element(4, 2) * V:w(),
+            This:element(1, 3) * V:x() + This:element(2, 3) * V:y() + This:element(3, 3) * V:z() + This:element(4, 3) * V:w(),
+            This:element(1, 4) * V:x() + This:element(2, 4) * V:y() + This:element(3, 4) * V:z() + This:element(4, 4) * V:w()
+        )
+    }
+
+    function matrix4 matrix4:translate (Translation:vector)
+    {
+        local M2 = This
+        M2 = M2:setElement(4, 1, M2:element(4, 1) + Translation:x())
+        M2 = M2:setElement(4, 2, M2:element(4, 2) + Translation:y())
+        M2 = M2:setElement(4, 3, M2:element(4, 3) + Translation:z())
+        return M2
+    }
+    
+    function matrix4 matrix4:transpose()
+    {
+        return matrix4(
+            This:element(1, 1), This:element(1, 2), This:element(1, 3), This:element(1, 4),
+            This:element(2, 1), This:element(2, 2), This:element(2, 3), This:element(2, 4),
+            This:element(3, 1), This:element(3, 2), This:element(3, 3), This:element(3, 4),
+            This:element(4, 1), This:element(4, 2), This:element(4, 3), This:element(4, 4)
+        )
+    }
+    
+    function matrix4 matrix4x4_cameraAt (Position:vector, Angle:angle)
+    {
+        local Rotation = matrix4x4_rotate(Angle):transpose()
+        return Rotation:translate(vec(Rotation:multiply(vec4(-Position, 1))))
+    }
+
+    function matrix4 matrix4x4_lookAt (Eye:vector, Target:vector)
+    {
+        local Direction = Target - Eye
+        local EyeAngle = eulerAngle_fromVector(Direction)
+
+        local Rotation = matrix4x4_rotate(EyeAngle):transpose()
+        return Rotation:translate(vec(Rotation:multiply(vec4(-Eye, 1))))
+    }
+    
+    Origin3 = vec(0, 0, 0)
+    BlackColor3 = vec(0, 0, 0)
+    WhiteColor3 = vec(255, 255, 255)
+    
+    VertexBuffer = array(
+        Origin3, vec(2, 0, 0),
+        Origin3, vec(0, 2, 0),
+        Origin3, vec(0, 0, 2),
+    
+        vec(-1, -1, -1), vec( 1, -1, -1),
+        vec(-1, -1, -1), vec(-1,  1, -1),
+        vec(-1, -1, -1), vec(-1, -1,  1),
+        
+        vec( 1, -1, -1), vec( 1,  1, -1),
+        vec( 1, -1, -1), vec( 1, -1,  1),
+        
+        vec(-1,  1, -1), vec( 1,  1, -1),
+        vec(-1,  1, -1), vec(-1,  1,  1),
+        
+        vec(-1, -1,  1), vec( 1, -1,  1),
+        vec(-1, -1,  1), vec(-1,  1,  1),
+        
+        vec( 1,  1,  1), vec(-1,  1,  1),
+        vec( 1,  1,  1), vec( 1, -1,  1),
+        vec( 1,  1,  1), vec( 1,  1, -1)
+    )
+    ColorBuffer = array(
+        vec(255, 0, 0), vec(255, 0, 0),
+        vec(0, 255, 0), vec(0, 255, 0),
+        vec(0, 0, 255), vec(0, 0, 255),
+    
+        WhiteColor3,    WhiteColor3,
+        WhiteColor3,    WhiteColor3,
+        WhiteColor3,    WhiteColor3,
+        
+        WhiteColor3,    WhiteColor3,
+        WhiteColor3,    WhiteColor3,
+        
+        WhiteColor3,    WhiteColor3,
+        WhiteColor3,    WhiteColor3,
+        
+        WhiteColor3,    WhiteColor3,
+        WhiteColor3,    WhiteColor3,
+        
+        WhiteColor3,    WhiteColor3,
+        WhiteColor3,    WhiteColor3,
+        WhiteColor3,    WhiteColor3
+    )
+    
+    ModelPos = Origin3
+    ModelAngle = ang(0, 0, 0)
+    CameraPos = vec(3, 3, 3)
+    CameraAngle = ang(0, 0, 0)
+    
+    View = matrix4x4_cameraAt(CameraPos, CameraAngle)
+    View = matrix4x4_lookAt(CameraPos, ModelPos)
+    Projection = matrix4x4_perspective(90, 1, 1, 100)
+    # Projection = matrix4x4_orthographic(10, 10, 1, 100)
+}
+
+if (~EGP) { resetEGP() }
+
+while (perf())
+{
+    if (RenderStage == 0)
+    {
+        FrameTime = systime() - FrameStartTime
+        FrameRate = 1 / FrameTime
+    
+        if (FrameRate > 10) { exit() }
+        
+        ModelAngle = ModelAngle:setYaw(curtime() * 10)
+        Model = matrix4x4_rotate(ModelAngle):translate(ModelPos)
+        ModelViewProjection = Projection:multiply(View:multiply(Model))
+        
+        FrameStartTime = systime()
+        EGP:egpSetText(102, format("%.2f fps", FrameRate))
+    
+        RenderStage++
+        RenderIndex = 1
+    }
+    elseif (RenderStage == 1)
+    {
+        Count = VertexBuffer:count()
+        while (perf() & RenderIndex <= Count)
+        {
+            TransformedVertex = ModelViewProjection:multiply(vec4(VertexBuffer[RenderIndex, vector], 1))
+            TransformedVertex /= TransformedVertex:w()
+            TransformedVertices[RenderIndex, vector4] = TransformedVertex
+            
+            ScreenVertex = vec2(TransformedVertex:x() * 256 + 256, TransformedVertex:y() * -256 + 256)
+            ScreenVertices[RenderIndex, vector2] = ScreenVertex
+            
+            RenderIndex++
+        }
+        if (RenderIndex > Count)
+        {
+            RenderStage++
+            RenderIndex = 1
+        }
+    }
+    elseif (RenderStage == 2)
+    {
+        Count = ScreenVertices:count()
+        while (perf() & RenderIndex < Count)
+        {
+            EGP:egpLine(RenderIndex, ScreenVertices[RenderIndex, vector2], ScreenVertices[RenderIndex + 1, vector2])
+            EGP:egpColor(RenderIndex, ColorBuffer[RenderIndex, vector])
+            
+            RenderIndex += 2
+        }
+        if (RenderIndex >= Count)
+        {
+            RenderStage = 0
+            RenderIndex = 1
+        }
+    }
+}

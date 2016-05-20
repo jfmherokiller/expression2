@@ -1,0 +1,31 @@
+@name race lights
+@inputs Number
+@outputs A B C D E F
+@persist
+@trigger all
+
+if (Number <= 0) {
+    A = 0
+    B = 0
+    C = 0
+    D = 0
+    E = 0
+    F = 1   
+} else {
+    F = 0
+    if (Number < 5) {
+        A = 1   
+    }
+    if (Number < 4) {
+        B = 1   
+    }
+    if (Number < 3) {
+        C = 1   
+    }
+    if (Number < 2) {
+        D = 1   
+    }
+    if (Number < 1) {
+        E = 1   
+    }
+}

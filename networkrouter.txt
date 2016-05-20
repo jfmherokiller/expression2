@@ -1,0 +1,38 @@
+# import Network/library/core
+# import Network/library/bgp
+# import Network/library/dhcp
+# import Network/library/iptable
+# import Network/library/router
+@name Network/Router
+@inputs
+@outputs
+# expand net_preinit
+# expand iptable_preinit
+# expand dhcp_preinit
+@persist
+@trigger
+@model models/cheeze/wires/router.mdl
+
+# expand net_init
+
+if (First) {
+    DeviceType = "Router"
+    IPAddress = floor(random(1, 255)) * 256 * 256 * 256
+    IPBlockMask = 8
+    # expand net_update_name
+    dsJoinGroup("Network.Routers")
+    
+    # expand router_connect
+} elseif (Last) {
+    # expand dhcp_drop_all
+    # expand bgp_disconnect_all
+}
+
+# expand net_begin_chat
+# expand iptable_chat_handlers
+# expand net_end_chat
+
+# expand net_begin_ds
+# expand bgp_ds_handlers
+# expand dhcp_server_ds_handlers
+# expand net_end_ds

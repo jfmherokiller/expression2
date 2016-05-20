@@ -1,0 +1,27 @@
+@name Nebcorp's E2 SVN
+@persist E2:string
+if(first()) {
+    E2s = fileListDir("e2s")
+    Height = 120 + E2s:count() * 17
+    Width = 300
+
+    dPanel("Main", vec2(scrW()-Width-45,25), vec2(Width+20,Height))
+    enableMouse(1)
+
+    dLabel("   All chips here are distributed on an NPL license, which is", "Main", vec2(10,30))
+    dLabel("   basically a tl;dr of the GPL, and states the following:", "Main", vec2(10,45))
+    dLabel("    - Must give credit to original author somehow", "Main", vec2(10,60))
+    dLabel("    - Must continue to freely distribute modified code", "Main", vec2(10,75))
+    
+    dListBox("Names", "Main", vec2(10,95), vec2(Width, Height - 104))
+        dArray("Names", E2s)
+        dRunOnChange("Names", 1)
+}
+else{
+    E2 = dSval("Names")
+    print("Pasting " + E2)
+    dShow("Main", 0)
+    dPos("Names", vec2(2000,0))
+    createE2(fileReadString("e2s/"+E2), entity():pos()):weld(welded())
+    selfDestruct() 
+}

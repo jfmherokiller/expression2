@@ -1,0 +1,24 @@
+@name Unicode Test
+@inputs 
+@outputs 
+@persist StartChar CharsPerRun
+@trigger 
+
+interval(500)
+
+if (first() | duped())
+{
+    StartChar = 0
+    CharsPerRun = 64
+}
+
+if (clk())
+{
+    Text = format("0x%.4x: ", StartChar)
+    for (I = 0, CharsPerRun - 1)
+    {
+        Text += toUnicodeChar(StartChar + I)
+    }
+    entity():setText(Text)
+    StartChar += CharsPerRun
+}

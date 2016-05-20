@@ -1,0 +1,15 @@
+@define glon_init
+Characters = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+C1 = Characters [1]
+C2 = Characters [2]
+C3 = Characters [3]
+C4 = Characters [4]
+C5 = Characters [5]
+C6 = Characters [6]
+C7 = Characters [7]
+C8 = Characters [8]
+C9 = Characters [9]
+C10 = Characters [10]
+C11 = Characters [11]
+GLONEmptyTable = C2 + C1
+@end

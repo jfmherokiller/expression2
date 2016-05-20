@@ -1,0 +1,191 @@
+@name Printer
+@inputs 
+# Assimilation
+@inputs AcceptFeedstock
+@inputs R1:entity R2:entity R3:entity R4:entity R5:entity R6:entity
+@inputs R7:entity R8:entity R9:entity
+# Production
+@inputs SpawnPosition:vector
+# Item selection
+@inputs PreviousItem NextItem CreateItem
+@outputs Feedstock FeedstockInput
+@outputs SelectedItem:string SelectedItemFeedstockRequired TextColor:vector
+
+@persist SpawnQueue:array SpawnQueueEntity:array SpawnQueueIndex
+
+@persist ItemIndex ItemNames:array ItemModels:array
+@persist ModelVolumes:table
+@persist Feedstock
+@trigger 
+
+interval(1000)
+
+if (first() | duped()) {
+    gSetGroup("DPrinters")
+    gShare(1)
+    
+    if (!gGetNum("PrinterQueueIndex")) {
+        gSetNum("PrinterQueueIndex", 1)
+    }
+    if (!gGetNum("PrinterQueueNextIndex")) {
+        gSetNum("PrinterQueueNextIndex", 1)
+    }
+    
+    dsJoinGroup("DPrinters")
+    dsSetScope(2)
+    
+    SpawnQueue = array()
+    SpawnQueueIndex = 1
+    
+    ItemIndex = 1
+    ItemNames = array()
+    ItemModels = array()
+    
+    ItemNames:pushString("Gnome")
+    ItemModels:pushString("models/props_junk/gnome.mdl")
+    
+    ItemNames:pushString("Trolley")
+    ItemModels:pushString("models/props_junk/pushcart01a.mdl")
+    
+    ItemNames:pushString("Washing Machine")
+    ItemModels:pushString("models/props_c17/furniturewashingmachine001a.mdl")
+    
+    ModelVolumes = table()
+    Feedstock = 100000
+}
+
+if (inputClk()) {
+    if (PreviousItem) {
+        SelectedItem = ""
+        ItemIndex--
+        if (!ItemIndex) {
+            ItemIndex = ItemNames:count()
+        }
+    }
+    if (NextItem) {
+        SelectedItem = ""
+        ItemIndex++
+        if (ItemIndex > ItemNames:count()) {
+            ItemIndex = 1
+        }
+    }
+    if (CreateItem) {
+        if (ModelVolumes:number(ItemModels:string(ItemIndex)) <= Feedstock) {
+            SpawnQueue:pushString(ItemModels:string(ItemIndex))
+            SpawnQueueEntity:pushNumber(0)
+        }
+    }
+
+    FeedstockEntities = table()
+    FeedstockInput = 0
+    if (R1) {
+        FeedstockEntities:setNumber(toString(R1:id()), 1)
+    }
+    if (R2 & !FeedstockEntities:number(toString(R2:id()))) {
+        FeedstockEntities:setNumber(toString(R2:id()), 1)
+    }
+    if (R3 & !FeedstockEntities:number(toString(R3:id()))) {
+        FeedstockEntities:setNumber(toString(R3:id()), 1)
+    }
+    if (R4 & !FeedstockEntities:number(toString(R4:id()))) {
+        FeedstockEntities:setNumber(toString(R4:id()), 1)
+    }
+    if (R5 & !FeedstockEntities:number(toString(R5:id()))) {
+        FeedstockEntities:setNumber(toString(R5:id()), 1)
+    }
+    if (R6 & !FeedstockEntities:number(toString(R6:id()))) {
+        FeedstockEntities:setNumber(toString(R6:id()), 1)
+    }
+    if (R7 & !FeedstockEntities:number(toString(R7:id()))) {
+        FeedstockEntities:setNumber(toString(R7:id()), 1)
+    }
+    if (R8 & !FeedstockEntities:number(toString(R8:id()))) {
+        FeedstockEntities:setNumber(toString(R8:id()), 1)
+    }
+    if (R9 & !FeedstockEntities:number(toString(R9:id()))) {
+        FeedstockEntities:setNumber(toString(R9:id()), 1)
+    }
+
+    FeedstockKeys = FeedstockEntities:keys()
+    for (I = 1, FeedstockKeys:count()) {
+        FeedstockInput += entity(FeedstockKeys:number(I)):volume()
+    }
+    
+    if (AcceptFeedstock) {
+        for (I = 1, FeedstockKeys:count()) {
+            entity(FeedstockKeys:number(I)):propDelete()
+        }
+        Feedstock += FeedstockInput
+        FeedstockInput = 0
+    }
+}
+
+CheckPrinterJobQueue = 0
+
+if (clk("interval")) {
+    if (SpawnQueue:string(SpawnQueueIndex) != "") {
+        SpawnModel = SpawnQueue:string(SpawnQueueIndex)
+        if (!ModelVolumes:number(SpawnModel)) {
+            Item = propSpawn(SpawnModel, 1)
+            ModelVolumes:setNumber(SpawnModel, Item:volume())
+            Item:propDelete()
+        }
+        if (Feedstock >= ModelVolumes:number(SpawnModel)) {
+            Feedstock -= ModelVolumes:number(SpawnModel)
+            SpawnedItem = propSpawn(SpawnModel, SpawnPosition + vec(0, 0, 32), ang(0, 0, 0), 1)
+            
+            SpawnQueue:setString(SpawnQueueIndex, "")
+            if (SpawnQueueEntity:entity(SpawnQueueIndex)) {
+                dsSendDirect("PrinterJobCompleted", SpawnQueueEntity:entity(SpawnQueueIndex), SpawnedItem)
+            }
+            SpawnQueueIndex++
+            
+            if (!SpawnQueue:string(SpawnQueueIndex)) {
+                CheckPrinterJobQueue = 1
+            }
+        }
+    }
+}
+
+if (dsClk()) {
+    if (dsClkName() == "PrinterQueueJobAdded" | dsClkName() == "PrinterQueueJobAccepted") {
+        CheckPrinterJobQueue = 1
+    }
+}
+
+if (CheckPrinterJobQueue) {
+    QueueModel = gGetStr("PrinterQueueModel_" + gGetNum("PrinterQueueIndex"))
+    gDeleteStr("PrinterQueueModel_" + gGetNum("PrinterQueueIndex"))
+    if (QueueModel != "") {
+        if (!ModelVolumes:number(QueueModel)) {
+            Item = propSpawn(QueueModel, 1)
+            ModelVolumes:setNumber(QueueModel, Item:volume())
+            Item:propDelete()
+        }
+        if (Feedstock >= ModelVolumes:number(QueueModel)) {
+            hint("Accepted job: " + QueueModel, 10)
+            SpawnQueue:pushString(QueueModel)
+            SpawnQueueEntity:pushEntity(gGetEnt("PrinterQueueEntity_" + gGetNum("PrinterQueueIndex")))
+            gDeleteEnt("PrinterQueueEntity_" + gGetNum("PrinterQueueIndex"))
+            
+            gSetNum("PrinterQueueIndex", gGetNum("PrinterQueueIndex") + 1)
+        }
+    }
+}
+
+if (SelectedItem == "") {
+    SelectedItem = ItemNames:string(ItemIndex)
+    ItemModel = ItemModels:string(ItemIndex)
+    if (!ModelVolumes:number(ItemModel)) {
+        Item = propSpawn(ItemModel, 1)
+        ModelVolumes:setNumber(ItemModel, Item:volume())
+        Item:propDelete()
+    }
+    SelectedItemFeedstockRequired = ModelVolumes:number(ItemModel)
+}
+
+if (Feedstock < SelectedItemFeedstockRequired) {
+    TextColor = vec(255, 0, 0)
+} else {
+    TextColor = vec(255, 255, 255)
+}

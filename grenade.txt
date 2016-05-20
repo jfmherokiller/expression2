@@ -1,0 +1,11 @@
+@name Grenade
+@inputs 
+@outputs 
+@persist 
+@trigger 
+@model models/weapons/w_grenade.mdl
+
+interval(1000)
+entity():setTrails(0.01, 0.01, 100, "trails/laser", vec(255, 0, 0), 255)
+
+#soundPlay(1, 1, "weapons/explode5.wav")

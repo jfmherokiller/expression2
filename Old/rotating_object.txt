@@ -1,0 +1,13 @@
+@name Rotating Object
+@inputs 
+@outputs 
+@persist 
+@trigger all
+
+interval(15)
+EntBlock = entity():isWeldedTo() 
+VecBlockVel = EntBlock:vel()
+VecBlockPos = EntBlock:pos()
+VecTargetPos = VecBlockPos:setZ(30)
+EntBlock:applyForce((VecTargetPos - VecBlockPos - VecBlockVel) * EntBlock:mass())
+EntBlock:applyAngForce(ang(0, 1, 0) * EntBlock:mass())

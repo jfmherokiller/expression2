@@ -1,0 +1,66 @@
+@name Proof Of Concept (Arrays)
+@inputs
+@outputs 
+@persist Owner:array
+@trigger 
+
+Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+S1 = Chars[1] # End
+S2 = Chars[2] # Table start
+S3 = Chars[3] # Array start
+S6 = Chars[6] # Number start
+S7 = Chars[7] # String start
+S10 = Chars[10]   # Entity start
+EmptyTable = S2 + S1
+
+if (first() | duped()) {
+    runOnChat(1)
+    Functions = array()
+    Functions:pushString("IPAddress")
+    
+    Glon = S2
+        Glon += S7 + "ismtable" + S1
+            Glon += S6 + "1" + S1
+        Glon += S7 + "size" + S1
+            Glon += S6 + "0" + S1
+        Glon += S7 + "depth" + S1
+            Glon += S6 + "0" + S1
+        Glon += S7 + "n" + S1
+            Glon += EmptyTable
+        Glon += S7 + "ntypes" + S1
+            Glon += EmptyTable
+        Glon += S7 + "stypes" + S1
+            Glon += S2
+                Glon += S7 + "player" + S1
+                    Glon += S7 + "r" + S1
+
+    for (I = 1, Functions:count()) {
+        Glon += S7 + Functions[I, string] + S1
+            Glon += S7 + "n" + S1
+    }
+
+            Glon += S1
+        Glon += S7 + "s" + S1
+            Glon += S2
+                Glon += S7 + "player" + S1
+                    Glon += S10 + owner():id() + S1
+                    
+    for (I = 1, Functions:count()) {
+        Glon += S7 + Functions[I, string] + S1
+            Glon += S7 + Functions[I, string] + S1
+    }
+    
+            Glon += S1
+    Glon += S1
+    MTable = glonDecodeTable(Glon)
+    Owner = MTable:removeArray("player")
+    F = Owner[MTable:removeNumber("IPAddress"), number]
+    print(F)
+}
+
+if (chatClk()) {
+    if (lastSpoke() == owner() &
+        lastSaid() == "!dump") {
+        hideChat(1)
+    }
+}

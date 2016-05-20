@@ -1,0 +1,11 @@
+@name WorldVehicleKiller
+@inputs 
+@outputs
+@persist
+@trigger
+
+interval(50)
+
+if (entity():driver() != owner()) {
+    entity():isWeldedTo():killPod()
+}

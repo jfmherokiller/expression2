@@ -1,0 +1,247 @@
+@name E2 Competition Basic Challenges 1
+@inputs
+@outputs
+@persist UDFsWorking NextCompileIndex
+@persist LocalChallengeDescriptions:array LocalChallengeTimes:array LocalChallengeTotalPoints:array
+@persist LocalChallengeInputArgumentCounts:array LocalChallengeVerifiers:table
+@persist ChallengeDescriptions:array ChallengeTimes:array ChallengeTotalPoints:array
+@persist ChallengeInputArgumentCounts:array ChallengeVerifiers:table
+@trigger
+
+interval(300)
+runOnChat(1)
+
+if (first() | duped()) {
+    dsSetScope(2)
+    
+    LocalChallengeDescriptions = array()
+    LocalChallengeTimes = array()
+    LocalChallengeTotalPoints = array()
+    LocalChallengeInputArgumentCounts = array()
+    LocalChallengeVerifiers = table()
+    
+    UDFsWorking = 1
+    NextCompileIndex = 1
+    
+    # Challenge 1: Return 0
+    LocalChallengeDescriptions:pushString("Write a function that returns 0. [void -> A:number]")
+    LocalChallengeTimes:pushNumber(60)
+    LocalChallengeTotalPoints:pushNumber(5)
+    LocalChallengeInputArgumentCounts:pushNumber(0)
+#ifdef clk(string) # functionsWorking()
+    LocalChallengeVerifiers:setFunction(toString(LocalChallengeDescriptions:count()), function(Input:table, Output:table) {
+        Output:setNumber("TestCount", 5)
+        TestsPassed = 0
+        for (I = 1, 5) {
+            if (!Input["Function", function]()[number]) {
+                TestsPassed++
+            }
+        }
+        Output:setNumber("TestsPassed", TestsPassed)
+        Output:setNumber("IsDone", 1)
+    })
+#else
+    LocalChallengeVerifiers:setString(toString(LocalChallengeDescriptions:count()), "\
+        Output:setNumber(\"TestCount\", 5)\
+        TestsPassed = 0\
+        Code = Input[\"Function\", code]\
+        for (I = 1, 5) {\
+            Code:exec(table())\
+            if (!Code:getOutputs():number(\"A\")) {\
+                TestsPassed++\
+            }\
+        }\
+        Output:setNumber(\"TestsPassed\", TestsPassed)\
+        Output:setNumber(\"IsDone\", 1)\
+    ")
+#endif
+
+    # Challenge 2: Add numbers
+    LocalChallengeDescriptions:pushString("Write a function that returns the sum of 2 numbers. [(A:number, B:number) -> C:number]")
+    LocalChallengeTimes:pushNumber(60)
+    LocalChallengeTotalPoints:pushNumber(5)
+    LocalChallengeInputArgumentCounts:pushNumber(2)
+#ifdef clk(string) # functionsWorking()
+    LocalChallengeVerifiers:setFunction(toString(LocalChallengeDescriptions:count()), function(Input:table, Output:table) {
+        Output:setNumber("TestCount", 5)
+        TestsPassed = 0
+        for (I = 1, 5) {
+            A = floor(random(-100, 100))
+            B = floor(random(-100, 100))
+            Result = Input["Function", function](A, B)[number]
+            if (Result == A + B) {
+                TestsPassed++
+            }
+        }
+        Output:setNumber("TestsPassed", TestsPassed)
+        Output:setNumber("IsDone", 1)
+    })
+#else
+    LocalChallengeVerifiers:setString(toString(LocalChallengeDescriptions:count()), "\
+        Output:setNumber(\"TestCount\", 5)\
+        TestsPassed = 0\
+        Code = Input[\"Function\", code]\
+        for (I = 1, 5) {\
+            A = floor(random(-100, 100))\
+            B = floor(random(-100, 100))\
+            Inputs = table()\
+            Inputs:setNumber(\"A\", A)\
+            Inputs:setNumber(\"B\", B)\
+            Code:exec(Inputs)\
+            if (Code:getOutputs():number(\"C\") == A + B) {\
+                TestsPassed++\
+            }\
+        }\
+        Output:setNumber(\"TestsPassed\", TestsPassed)\
+        Output:setNumber(\"IsDone\", 1)\
+    ")
+#endif
+
+    # Challenge 3: Average numbers
+    LocalChallengeDescriptions:pushString("Write a function that returns the mean of an array. [A:generic[[number]] -> B:number]")
+    LocalChallengeTimes:pushNumber(60)
+    LocalChallengeTotalPoints:pushNumber(5)
+    LocalChallengeInputArgumentCounts:pushNumber(1)
+#ifdef clk(string) # functionsWorking()
+    LocalChallengeDescriptions:setString(LocalChallengeDescriptions:count(), "Write a function that returns the mean of an array. [A:[number] -> B:number]")
+    LocalChallengeVerifiers:setFunction(toString(LocalChallengeDescriptions:count()), function(Input:table, Output:table) {
+        Output:setNumber("TestCount", 5)
+        TestsPassed = 0
+        for (I = 1, 5) {
+            A = array()
+            Total = 0
+            for (J = 1, floor(random(1, 300))) {
+                Number = random(-9000, 9000)
+                A:pushNumber(Number)
+                Total += Number
+            }
+            Total /= A:count()
+            Result = Input["Function", function](A)[number]
+            if (Result == Total) {
+                TestsPassed++
+            }
+        }
+        Output:setNumber("TestsPassed", TestsPassed)
+        Output:setNumber("IsDone", 1)
+    })
+#else
+    LocalChallengeVerifiers:setString(toString(LocalChallengeDescriptions:count()), "\
+        Output:setNumber(\"TestCount\", 5)\
+        TestsPassed = 0\
+        Code = Input[\"Function\", code]\
+        for (I = 1, 5) {\
+            A = array()\
+            Total = 0\
+            for (J = 1, floor(random(1, 300))) {\
+                Number = random(-9000, 9000)\
+                A:pushNumber(Number)\
+                Total += Number\
+            }\
+            Total /= A:count()\
+            Inputs = table()\
+            Inputs[\"A\", generic] = generic(A)\
+            Code:exec(Inputs)\
+            if (Code:getOutputs():number(\"B\") == Total) {\
+                TestsPassed++\
+            }\
+        }\
+        Output:setNumber(\"TestsPassed\", TestsPassed)\
+        Output:setNumber(\"IsDone\", 1)\
+    ")
+#endif
+}
+
+if (dsClk()) {
+    if (dsClkName() == "ChallengeDescriptions") {
+        ChallengeDescriptions = dsGetArray()
+    } elseif (dsClkName() == "ChallengeTimes") {
+        ChallengeTimes = dsGetArray()
+    } elseif (dsClkName() == "ChallengeTotalPoints") {
+        ChallengeTotalPoints = dsGetArray()
+    } elseif (dsClkName() == "ChallengeInputArgumentCounts") {
+        ChallengeInputArgumentCounts = dsGetArray()
+    } elseif (dsClkName() == "ChallengeVerifiers") {
+        ChallengeVerifiers = dsGetTable()
+    } elseif (dsClkName() == "LoadChallengeSet") {
+        ChallengeSet = dsGetString()
+        if (ChallengeSet == "basic1") {
+            for (I = 1, LocalChallengeDescriptions:count()) {
+                ChallengeDescriptions:pushString(LocalChallengeDescriptions:string(I))
+                ChallengeTimes:pushNumber(LocalChallengeTimes:number(I))
+                ChallengeTotalPoints:pushNumber(LocalChallengeTotalPoints:number(I))
+                ChallengeInputArgumentCounts:pushNumber(LocalChallengeInputArgumentCounts:number(I))
+                if (UDFsWorking) {
+                    ChallengeVerifiers:setFunction(toString(I), LocalChallengeVerifiers[toString(I), function])
+                } else {
+                    ChallengeVerifiers:setCode(toString(I), LocalChallengeVerifiers:code(toString(I)))
+                }
+            }
+            dsSendDirect("ChallengeSetName", dsGetSender(), "Basic 1")
+        }
+    }
+} elseif (chatClk()) {
+    Authorized = 0
+    LastSaid = lastSaid()
+    if (lastSpoke() == owner()) {
+        Authorized = 1
+    }
+    if (Authorized) {
+        LastBroadcastOutputTime = curtime()
+        
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "load") {
+                if (Params:lower() == "basic1") {
+                    dsSend("LoadChallengeSet", "E2 Competition Hypervisor", "basic1")
+                }
+            }
+        }
+    }
+} elseif (clk("interval")) {
+    if (!UDFsWorking) {
+        if (NextCompileIndex <= LocalChallengeDescriptions:count() & virtCanCompile()) {
+#ifdef g:getTable()
+            Code = virtCompile("\
+                \n@inputs InputGeneric1:generic OutputGeneric1:generic\
+                \n@outputs InputGeneric:generic OutputGeneric:generic\
+                Input = InputGeneric1:getTable()\
+                Output = OutputGeneric1:getTable()\
+                " + LocalChallengeVerifiers:string(toString(NextCompileIndex)) + "\
+                InputGeneric = generic(Input)\
+                OutputGeneric = generic(Output)\
+            ")
+#else
+            Code = virtCompile("\
+                \n@inputs InputGeneric1:generic OutputGeneric1:generic\
+                \n@outputs InputGeneric:generic OutputGeneric:generic\
+                Input = InputGeneric1[table]\
+                Output = OutputGeneric1[table]\
+                " + LocalChallengeVerifiers:string(toString(NextCompileIndex)) + "\
+                InputGeneric = generic(Input)\
+                OutputGeneric = generic(Output)\
+            ")
+#endif
+            LocalChallengeVerifiers:setCode(toString(NextCompileIndex), Code)
+            if (virtLastError()) {
+                hint("Compile error on test case " + NextCompileIndex + ": " + virtLastError(), 10)
+            }
+            NextCompileIndex++
+            if (NextCompileIndex > LocalChallengeDescriptions:count()) {
+                hint("Finished compiling test cases.", 10)
+            }
+        }
+    }
+}

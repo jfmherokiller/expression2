@@ -1,0 +1,11 @@
+@name hydraulic
+@inputs Up
+@outputs Value
+@persist
+@trigger all
+
+if (Up) {
+    Value = 25  
+} else {
+    Value = 165
+}

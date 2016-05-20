@@ -1,0 +1,16 @@
+@name Axiser
+Friction = 0
+Delay = 4
+# To use chip: Fire at "wheel" on its "side" (hubcap?) (rotation will be along that axis)
+# Then look at the orbit point (center prop?)
+if(first()) {
+    print("Okay, now look at the orbit center point (car frame?). You got "+Delay+" seconds!")
+    interval(Delay * 1000) 
+}else{
+    E1 = welded()
+    E2 = owner():aimEntity()
+    axis(E1, vec(), E2, E2:toLocal(E1:pos() + entity():up() * 3), Friction)
+    #slider(E1, E1:toLocal(entity():pos()), E2, E2:toLocal(ranger(100):position()))
+    print("Okay! Axis'd that "+E1:model()+" to that "+E2:model())
+    selfDestruct()
+}

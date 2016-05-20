@@ -1,0 +1,31 @@
+@name Authorization
+@inputs EntPlayer:entity
+@outputs Good Bad Awesome
+@persist PlayerName:string
+@trigger
+
+Authorized = 0
+Awesome = 0
+PlayerName = EntPlayer:name()
+if (EntPlayer == owner()) {
+    #Awesome = 1
+    Authorized = 1
+}
+if (PlayerName:find("M | ", 0) == 1 |
+    PlayerName:find(" -Sdb-",0) |
+    PlayerName:find("{SDB}",0)) {
+    Authorized = 1
+}
+if (PlayerName == "Chesnut" |
+    PlayerName == "Assualt_Trooper[FIN]" |
+    PlayerName == "Seth" |
+    PlayerName == "IcedGreece") {
+    Authorized = 1
+}
+if (Authorized) {
+    Good = 1
+    Bad = 0
+} else {
+    Good = 0
+    Bad = 1
+}

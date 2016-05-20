@@ -1,0 +1,31 @@
+@name Aimer_Player
+@inputs
+@outputs TargetAngle:angle CurrentAngle:angle DeltaAngle:angle
+@persist
+@trigger
+
+interval(50)
+
+Angles = (owner():aimPos() - owner():shootPos()):toAngle()
+
+EntBlock = entity():isWeldedTo()
+AngTarget = ang(-Angles:pitch(), Angles:yaw(), 0)
+TargetAngle = AngTarget
+AngTarget -= EntBlock:angles()
+AngTarget -= EntBlock:angVel()
+if (AngTarget:yaw() < -180) {
+    AngTarget = AngTarget:setYaw(AngTarget:yaw() + 360)
+}
+if (AngTarget:yaw() > 180) {
+    AngTarget = AngTarget:setYaw(AngTarget:yaw() - 360)
+}
+DeltaAngle = AngTarget
+AngTarget *= EntBlock:boxSize():length() # EntBlock:mass()
+EntBlock:applyAngForce(AngTarget)
+CurrentAngle = EntBlock:angles()
+
+VecTargetPos = EntBlock:pos():setZ(100)
+VecTargetPos -= EntBlock:pos()
+VecTargetPos -= EntBlock:vel()
+VecTargetPos *= EntBlock:mass()
+EntBlock:applyForce(VecTargetPos)

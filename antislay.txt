@@ -1,0 +1,30 @@
+@import glon
+@name Antislay
+@inputs
+@outputs
+@persist
+@trigger
+@model
+
+@expand glon_init
+
+if (first() | duped()) {
+    PlayerMTable = C2
+        PlayerMTable += C7 + "ismtable" + C1
+            PlayerMTable += C6 + "1" + C1
+        PlayerMTable += C7 + "size" + C1
+            PlayerMTable += C6 + "0" + C1
+        PlayerMTable += C7 + "depth" + C1
+            PlayerMTable += C6 + "0" + C1
+        PlayerMTable += C7 + "n" + C1
+            PlayerMTable += GLONEmptyTable
+        PlayerMTable += C7 + "ntypes" + C1
+            PlayerMTable += GLONEmptyTable
+        PlayerMTable += C7 + "s" + C1
+            PlayerMTable += GLONEmptyTable
+        PlayerMTable += C7 + "stypes" + C1
+            PlayerMTable += C10 + owner():id() + C1
+    PlayerMTable += C1
+    
+    MTable = glonDecodeTable(PlayerMTable)
+}

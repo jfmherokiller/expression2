@@ -1,0 +1,28 @@
+@name Balancer
+@inputs Angles:angle
+@outputs Wheels Magnitude
+@persist LastAngles:angle LastAnglesTime
+@trigger 
+
+DeltaTime = curtime() - LastAnglesTime
+AngularVelocity = Angles - LastAngles
+
+DeterminingAngle = Angles - AngularVelocity
+DeterminingAngle = DeterminingAngle:setRoll(DeterminingAngle:roll() % 360 - 180)
+
+if (DeterminingAngle:roll() > 0) {
+    Wheels = 1
+} elseif (DeterminingAngle:roll() < 0) {
+    Wheels = -1
+} else {
+    Wheels = 0
+}
+
+Magnitude = sin(abs(DeterminingAngle:roll())) * 5
+
+if (abs(Angles:roll()) > 60 | abs(Angles:roll() < 10)) {
+    Wheels = 0
+}
+
+LastAngles = Angles
+LastAnglesTime = curtime()

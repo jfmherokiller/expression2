@@ -1,0 +1,30 @@
+@name 
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+Mat = "effects/achieved"
+Mat = "trails/laser"
+    
+if (first() | duped())
+{
+    runOnTick(1)
+    
+    for (I = 1, 128)
+    {
+        holoCreate(I)
+        holoEntity(I):setTrails(10, 10, 20, "models/props_borealis/bluebarrel001", vec(255, 0, 0), 0)
+        holoEntity(I):setTrails(10, 10, 20, Mat, vec(255, 0, 0), 128)
+        holoEntity(I):setMaterial(Mat)
+    }
+}
+
+T = systime() * 100
+for (I = 1, 128)
+{
+    holoPos(I, entity():pos() + 128 * vec(sin(T + I), cos(T + I), 0) + 32 * vec(0, 0, sin(T * 4)))
+    holoEntity(I):removeTrails()
+    holoEntity(I):setTrails(10, 10, 20, "models/props_borealis/bluebarrel001", vec(255, 0, 0), 0)
+    holoEntity(I):setTrails(10, 10, 20, Mat, vec(255, 0, 0), 128)
+}

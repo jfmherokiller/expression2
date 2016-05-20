@@ -1,0 +1,7 @@
+@name include_test2
+@inputs 
+@outputs 
+@persist
+@trigger 
+
+N = 2

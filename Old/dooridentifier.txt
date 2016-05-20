@@ -1,0 +1,15 @@
+@name DoorIdentifier
+@inputs LiftId DoorId
+@outputs
+@persist EntDoor:entity
+@trigger
+
+interval(1000)
+
+DoorId = 2
+if (!EntDoor) {
+    EntDoor = entity():isWeldedTo()
+    gSetGroup("lift" + toString(LiftId))
+    gSetEnt("Door" + toString(DoorId), EntDoor)
+    gResetGroup()
+}

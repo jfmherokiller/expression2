@@ -1,0 +1,191 @@
+@name Comms System V2
+@inputs EGP:wirelink ConsoleScreen:wirelink GPU:wirelink
+@outputs
+@persist
+@persist Channels:table CurrentChannel:string
+@persist ConsoleLinesUsed
+@trigger 
+
+# Made by !cake
+
+runOnChat(1)
+
+ShouldRefreshEGP = 0
+ShouldRefreshFullEGP = 0
+ShouldRefreshConsole = 0
+ShouldRefreshFullConsole = 0
+MessageBufferPlayers = array()
+MessageBufferMessages = array()
+
+if (first() | duped()) {
+    gSetGroup("CChat")
+    gShare(1)
+    
+    dsJoinGroup("CChat")
+    dsSetScope(2)
+    
+    Channels = table()
+    CurrentChannel = "#wiremod"
+    Channels["#public", number] = 1
+    Channels["#wiremod", number] = 1
+    
+    ShouldRefreshFullEGP = 1
+    ShouldRefreshEGP = 1
+    ShouldRefreshFullConsole = 1
+    ShouldRefreshConsole = 1
+}
+
+if (dsClk()) {
+    hint(dsClkName(), 10)
+    if (dsClkName() == "ChatSay") {
+        
+    }
+} elseif (chatClk()) {
+    LastSaid = lastSaid()
+    if (1) {# LastSaid[1] != "!" & LastSaid[1] != "/") {
+        if (Channels["#public", number]) {
+            MessageBufferPlayers:pushEntity(lastSpoke())
+            MessageBufferMessages:pushString(lastSaid())
+        }
+    }
+    if (lastSpoke() == owner()) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "-" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "channels") {
+                if (!Channels:count()) {
+                    hint("You are not in any channels.", 10)
+                } else {
+                    ChannelList = "You are in: "
+                    ChannelKeys = Channels:keys()
+                    for (I = 1, ChannelKeys:count()) {
+                        ChannelList += ChannelKeys:string(I)
+                        if (I < ChannelKeys:count()) {
+                            ChannelList += ", "
+                        }
+                    }
+                    ChannelList += ". Your current channel is " + CurrentChannel + "."
+                    hint(ChannelList, 10)
+                }
+            } elseif (Command == "join") {
+                if (!Channels[Params:lower(), number]) {
+                    Channels[Params:lower(), number] = 1
+                    if (CurrentChannel == "") {
+                        CurrentChannel = Params:lower()
+                    }
+                    ShouldRefreshEGP = 1
+                }
+            } elseif (Command == "leave") {
+                if (Channels[Params:lower(), number]) {
+                    Channels[Params:lower(), number] = 0
+                    if (CurrentChannel == Params:lower()) {
+                        CurrentChannel = Channels:keys():string(1)
+                    }
+                    ShouldRefreshEGP = 1
+                }
+            } elseif (Command == "length") {
+                print(Params:unicodeLength())
+            } elseif (Command == "probe") {
+                E2s = dsProbe(Params)
+                hint(toString(E2s:count()) + " chips in group " + Params +".", 10)
+            } elseif (Command == "say") {
+                gSetEnt("ChatSource", owner())
+                gSetStr("ChatChannel", CurrentChannel)
+                dsSend("ChatSay", "CChat", Params)
+            }
+        }
+    }
+}
+
+if (ShouldRefreshEGP) {
+    if (ShouldRefreshFullEGP) {
+        if (EGP) {
+#ifdef xwl:egpFont(number, string, number)
+            EGP:egpBox(1, vec2(256, 256), vec2(512, 512))
+            EGP:egpColor(1, vec4(96, 96, 96, 255))
+            EGP:egpBox(2, vec2(256, 14), vec2(512, 28))
+            EGP:egpColor(2, vec4(128, 128, 255, 255))
+            EGP:egpText(3, "Comms System v2", vec2(8, 0))
+            EGP:egpFont(3, "arial", 24)
+            EGP:egpBox(4, vec2(256, 52), vec2(512, 48))
+            EGP:egpColor(4, vec4(160, 160, 160, 255))
+            EGP:egpFont(5, "verdana", 20)
+            EGP:egpFont(6, "verdana", 20)
+            
+            EGP:egpBox(7, vec2(256, 480), vec2(512, 64))
+            EGP:egpColor(7, vec4(160, 160, 216, 255))
+            EGP:egpText(8, "Text", vec2(8, 480 - 32))
+#endif
+        }
+        if (ConsoleScreen) {
+            ConsoleScreen[2041] = 1
+            ConsoleScreen:writeString("Comms System v2               ", 0, 0, 999, 449)
+        }
+    }
+    if (!Channels:count()) {
+        if (EGP) {
+#ifdef xwl:egpColor(number, xv4)
+            EGP:egpColor(5, vec4(255, 192, 192, 255))
+            EGP:egpText(5, "You are not in any channels.", vec2(8, 30))
+            EGP:egpText(6, "", vec2(8, 50))
+#endif
+        }
+        if (ConsoleScreen) {
+            ConsoleScreen:writeString("You are not in any channels.  ", 0, 1, 999, 666)
+            ConsoleScreen:writeString("                              ", 0, 2, 999, 666)
+        }
+    } else {
+        ChannelList = ""
+        ChannelKeys = Channels:keys()
+        for (I = 1, ChannelKeys:count()) {
+            ChannelList += ChannelKeys:string(I)
+            if (I < ChannelKeys:count()) {
+                ChannelList += ", "
+            }
+        }
+        if (EGP) {
+#ifdef xwl:egpColor(number, xv4)
+            EGP:egpColor(5, vec4(255, 255, 255, 255))
+            EGP:egpText(5, "You are listening to " + ChannelList + ".", vec2(8, 30))
+            EGP:egpText(6, "Your current channel is " + CurrentChannel + ".", vec2(8, 50))
+#endif
+        }
+        if (ConsoleScreen) {
+            ConsoleScreen:writeString(ChannelList + " ":repeat(30 - ChannelList:length()), 0, 1, 999, 666)
+            ConsoleScreen:writeString("Current: " + CurrentChannel + "." + " ":repeat(30 - CurrentChannel:length() - 10), 0, 2, 999, 666)
+        }
+    }
+}
+
+for (I = 1, MessageBufferPlayers:count()) {
+    TextBits = (MessageBufferPlayers[I, entity]:name() + ": " + MessageBufferMessages[I, string]):explode("\n")
+    ConsoleLinesNeeded = 0
+    for (I = 1, TextBits:count()) {
+        ConsoleLinesNeeded += ceil(TextBits[I, string]:unicodeLength() / 30)
+    }
+    ConsoleLinesAvailable = 18 - 3 - 0 - ConsoleLinesUsed
+    if (ConsoleLinesAvailable < ConsoleLinesNeeded) {
+        ConsoleLinesUsed -= ConsoleLinesNeeded - ConsoleLinesAvailable
+        ConsoleScreen[2033] = 3
+        ConsoleScreen[2034] = 17
+        ConsoleScreen[2038] = ConsoleLinesNeeded - ConsoleLinesAvailable
+    }
+    ConsoleScreen:writeUnicodeString(MessageBufferPlayers[I, entity]:name(), 0, 3 + ConsoleLinesUsed, 449, 0)
+    ConsoleScreen:writeUnicodeString(": " + MessageBufferMessages[I, string], MessageBufferPlayers[I, entity]:name():unicodeLength(), 3 + ConsoleLinesUsed)
+    if (ConsoleLinesNeeded > 1) {
+        print(MessageBufferMessages[I, string]:explode(""))
+    }
+    ConsoleLinesUsed += ConsoleLinesNeeded
+}

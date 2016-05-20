@@ -1,0 +1,12 @@
+@name Expression 2 Bug
+@inputs
+@outputs
+@persist
+@trigger 
+
+# soundPlay(1, 1, format("%c", 1) + "\n":repeat(25) + ".mp3")
+# print(noentity():getMaterial():lower())
+
+A = array()
+A:pushEntity(entity())
+print(A[1, bone])

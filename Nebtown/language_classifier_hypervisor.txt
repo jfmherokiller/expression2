@@ -1,0 +1,10 @@
+@name Language Classifier Hypervisor
+@inputs
+@outputs
+@persist Library:gtable
+@persist CodeHeader:string CodeFooter:string
+@trigger
+@model
+
+if (first() | duped()) {
+}

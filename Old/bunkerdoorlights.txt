@@ -1,0 +1,18 @@
+@name BunkerDoorLights
+@inputs
+@outputs Red Green
+@persist
+@trigger
+
+interval(250)
+
+gSetGroup("bunker_door")
+Open = gGetNum("door_opened")
+if (Open) {
+    Red = 0
+    Green = 1   
+} else {
+    Red = 1
+    Green = 0
+}
+gResetGroup()

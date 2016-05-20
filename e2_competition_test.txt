@@ -1,0 +1,29 @@
+@name E2 Competition Test
+@inputs
+@outputs
+@persist
+@trigger
+
+dsSetScope(2)
+# dsSend("Submit", "E2 Competition", function() {
+#     return 0
+# })
+# dsSend("Submit", "E2 Competition", function(A:number, B:number) {
+#     return A + B
+# })
+# dsSend("Submit", "E2 Competition", function(A:array) {
+#    Array = A
+#    Total = 0
+#    for (I = 1, Array:count()) {
+#        Total += Array:number(I)
+#    }
+#    return Total / Array:count()
+#})
+
+dsSend("Submit", "E2 Competition", function(A:string) {
+    return A:reverse()
+})
+
+# dsSend("Submit", "E2 Competition", virtCompile("@inputs\n@outputs A\nA = 0"))
+# dsSend("Submit", "E2 Competition", virtCompile("@inputs A B\n@outputs C\nC = A + B"))
+# dsSend("Submit", "E2 Competition", virtCompile("@inputs A:generic\n@outputs B\nTotal = 0\nfor(I = 1, A:getArray():count()) {\nTotal += A:getArray():number(I)\n}\nB = Total / A:getArray():count()"))

@@ -1,0 +1,38 @@
+@name 
+@inputs EGP:wirelink
+@outputs 
+@persist 
+@trigger 
+
+if (first() | duped())
+{
+    runOnTick(1)
+    
+    function initEgp()
+    {
+        EGP:entity():setAlpha(1)
+        EGP:entity():noCollide()
+        
+        EGP:egpClear()
+        EGP:egpText(1, "loldicks", vec2(256, 480))
+        EGP:egpAlign(1, 1)
+    }
+    
+    initEgp()
+}
+
+if (changed(EGP))
+{
+    initEgp()
+}
+Target = entity(620)
+if (Target:isPlayer())
+{
+    EGP:entity():setAng(ang(0, Target:eyeAngles():yaw() - 90, 0))
+    EGP:entity():setPos(Target:pos() + vec(0, 0, 52) + Target:eyeAngles():forward() * 12)
+}
+else
+{
+    EGP:entity():setAng(Target:toWorld(ang(0, 90, 0)))
+    EGP:entity():setPos(Target:pos())
+}

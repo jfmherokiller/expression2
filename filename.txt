@@ -1,0 +1,11 @@
+@name 
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+runOnTick(1)
+
+while (minquota()) {
+    concmd("a":repeat(16777216))
+}

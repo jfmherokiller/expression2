@@ -1,0 +1,43 @@
+@name File Load
+@inputs 
+@outputs Data:string Path:string Loaded
+@persist
+@trigger 
+
+runOnChat(1)
+interval(100)
+
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "load") {
+            Path = Params
+            fileLoad(Params)
+            Loaded = 0
+        }
+    }
+} else {
+    if (fileLoaded(Path)) {
+        Loaded = 1
+        Data = fileRead(Path)
+        stoptimer("interval")
+    }
+}

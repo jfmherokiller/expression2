@@ -1,0 +1,138 @@
+@name CodePad
+@inputs CodeScreen1:wirelink CodeScreen2:wirelink
+@inputs CommandScreen:wirelink IOScreen:wirelink MemoryScreen:wirelink
+@inputs CodeKeyboard CommandKeyboard IOKeyboard
+@outputs 
+@persist Functions:table CSL:table
+@persist CodeKeyboardState:table CommandKeyboardState:table IOKeyboardState:table
+@persist CodeKeyboardPos:vector2 Code:array
+@trigger 
+
+if (first() | duped()) {
+    dsSetScope(2)
+    dsJoinGroup("ConsoleScreenLib")
+    dsSend("GetFunctions", "ConsoleScreenLib", entity())
+}
+
+hint("HI2", 10)
+
+if (dsClk()) {
+    DataSignalType = dsClkName()
+    if (DataSignalType == "ConsoleScreenLibInitialized") {
+        dsSendDirect("GetFunctions", dsGetEntity(), entity())
+    } elseif (DataSignalType == "ConsoleScreenLibFunctions") {
+        CSL = dsGetTable()
+        CSL["initializeScreen", function](CodeScreen1)
+        CSL["initializeScreen", function](CodeScreen2)
+        CSL["addHeader", function](CodeScreen1, "Code", 999009)
+        CSL["addHeader", function](CodeScreen2, "", 999009)
+        
+        CSL["initializeScreen", function](CommandScreen)
+        CSL["addHeader", function](CommandScreen, "Console", 999009)
+        
+        CSL["initializeScreen", function](IOScreen)
+        CSL["addHeader", function](IOScreen, "Program", 999009)
+        
+        CSL["initializeScreen", function](MemoryScreen)
+        CSL["addHeader", function](MemoryScreen, "Memory", 999009)
+        
+        CSL["initializeKeyboard", function](CodeKeyboardState, "Code")
+        CSL["initializeKeyboard", function](CommandKeyboardState, "Commands")
+        CSL["initializeKeyboard", function](IOKeyboardState, "IO")
+        
+        CSL["setKeyboardArrowsCallback", function](CodeKeyboardState, array(function(KeyboardState:table, Direction:number) {
+            Line = CodeKeyboardPos:y() + Direction
+            if (Line < 0) {
+                return 0
+            }
+            CSL["setKeyboardString", function](KeyboardState, Code[Line + 1, string])
+            if (Direction < 0) {
+                CodeKeyboardPos = vec2(Code[Line + 1, string]:length(), Line)
+            } else {
+                CodeKeyboardPos = vec2(0, Line)
+            }
+            CSL["setKeyboardStringOffset", function](KeyboardState, CodeKeyboardPos:x())
+            CSL["setScreenCursorPosition", function](CodeScreen1, CodeKeyboardPos)
+            CSL["setScreenCursorPosition", function](CodeScreen2, CodeKeyboardPos - vec2(30, 0))
+        }))
+        CSL["setKeyboardBackspaceCallback", function](CodeKeyboardState, array(function(KeyboardState:table) {
+            Y = CodeKeyboardPos:y()
+            if (!Y) {
+                return 0
+            }
+            X = Code[Y, string]:length()
+            Code[Y, string] = Code[Y, string] + Code[Y + 1, string]
+            Code:remove(Y + 1)
+            
+            for (Y = CodeKeyboardPos:y(), Code:count()) {
+                String = Code[Y + 1, string]
+                CSL["setScreenLine", function](CodeScreen1, Y, String:sub(1, 30), 999000)
+                CSL["setScreenLine", function](CodeScreen2, Y, String:sub(31, 60), 999000)
+            }
+            CSL["setKeyboardString", function](KeyboardState, Code[CodeKeyboardPos:y(), string])
+            CodeKeyboardPos = vec2(X, CodeKeyboardPos:y() - 1)
+            CSL["setKeyboardStringOffset", function](KeyboardState, CodeKeyboardPos:x())
+        }))
+        CSL["setKeyboardDeleteCallback", function](CodeKeyboardState, array(function(KeyboardState:table) {
+            Code[CodeKeyboardPos:y() + 1, string] = Code[CodeKeyboardPos:y() + 1, string] + Code[CodeKeyboardPos:y() + 2, string]
+            Code:remove(CodeKeyboardPos:y() + 2)
+            
+            for (Y = CodeKeyboardPos:y(), Code:count()) {
+                String = Code[Y + 1, string]
+                CSL["setScreenLine", function](CodeScreen1, Y, String:sub(1, 30), 999000)
+                CSL["setScreenLine", function](CodeScreen2, Y, String:sub(31, 60), 999000)
+            }
+            CSL["setKeyboardString", function](KeyboardState, Code[CodeKeyboardPos:y() + 1, string])
+        }))
+        CSL["setKeyboardEnterCallback", function](CodeKeyboardState, array(function(KeyboardState:table) {
+            Code:insertString(CodeKeyboardPos:y() + 2, Code[CodeKeyboardPos:y() + 1, string]:sub(CodeKeyboardPos:x() + 1))
+            Code[CodeKeyboardPos:y() + 1, string] = Code[CodeKeyboardPos:y() + 1, string]:sub(1, CodeKeyboardPos:x())
+            CodeKeyboardPos = vec2(0, CodeKeyboardPos:y() + 1)
+            
+            for (Y = CodeKeyboardPos:y() - 1, Code:count()) {
+                String = Code[Y + 1, string]
+                CSL["setScreenLine", function](CodeScreen1, Y, String:sub(1, 30), 999000)
+                CSL["setScreenLine", function](CodeScreen2, Y, String:sub(31, 60), 999000)
+            }
+            
+            CSL["setKeyboardStringOffset", function](KeyboardState, CodeKeyboardPos:x())
+            CSL["setKeyboardString", function](KeyboardState, Code[CodeKeyboardPos:y() + 1, string])
+        }))
+        CSL["setKeyboardLineCallback", function](CodeKeyboardState, array(function(KeyboardState:table, DeltaLine:number) {
+            Line = CodeKeyboardPos:y() + DeltaLine
+            if (Line < 0) {
+                return 0
+            }
+            CSL["setKeyboardString", function](KeyboardState, Code[Line + 1, string])
+            CodeKeyboardPos = CodeKeyboardPos:setY(Line)
+            CSL["setScreenCursorPosition", function](CodeScreen1, CodeKeyboardPos)
+            CSL["setScreenCursorPosition", function](CodeScreen2, CodeKeyboardPos - vec2(30, 0))
+        }))
+        CSL["setKeyboardStringCallback", function](CodeKeyboardState, array(function(KeyboardState:table, String:string, LastString:string) {
+            Code[CodeKeyboardPos:y() + 1, string] = String
+            CSL["setScreenLine", function](CodeScreen1, CodeKeyboardPos:y(), String:sub(1, 30), 999000)
+            CSL["setScreenLine", function](CodeScreen2, CodeKeyboardPos:y(), String:sub(31, 60), 999000)
+        }))
+        CSL["setKeyboardStringOffsetCallback", function](CodeKeyboardState, array(function(KeyboardState:table, StringOffset:number) {
+            CodeKeyboardPos = CodeKeyboardPos:setX(StringOffset)
+            CSL["setScreenCursorPosition", function](CodeScreen1, CodeKeyboardPos)
+            CSL["setScreenCursorPosition", function](CodeScreen2, CodeKeyboardPos - vec2(30, 0))
+        }))
+        
+        CSL["setKeyboardStringCallback", function](CommandKeyboardState, array(function(KeyboardState:table, String:string, LastString:string) {
+        }))
+        CSL["setKeyboardStringCallback", function](IOKeyboardState, array(function(KeyboardState:table, String:string, LastString:string) {
+        }))
+        
+        for (Y = 0, Code:count()) {
+            String = Code[Y + 1, string]
+            CSL["setScreenLine", function](CodeScreen1, Y, String:sub(1, 30), 999000)
+            CSL["setScreenLine", function](CodeScreen2, Y, String:sub(31, 60), 999000)
+        }
+    }
+}
+
+CSL["processKeyboardInput", function](CodeKeyboardState, CodeKeyboard)
+CSL["processKeyboardInput", function](CommandKeyboardState, CommandKeyboard)
+CSL["processKeyboardInput", function](IOKeyboardState, IOKeyboard)
+

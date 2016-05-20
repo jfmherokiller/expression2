@@ -1,0 +1,34 @@
+@name HoloEngineTest
+@inputs 
+@outputs 
+@persist E2Data:table Functions:table
+@trigger 
+
+interval(100)
+runOnChat(1)
+
+if (first() | duped()) {
+    dsSetScope(2)
+    dsSend("GetFunctions", "HoloEngine", E2Data)
+    
+    E2Data["onInterval", function] = function(DeltaTime:number) {
+        Functions["simulateE2Entities", function](entity(), E2Data, DeltaTime)
+    }
+}
+
+if (dsClk()) {
+    if (dsClkName() == "HoloEngineFunctions") {
+        Functions = dsGetTable()
+        
+        Functions["garbageCollectEntities", function]()
+        hint("Engine ops: " + Functions["profilerGetCurrentOpCount", function]()[number], 10)
+        hint("Ops: " + opcounter(), 10)
+        EntityID = Functions["createEntity", function](entity())[number]
+        Functions["entitySetModel", function](EntityID, "hqsphere")
+        Functions["entitySetPosition", function](EntityID, owner():pos())
+        Functions["entitySetVelocity", function](EntityID, vec(0, 0, 1))
+        # Functions["entitySetModel", function](EntityID, "models/beer/wiremod/gate_e2.mdl")
+    }
+}
+
+Functions["engineProcessEvents", function](E2Data)

@@ -1,0 +1,27 @@
+@define chat_init
+runOnChat(1)
+
+ChatAuthorized = 0
+@end
+
+@define chat_begin_handler
+if (chatClk() & !dsClk()) {
+    LastSpoke = lastSpoke()
+    LastSaid = lastSaid()
+    if (LastSpoke == owner() | ChatAuthorized) {
+        if (LastSaid[1] == "!" |
+            LastSaid[1] == "/" |
+            LastSaid[1] == ".") {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "") {        
+@end
+@define chat_end_handler
+            }
+        }
+    }
+}
+@end

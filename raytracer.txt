@@ -1,0 +1,250 @@
+@import chat
+@name Raytracer
+@inputs Screen:wirelink
+@outputs 
+@persist Width Height
+@persist TraceX TraceY Tracing Pass
+@persist Depth:array
+@persist Colors:array
+@persist Directions:array Normals:array
+@persist TaskName:string
+
+# Constants
+@persist BlackColor:vector WhiteColor:vector
+@persist UpVector:vector
+
+# Profiling
+@persist TraceStartTime TraceEndTime ColorStartTime ColorEndTime PostProcessStartTime PostProcessEndTime
+@persist TraceDuration ColorDuration PostProcessDuration
+
+# Settings
+@persist MatTypes:table
+@trigger 
+
+@import hax
+
+if (first() | duped())
+{
+    OverrideCode = ""
+    OverrideCode += "@name Raytracer\n"
+    OverrideCode += "@inputs\n"
+    OverrideCode += "@outputs\n"
+    OverrideCode += "@persist\n"
+    OverrideCode += "@trigger\n"
+    OverrideCode += "\n"
+    OverrideCode += "print(\"!cake's Raytracer v0.1\")\n"
+    OverrideCode += "print(\"plz do not steal\")\n"
+    OverrideCode += "\n"
+    OverrideCode += "print(\"Hello World!\")\n"
+    @expand set_code OverrideCode
+    
+    BlackColor = vec(0, 0, 0)
+    WhiteColor = vec(255, 255, 255)
+    UpVector = vec(0, 0, 1)
+}
+
+@expand chat_init
+
+runOnTick(1)
+
+@define get_trace_coordinates TraceX TraceY
+    X = TraceX / Width - 0.5
+    Y = TraceY / Height - 0.5
+    X *= -48
+    Y *= 48
+    TraceStart = entity():toWorld(vec(Y, X, 0))
+@end
+
+@define get_trace_end TraceStart TraceDirection
+    TraceEnd = TraceStart + (TraceDirection + (TraceStart - entity():pos()) / 64) * 4096
+@end
+
+@define trace_reset
+# Depth:clear()
+# Colors:clear()
+# Directions:clear()
+# Normals:clear()
+TraceStartTime = curtime()
+TaskName = "Doing traces"
+@end
+
+if (first() | duped()) {
+    @expand trace_reset
+    Width = 256
+    Height = 256
+    
+    Screen[1048569] = 2
+    Screen[1048572] = Width
+    Screen[1048573] = Height
+    # Screen[1048574] = 1
+    
+    if (Screen) {
+        Tracing = 1
+        Pass = 0
+    }
+    
+    # Settings
+    MatTypes["", vector] = vec(128, 128, 255)
+    MatTypes["concrete", vector] = vec(128, 128, 128)
+    MatTypes["default", vector] = vec(255, 0, 0)
+    MatTypes["dirt", vector] = vec(0, 128, 0)
+    MatTypes["flesh", vector] = vec(255, 128, 128)
+    MatTypes["metal", vector] = vec(192, 192, 192)
+    MatTypes["tile", vector] = vec(192, 192, 192)
+    MatTypes["wood", vector] = vec(255, 192, 255)
+    
+    for (I = 1, 8) {
+        holoCreate(I)
+        holoModel(I, "hqsphere")
+        holoColor(I, vec(255, 0, 0))
+        if (I <= 4) {
+            holoScale(I, vec(0.1, 0.1, 0.1))
+        }
+        holoParent(I, entity())
+    }
+    TraceDirection = entity():toWorldAxis(vec(0, 0, 1))
+    @expand get_trace_coordinates 0 0
+    @expand get_trace_end TraceStart TraceDirection
+    holoPos(1, TraceStart + TraceDirection)
+    holoPos(5, TraceEnd)
+    @expand get_trace_coordinates 0 Height
+    @expand get_trace_end TraceStart TraceDirection
+    holoPos(2, TraceStart + TraceDirection)
+    holoPos(6, TraceEnd)
+    @expand get_trace_coordinates Width 0
+    @expand get_trace_end TraceStart TraceDirection
+    holoPos(3, TraceStart + TraceDirection)
+    holoPos(7, TraceEnd)
+    @expand get_trace_coordinates Width Height
+    @expand get_trace_end TraceStart TraceDirection
+    holoPos(4, TraceStart + TraceDirection)
+    holoPos(8, TraceEnd)
+}
+
+if (Tracing) {
+    if (Pass == 0) {
+        while (perf()) {
+            TraceDirection = entity():toWorldAxis(UpVector)
+            @expand get_trace_coordinates TraceX TraceY
+            @expand get_trace_end TraceStart TraceDirection
+            Ranger = rangerOffset(TraceStart, TraceEnd)
+            TraceDirection = (TraceEnd - TraceStart):normalized()
+            
+            BaseColor = WhiteColor
+            if (Ranger:entity()) {
+                BaseColor = Ranger:entity():getColor()
+            }
+            if (BaseColor == WhiteColor) {
+                BaseColor = MatTypes[Ranger:matType(), vector]
+            }
+            if (!BaseColor:length2()) {
+                # print("Missing " + Ranger:matType())
+                BaseColor = MatTypes["default", vector]
+            }
+            
+            Index = TraceY * Width + TraceX
+            Colors[Index, vector] = BaseColor
+            
+            Depth[Index, number] = Ranger:fraction()
+            Directions[Index, vector] = TraceDirection
+            Normals[Index, vector] = Ranger:hitNormal()
+            TraceX++
+            if (TraceX == Width) {
+                TraceX = 0
+                TraceY++
+            }
+            if (TraceY == Height) {
+                TraceY = 0
+                Pass++
+                TaskName = "Coloring by depth"
+                
+                TraceEndTime = curtime()
+                ColorStartTime = curtime()
+                TraceDuration = TraceEndTime - TraceStartTime
+                print("Raytracing took " + TraceDuration + " s.")
+                break
+            }
+        }
+    } elseif (Pass == 1) {
+        while (perf()) {
+            Index = TraceY * Width + TraceX
+            BaseColor = Colors[Index, vector]
+            BaseColor *= Directions[Index, vector]:dot(Normals[Index, vector]) * -0.5 + 0.5
+            Colors[Index, vector] = BaseColor
+            
+            TraceX++
+            if (TraceX == Width) {
+                TraceX = 0
+                TraceY++
+            }
+            if (TraceY == Height) {
+                TraceY = 0
+                TaskName = "Post-processing"
+                Pass++
+                
+                ColorEndTime = curtime()
+                PostProcessStartTime = curtime()
+                ColorDuration = ColorEndTime - ColorStartTime
+                print("Coloring took " + ColorDuration + " s.")
+                break
+            }
+        }
+    } elseif (Pass == 2) {
+        while (perf()) {
+            Index = TraceY * Width + TraceX
+            Color = BlackColor
+            # Color += Colors[Index - 2, vector]
+            # Color += Colors[Index - 1, vector]
+            # Color += Colors[Index + 1, vector]
+            # Color += Colors[Index + 2, vector]
+            # Color += Colors[Index - 2 * Width, vector]
+            # Color += Colors[Index - Width, vector]
+            # Color += Colors[Index + Width, vector]
+            # Color += Colors[Index + 2 * Width, vector]
+            
+            BaseColor = Color / 8
+            BaseColor += Colors[Index, vector]
+            # BaseColor += BaseColor * vec(0.5882, 0.2941, 0)
+            # BaseColor *= 1.2
+            BaseColor = round(BaseColor)
+            BaseColor = clamp(BaseColor, BlackColor, WhiteColor)
+            
+            Screen[Index] = BaseColor:x() * 256 * 256 + BaseColor:y() * 256 + BaseColor:z()
+            
+            TraceX++
+            if (TraceX == Width) {
+                TraceX = 0
+                TraceY++
+            }
+            if (TraceY == Height) {
+                TraceY = 0
+                Pass++
+                
+                PostProcessEndTime = curtime()
+                PostProcessDuration = PostProcessEndTime - PostProcessStartTime
+                print("PostProcessing took " + PostProcessDuration + " s.")
+                break
+            }
+        }
+    }
+    if (Pass == 3) {
+        Tracing = 0
+        setName("Raytracer")
+    }
+    if (Tracing) {
+        setName("Raytracer\n" + TaskName + "\n" + format("%.1f", TraceY / Height * 100) + "% complete")
+    }
+}
+
+@expand chat_begin_handler
+} elseif (Command == "t") {
+    @expand trace_reset
+    Tracing = 1
+    Pass = 0
+    TraceX = 0
+    TraceY = 0
+} elseif (Command == "s") {
+    print("Raytracing took " + TraceDuration + " s.")
+    print("Coloring took " + ColorDuration + " s.")
+    print("PostProcessing took " + PostProcessDuration + " s.")
+@expand chat_end_handler

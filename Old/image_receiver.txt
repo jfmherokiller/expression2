@@ -1,0 +1,167 @@
+@name Image Receiver
+@inputs Screen:wirelink
+@outputs
+@persist FileName:string
+@persist Data:array DataIndex LastCleared Cleared
+@trigger 
+
+interval(500)
+runOnChat(1)
+runOnFile(1)
+
+if (duped() | first()) {
+    if (!convarnum("wire_expression2_concmd")) {
+        printColor(vec(255, 0, 0), "Warning: wire_expression2_concmd is set to 0.")
+    }
+    Data = array()
+    DataIndex = 1
+    
+    # Debugging
+    Debug = 1
+    
+    Cleared = 0
+    Screen[1048569] = 1
+    
+    FileName = "image.txt"
+#ifdef fileRemove(string)
+    fileRemove(FileName)
+    fileLoad(FileName)
+#endif
+    
+    concmd("lmsg file " + FileName + " images")
+    hint("Images file: " + FileName, 10)
+    
+#ifdef fileRemove(string)
+    fileRemove("image.txt")
+#endif
+    fileLoad("images.txt")
+    concmd("lmsg ping")
+    concmd("lmsg open image")
+    concmd("lmsg recv")
+    print("Sent startup signal.")
+}
+
+# Instruction buffers
+ReceiveMessages = 0
+
+if (chatClk()) {
+    ChatActivated = 0
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        ChatActivated = 1
+    }
+    if (ChatActivated) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        Components = Params:explode(" ")
+        ReducedParams = Params:replace(" ", "")
+        Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        Player = findPlayerByName(Components:string(1))
+        Message = Params:sub(Params:find(" ") + 1, Params:length())
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "tick") {
+                ReceiveMessages = 1
+            }
+        }
+    }
+} elseif (clk("interval")) {
+    concmd("lmsg ping")
+} elseif (fileClk("image.txt")) {
+    if (!Cleared) {
+        Cleared = 1
+        Screen[1048574] = 1
+        Screen[1048574] = 0
+    }
+#ifdef fileRead(string)
+    Values = fileRead("image.txt"):explode(" ")
+#else
+    Values = fileRead():explode(" ")
+    print("File:" + fileRead())
+#endif
+#ifdef fileRemove(string)
+    fileRemove("image.txt")
+#endif
+    fileLoad("image.txt")
+    Offset = Values[1, number] * 3
+    for (I = 2, Values:count()) {
+        Pixel = Values[I, number]
+        Screen[Offset + 2] = Pixel - floor(Pixel / 256) * 256
+        Pixel = floor(Pixel / 256)
+        Screen[Offset + 1] = Pixel - floor(Pixel / 256) * 256
+        Pixel = floor(Pixel / 256)
+        Screen[Offset] = Pixel
+        Offset += 3
+    }
+    concmd("lmsg ack")
+} elseif (fileClk(FileName)) {
+    ReceiveMessages = 2
+}
+
+if (ReceiveMessages) {
+    EncodedData = ""
+    if (ReceiveMessages == 1) {
+        MessageID = convarnum("lmsg_message_proxy_data_id")
+        for (I = 1, convarnum("lmsg_message_proxy_data_count")) {
+            EncodedData = EncodedData + convar("lmsg_message_proxy_data" + I)
+        }
+    } else {
+#ifdef fileRead(string)
+        EncodedData = fileRead(FileName)
+#else
+        EncodedData = fileRead()
+        # print("File:" + fileRead())
+#endif
+#ifdef fileRemove(string)
+        fileRemove(FileName)
+#endif
+        fileLoad(FileName)
+        concmd("lmsg ack " + FileName)
+    }
+    NewData = glonDecode(EncodedData)
+    for (I = 1, NewData:count()) {
+        if (NewData:string(I):length()) {
+            Data:pushString(NewData:string(I))
+            if (Debug) {
+                printColor(vec(255, 0, 0), "Data: " + MessageID + ": " + NewData:string(I))
+            }
+        } else {
+            printColor(vec(255, 0, 0), "Message reception failure.")
+        }
+    }
+}
+
+for (Z = DataIndex, Data:count()) {
+    String = Data[Z, string]
+    Table = glonDecodeTable(String)
+    Type = Table["type", string]
+    if (Type == "size") {
+        Screen[1048573] = Table["w", number]
+        Screen[1048572] = Table["h", number]
+        concmd("lmsg ack")
+        print("Received screen size.")
+    } else {
+        printColor(vec(255, 0, 0), "Unhandled message " + Type + ".")
+    }
+    Data:setString(Z, "")
+    DataIndex++
+}
+
+
+#ifdef fileCanLoad()
+if (fileCanLoad()) {
+    fileLoad("image.txt")
+}
+#endif

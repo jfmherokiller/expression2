@@ -1,0 +1,7 @@
+@name Hints
+@inputs 
+@outputs 
+
+for (I = 1, 10) {
+    hint("Hint #" + I, 30)
+}

@@ -1,0 +1,32 @@
+@name Holoemitter lulz
+@inputs XWL:wirelink
+@outputs
+@persist Alt
+@trigger
+@model
+
+interval(100)
+if (first() | duped()) {    
+    XWL[4] = 1
+    XWL[5] = 255
+    XWL[6] = 255
+    XWL[7] = 255
+    XWL[8] = 5
+    XWL[9] = 1
+    XWL[10] = 0
+    XWL[11] = 10
+    XWL[13] = 1
+}
+
+Alt = 1 - Alt
+if (Alt) {
+    XWL[1] = 0
+    XWL[2] = 0
+    XWL[3] = 0
+    XWL[0] = 1
+} else {
+    XWL[1] = 0
+    XWL[2] = 0
+    XWL[3] = 1000000000000000
+    XWL[0] = 1
+}

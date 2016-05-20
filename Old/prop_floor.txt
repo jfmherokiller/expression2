@@ -1,0 +1,29 @@
+@name Prop Floor
+@inputs
+@outputs
+@persist Position:vector
+@persist Prop1:entity Prop2:entity
+@trigger
+
+interval(100)
+
+Size = 108
+if (first() | duped()) {
+    Position = owner():pos()
+    Position /= Size
+    Position = round(Position)
+    Position *= Size
+    Position = Position:setZ(0)
+    propSpawn("models/hunter/plates/plate2x2.mdl", Position, 1)
+}
+
+FuturePosition = owner():pos() + owner():vel() * 0.2
+FuturePosition /= Size
+FuturePosition = round(FuturePosition)
+FuturePosition *= Size
+FuturePosition = FuturePosition:setZ(0)
+if (FuturePosition != Position) {
+    print(FuturePosition)
+    Position = FuturePosition
+    propSpawn("models/hunter/plates/plate2x2.mdl", Position, 1)
+}

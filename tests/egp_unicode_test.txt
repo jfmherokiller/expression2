@@ -1,0 +1,169 @@
+@name EGP Unicode Test
+@inputs EGP:wirelink
+@outputs
+@persist LastUse
+@persist CharsPerLine LinesPerScreen
+@persist ShouldRenderChars NextRenderLine
+@persist BaseCharacter
+@persist FullCharacters:string
+@trigger 
+
+interval(100)
+runOnChat(1)
+
+if (duped() | first()) {
+    BaseCharacter = 0
+    
+    if (EGP:entity()) {
+        EGP:egpClear()
+        EGP:egpBox(1, vec2(0, 0), vec2(1024, 48))
+        EGP:egpColor(1, vec4(128, 128, 128, 255))
+        
+        EGP:egpText(2, "EGP Unicode Test", vec2(0, 0))
+        EGP:egpFont(2, "Arial", 24)
+        
+        EGP:egpBox(3, vec2(0, 32), vec2(1024, 16))
+        EGP:egpColor(3, vec4(128, 128, 255, 255))
+        
+        EGP:egpText(4, "Starting at 0x" + format("%.4X", BaseCharacter), vec2(0, 24))
+        EGP:egpFont(4, "Arial", 16)
+        
+        EGP:egpBox(5, vec2(24, 496), vec2(48, 32))
+        EGP:egpBox(6, vec2(84, 496), vec2(48, 32))
+        EGP:egpBox(7, vec2(428, 496), vec2(48, 32))
+        EGP:egpBox(8, vec2(488, 496), vec2(48, 32))
+        EGP:egpColor(5, vec4(128, 128, 128, 255))
+        EGP:egpColor(6, vec4(128, 128, 128, 255))
+        EGP:egpColor(7, vec4(128, 128, 128, 255))
+        EGP:egpColor(8, vec4(128, 128, 128, 255))
+        
+        EGP:egpText(9, "<<", vec2(8, 480))
+        EGP:egpText(10, "<", vec2(64, 480))
+        EGP:egpText(11, ">", vec2(424, 480))
+        EGP:egpText(12, ">>", vec2(480, 480))
+        EGP:egpColor(9, vec4(255, 255, 255, 255))
+        EGP:egpColor(10, vec4(255, 255, 255, 255))
+        EGP:egpColor(11, vec4(255, 255, 255, 255))
+        EGP:egpColor(12, vec4(255, 255, 255, 255))
+        EGP:egpFont(9, "Arial", 24)
+        EGP:egpFont(10, "Arial", 24)
+        EGP:egpFont(11, "Arial", 24)
+        EGP:egpFont(12, "Arial", 24)
+    }
+    
+    CharsPerLine = 16
+    LinesPerScreen = 16
+    
+    ShouldRenderChars = 1
+    NextRenderLine = 0
+}
+
+UsePressed = 0
+if (owner():keyUse() & owner():keyUse() != LastUse) {
+    UsePressed = 1
+}
+ScreenPos = vec2(-1, -1)
+#ifdef xwl:egpCursor(entity)
+if (EGP:entity()) {
+    ScreenPos = EGP:egpCursor(owner())
+}
+#endif
+if (ScreenPos != vec2(-1, -1)) {
+    if (UsePressed) {
+        if (ScreenPos:y() > 496) {
+            if (ScreenPos:x() < 32) {
+                BaseCharacter -= 4096
+                if (BaseCharacter < 0) {
+                    BaseCharacter = 2097152 - 4096
+                }
+                ShouldRenderChars = 1
+            } elseif (inrange(ScreenPos:x(), 60, 108)) {
+                BaseCharacter -= 256
+                if (BaseCharacter < 0) {
+                    BaseCharacter = 2097152 - 256
+                }
+                ShouldRenderChars = 1
+            } elseif (inrange(ScreenPos:x(), 404, 452)) {
+                BaseCharacter += 256
+                if (BaseCharacter >= 2097152) {
+                    BaseCharacter = 0
+                }
+                ShouldRenderChars = 1
+            } elseif (ScreenPos:x() > 464) {
+                BaseCharacter += 4096
+                if (BaseCharacter >= 2097152) {
+                    BaseCharacter = 0
+                }
+                ShouldRenderChars = 1
+            }
+        }
+    }
+}
+if (chatClk()) {
+    if (lastSaid():sub(1, 5) == "!char") {
+        hideChat(1)
+        Offset = lastSaid():sub(7):trim():toNumber()
+        BaseCharacter = Offset
+        ShouldRenderChars = 1
+    } elseif (lastSaid() == "!next") {
+        hideChat(1)
+        BaseCharacter += 256
+        if (BaseCharacter >= 2097152) {
+            BaseCharacter = 0
+        }
+        ShouldRenderChars = 1
+    } elseif (lastSaid() == "!prev") {
+        hideChat(1)
+        BaseCharacter -= 256
+        if (BaseCharacter < 0) {
+            BaseCharacter = 2097152 - 256
+        }
+        ShouldRenderChars = 1
+    }
+}
+if (ShouldRenderChars) {
+    if (EGP:entity()) {
+        EGP:egpText(4, "Starting at 0x" + format("%.4X", BaseCharacter), vec2(0, 24))
+    }
+}
+LastUse = owner():keyUse()
+
+if (ShouldRenderChars) {
+    OutOfCPU = 0
+    for (Y = NextRenderLine, LinesPerScreen - 1) {
+        if (opcounter() > 2000) {
+            OutOfCPU = 1
+            NextRenderLine = Y
+            break
+        }
+        hint("Preparing line " + Y, 10)
+        Line = ""
+        for (X = 0, CharsPerLine - 1) {
+            Char = BaseCharacter + Y * CharsPerLine + X
+#ifdef toUnicodeChar(number)
+            UTF8 = toUnicodeChar(Char)
+#else
+            if (Char < 128) {
+                UTF8 = format("%c", Char)
+            } elseif (Char < 2048) {
+                UTF8 = format("%c%c", 192 + bShr(Char, 6), 128 + bAnd(Char, 63))
+            } elseif (Char < 65536) {
+                UTF8 = format("%c%c%c", 224 + bShr(Char, 12), 128 + bAnd(bShr(Char, 6), 63), 128 + bAnd(Char, 63))
+            } elseif (Char < 2097152) {
+                UTF8 = format("%c%c%c%c", 240 + bShr(Char, 18), 128 + bAnd(bShr(Char, 12), 63), 128 + bAnd(bShr(Char, 6), 63), 128 + bAnd(Char, 63))
+            }
+#endif
+            Line = Line + UTF8 + " "
+        }
+        FullCharacters += Line + "\n"
+    }
+    if (!OutOfCPU & Y == LinesPerScreen - 1) {
+        ShouldRenderChars = 0
+        NextRenderLine = 0
+        if (EGP:entity()) {
+            EGP:egpTextLayout(13, FullCharacters, vec2(100, 48), vec2(512, 512))
+            EGP:egpFont(13, "lucida console")
+        }
+        FullCharacters = ""
+    }
+}

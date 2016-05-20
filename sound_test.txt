@@ -1,0 +1,8 @@
+@name Sound test
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+soundPlay("Channel 1", 10, "synth/sine.wav")
+soundPitch("Channel 1", 100)

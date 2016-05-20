@@ -1,0 +1,16 @@
+@name basic lift controller
+@inputs Up Down
+@outputs Floor
+@persist Floor
+@trigger
+
+if (Up) {
+    Floor += 1
+}
+if (Down) {
+    Floor -= 1
+}
+
+if (Floor < 0) {
+    Floor = 0
+}

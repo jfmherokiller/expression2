@@ -1,0 +1,29 @@
+@name Aimer
+@inputs Bearing Elevation
+@outputs TargetAngle:angle CurrentAngle:angle DeltaAngle:angle
+@persist
+@trigger
+
+interval(50)
+
+EntBlock = entity():isWeldedTo()
+AngTarget = ang(-Elevation, Bearing, 0)
+TargetAngle = AngTarget
+AngTarget -= EntBlock:angles()
+AngTarget -= EntBlock:angVel()
+if (AngTarget:yaw() < -180) {
+    AngTarget = AngTarget:setYaw(AngTarget:yaw() + 360)
+}
+if (AngTarget:yaw() > 180) {
+    AngTarget = AngTarget:setYaw(AngTarget:yaw() - 360)
+}
+DeltaAngle = AngTarget
+AngTarget *= EntBlock:mass()
+EntBlock:applyAngForce(AngTarget)
+CurrentAngle = EntBlock:angles()
+
+VecTargetPos = EntBlock:pos():setZ(100)
+VecTargetPos -= EntBlock:pos()
+VecTargetPos -= EntBlock:vel()
+VecTargetPos *= EntBlock:mass()
+EntBlock:applyForce(VecTargetPos)

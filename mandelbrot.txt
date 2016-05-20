@@ -1,0 +1,56 @@
+@name Mandelbrot
+@inputs Screen:wirelink
+@outputs 
+@persist Width Height ColorR ColorG ColorB
+@persist Done PositionX PositionY
+@trigger 
+
+interval(10)
+if (first() | duped()) {
+    Width = 512
+    Height = 512
+    Screen[1048574] = 1
+    Screen[1048569] = 1
+    Screen[1048572] = Width
+    Screen[1048573] = Height
+    ColorR = random()
+    ColorG = random()
+    ColorB = random()
+    
+    PositionX = 0
+    PositionY = 0
+}
+
+if (!Done) {
+    while (perf() & opcounter() < 15000) {
+        CReal = (PositionX - Width * 0.5) / Width * 2 - 0.5
+        CImaginary = -(PositionY - Height * 0.5) / Height * 2
+        Real = 0
+        Imaginary = 0
+        Shade = 0
+        for (I = 1, 100) {
+            if (Real * Real + Imaginary * Imaginary >= 4) {
+                Shade = 100 - I
+                break
+            }
+            NextReal = Real * Real - Imaginary * Imaginary + CReal
+            NextImaginary = 2 * Real * Imaginary + CImaginary
+            Real = NextReal
+            Imaginary = NextImaginary
+        }
+        PixelOffset = (PositionY * Height + PositionX) * 3
+        Screen[PixelOffset] = Shade * ColorR
+        Screen[PixelOffset + 1] = Shade * ColorG
+        Screen[PixelOffset + 2] = Shade * ColorB
+        PositionX++
+        if (PositionX == Width) {
+            PositionX = 0
+            PositionY++
+            if (PositionY == Height) {
+                PositionX = 0
+                Done = 1
+                break
+            }
+        }
+    }
+}

@@ -1,0 +1,43 @@
+@name Solka's Lift Doors
+@inputs NearestFloor TargetFloor Distance
+@outputs Front Back Floor0 Floor1 Floor2 Floor3
+@persist
+@trigger
+
+Open = 92
+Closed = 0
+DoorOpen = 1
+DoorClosed = 0
+
+NearTargetFloor = 0
+AtTargetFloor = 0
+if (TargetFloor == NearestFloor) {
+    NearTargetFloor = 1
+    if (Distance < 10) {
+        AtTargetFloor = 1
+    }
+}
+
+Front = Closed
+Back = Closed
+Floor0 = DoorClosed
+Floor1 = DoorClosed
+Floor2 = DoorClosed
+Floor3 = DoorClosed
+
+if (AtTargetFloor) {
+    if (TargetFloor == 0) {
+        Floor0 = DoorOpen
+        Front = Open
+    } elseif (TargetFloor == 1) {
+        Floor1 = DoorOpen
+        Back = Open
+    } elseif (TargetFloor == 2) {
+        Floor2 = DoorOpen
+        Back = Open
+    } elseif (TargetFloor == 3) {
+        Floor3 = DoorOpen
+        Back = Open
+    }
+}
+

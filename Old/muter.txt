@@ -1,0 +1,27 @@
+@name Muter
+@inputs
+@outputs
+@persist PlayerName:string
+@trigger
+
+runOnChat(1)
+
+if (chatClk()) {
+    if (lastSpoke() == owner()) {
+        if (lastSaid():find("!hide", 1) == 1) {
+            hideChat(1)
+            PlayerName = lastSaid():sub(6, lastSaid():length()):trimLeft():trimRight()
+            hint("Player filter set to \"" + PlayerName + "\".", 10)
+        } elseif (lastSaid():find("!unhide", 1) == 1) {
+            hideChat(1)
+            PlayerName = ""
+            hint("Player filter cleared.", 10)
+        }
+    }
+    if (PlayerName:length()) {
+        if (lastSpoke():name():lower():find(PlayerName:lower())) {
+            hint("Said: " + lastSaid(), 10)
+            hideChat(1)
+        }
+    }
+}

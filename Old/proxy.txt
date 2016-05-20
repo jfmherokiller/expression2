@@ -1,0 +1,7 @@
+@name Proxy
+@inputs Value
+@outputs A
+@persist
+@trigger
+
+A = Value

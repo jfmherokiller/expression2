@@ -1,0 +1,245 @@
+@name E2 Competition String Challenges 1
+@inputs
+@outputs
+@persist UDFsWorking NextCompileIndex
+@persist LocalChallengeDescriptions:array LocalChallengeTimes:array LocalChallengeTotalPoints:array
+@persist LocalChallengeInputArgumentCounts:array LocalChallengeVerifiers:table
+@persist ChallengeDescriptions:array ChallengeTimes:array ChallengeTotalPoints:array
+@persist ChallengeInputArgumentCounts:array ChallengeVerifiers:table
+@trigger
+
+interval(300)
+runOnChat(1)
+
+if (first() | duped()) {
+    dsSetScope(2)
+    
+    LocalChallengeDescriptions = array()
+    LocalChallengeTimes = array()
+    LocalChallengeTotalPoints = array()
+    LocalChallengeInputArgumentCounts = array()
+    LocalChallengeVerifiers = table()
+    
+    UDFsWorking = 1
+    NextCompileIndex = 1
+    
+    # Challenge 1: Return string length
+    LocalChallengeDescriptions:pushString("Write a function that returns the length of a string. [A:string -> B:number]")
+    LocalChallengeTimes:pushNumber(60)
+    LocalChallengeTotalPoints:pushNumber(5)
+    LocalChallengeInputArgumentCounts:pushNumber(1)
+#ifdef clk(string) # functionsWorking()
+    LocalChallengeVerifiers:setFunction(toString(LocalChallengeDescriptions:count()), function(Input:table, Output:table) {
+        Output:setNumber("TestCount", 5)
+        TestsPassed = 0
+        Strings = array()
+        Strings:pushString("")
+        Strings:pushString("Strings lal")
+        Strings:pushString("An even longer string")
+        Strings:pushString("sdfhaoefjaklsjdfl;asjfdlds;fjlksjfk")
+        Strings:pushString("ahsdhsad")
+        for (I = 1, 5) {
+            if (Input["Function", function](Strings:string(I))[number] == Strings:string(I):length()) {
+                TestsPassed++
+            }
+        }
+        Output:setNumber("TestsPassed", TestsPassed)
+        Output:setNumber("IsDone", 1)
+    })
+#else
+#endif
+
+    # Challenge 2: Add numbers
+    LocalChallengeDescriptions:pushString("Write a function that reverses a string [A:string -> B:string]")
+    LocalChallengeTimes:pushNumber(60)
+    LocalChallengeTotalPoints:pushNumber(5)
+    LocalChallengeInputArgumentCounts:pushNumber(1)
+#ifdef clk(string) # functionsWorking()
+    LocalChallengeVerifiers:setFunction(toString(LocalChallengeDescriptions:count()), function(Input:table, Output:table) {
+        Output:setNumber("TestCount", 5)
+        TestsPassed = 0
+        Strings1 = array()
+        Strings2 = array()
+        Strings1:pushString("")
+        Strings2:pushString("")
+        Strings1:pushString("a")
+        Strings2:pushString("a")
+        Strings1:pushString("abc")
+        Strings2:pushString("cba")
+        Strings1:pushString("This was a triumph. I'm making a note here: HUGE SUCCESS.")
+        Strings2:pushString(Strings1:string(Strings1:count()):reverse())
+        Strings1:pushString("abcd")
+        Strings2:pushString("dcba")
+        for (I = 1, 5) {
+            Result = Input["Function", function](Strings1:string(I))[string]
+            if (Result == Strings2:string(I)) {
+                TestsPassed++
+            }
+        }
+        Output:setNumber("TestsPassed", TestsPassed)
+        Output:setNumber("IsDone", 1)
+    })
+#else
+#endif
+
+    # Challenge 3: Remove all non alphas.
+    LocalChallengeDescriptions:pushString("Write a function that returns a string, stripped of all non alphabetical characters. [A:string -> B:string]")
+    LocalChallengeTimes:pushNumber(180)
+    LocalChallengeTotalPoints:pushNumber(5)
+    LocalChallengeInputArgumentCounts:pushNumber(1)
+#ifdef clk(string) # functionsWorking()
+    LocalChallengeVerifiers:setFunction(toString(LocalChallengeDescriptions:count()), function(Input:table, Output:table) {
+        Output:setNumber("TestCount", 5)
+        TestsPassed = 0
+        Strings1 = array()
+        Strings2 = array()
+        Strings1:pushString("!!!")
+        Strings2:pushString("")
+        Strings1:pushString("a!b")
+        Strings2:pushString("ab")
+        Strings1:pushString(format("%c", 255) + "a!$b^z")
+        Strings2:pushString("abz")
+        Strings1:pushString("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ123456789")
+        Strings2:pushString("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+        Strings1:pushString("")
+        Strings2:pushString("")
+        for (I = 1, 5) {
+            Result = Input["Function", function](Strings1:string(I))[string]
+            if (Result == Strings2:string(I)) {
+                TestsPassed++
+            }
+        }
+        Output:setNumber("TestsPassed", TestsPassed)
+        Output:setNumber("IsDone", 1)
+    })
+#else
+#endif
+
+    # Challenge 4: Shift 1
+    LocalChallengeDescriptions:pushString("Write a function that returns a string, with 1 added to each character (\"abc\" -> \"bcd\"). [A:string -> B:string]")
+    LocalChallengeTimes:pushNumber(180)
+    LocalChallengeTotalPoints:pushNumber(5)
+    LocalChallengeInputArgumentCounts:pushNumber(1)
+#ifdef clk(string) # functionsWorking()
+    LocalChallengeVerifiers:setFunction(toString(LocalChallengeDescriptions:count()), function(Input:table, Output:table) {
+        Output:setNumber("TestCount", 5)
+        TestsPassed = 0
+        Strings1 = array()
+        Strings2 = array()
+        Strings1:pushString("abc")
+        Strings2:pushString("bcd")
+        Strings1:pushString("ABC")
+        Strings2:pushString("BCD")
+        Strings1:pushString("")
+        Strings2:pushString("")
+        Strings1:pushString("GJL")
+        Strings2:pushString("HKM")
+        Strings1:pushString("876")
+        Strings2:pushString("987")
+        for (I = 1, 5) {
+            Result = Input["Function", function](Strings1:string(I))[string]
+            if (Result == Strings2:string(I)) {
+                TestsPassed++
+            }
+        }
+        Output:setNumber("TestsPassed", TestsPassed)
+        Output:setNumber("IsDone", 1)
+    })
+#else
+#endif
+}
+
+if (dsClk()) {
+    if (dsClkName() == "ChallengeDescriptions") {
+        ChallengeDescriptions = dsGetArray()
+    } elseif (dsClkName() == "ChallengeTimes") {
+        ChallengeTimes = dsGetArray()
+    } elseif (dsClkName() == "ChallengeTotalPoints") {
+        ChallengeTotalPoints = dsGetArray()
+    } elseif (dsClkName() == "ChallengeInputArgumentCounts") {
+        ChallengeInputArgumentCounts = dsGetArray()
+    } elseif (dsClkName() == "ChallengeVerifiers") {
+        ChallengeVerifiers = dsGetTable()
+    } elseif (dsClkName() == "LoadChallengeSet") {
+        ChallengeSet = dsGetString()
+        if (ChallengeSet == "strings1") {
+            for (I = 1, LocalChallengeDescriptions:count()) {
+                ChallengeDescriptions:pushString(LocalChallengeDescriptions:string(I))
+                ChallengeTimes:pushNumber(LocalChallengeTimes:number(I))
+                ChallengeTotalPoints:pushNumber(LocalChallengeTotalPoints:number(I))
+                ChallengeInputArgumentCounts:pushNumber(LocalChallengeInputArgumentCounts:number(I))
+                if (UDFsWorking) {
+                    ChallengeVerifiers:setFunction(toString(I), LocalChallengeVerifiers[toString(I), function])
+                } else {
+                    ChallengeVerifiers:setCode(toString(I), LocalChallengeVerifiers:code(toString(I)))
+                }
+            }
+            dsSendDirect("ChallengeSetName", dsGetSender(), "Strings 1")
+        }
+    }
+} elseif (chatClk()) {
+    Authorized = 0
+    LastSaid = lastSaid()
+    if (lastSpoke() == owner()) {
+        Authorized = 1
+    }
+    if (Authorized) {
+        LastBroadcastOutputTime = curtime()
+        
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "load") {
+                if (Params:lower() == "strings1") {
+                    dsSend("LoadChallengeSet", "E2 Competition Hypervisor", "strings1")
+                }
+            }
+        }
+    }
+} elseif (clk("interval")) {
+    if (!UDFsWorking) {
+        if (NextCompileIndex <= LocalChallengeDescriptions:count() & virtCanCompile()) {
+#ifdef g:getTable()
+            Code = virtCompile("\
+                \n@inputs InputGeneric1:generic OutputGeneric1:generic\
+                \n@outputs InputGeneric:generic OutputGeneric:generic\
+                Input = InputGeneric1:getTable()\
+                Output = OutputGeneric1:getTable()\
+                " + LocalChallengeVerifiers:string(toString(NextCompileIndex)) + "\
+                InputGeneric = generic(Input)\
+                OutputGeneric = generic(Output)\
+            ")
+#else
+            Code = virtCompile("\
+                \n@inputs InputGeneric1:generic OutputGeneric1:generic\
+                \n@outputs InputGeneric:generic OutputGeneric:generic\
+                Input = InputGeneric1[table]\
+                Output = OutputGeneric1[table]\
+                " + LocalChallengeVerifiers:string(toString(NextCompileIndex)) + "\
+                InputGeneric = generic(Input)\
+                OutputGeneric = generic(Output)\
+            ")
+#endif
+            LocalChallengeVerifiers:setCode(toString(NextCompileIndex), Code)
+            if (virtLastError()) {
+                hint("Compile error on test case " + NextCompileIndex + ": " + virtLastError(), 10)
+            }
+            NextCompileIndex++
+            if (NextCompileIndex > LocalChallengeDescriptions:count()) {
+                hint("Finished compiling test cases.", 10)
+            }
+        }
+    }
+}

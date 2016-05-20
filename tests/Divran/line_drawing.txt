@@ -1,0 +1,54 @@
+@name Tests/Divran/Line Drawing
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+@inputs [Ent Prop]:entity
+@outputs [PropPos EntPos]:vector2 [Pos EPos LinePos]:vector
+@persist [Size Corner]:vector2 Zoffset
+if (first()) {
+    runOnTick(1)
+    
+    holoCreate(1)
+    holoModel(1,"hqcylinder2")
+    
+    holoCreate(2)
+    holoModel(2,"plane")
+    
+    Size = vec2(100,100)
+    
+    holoPos(2,entity():pos()+vec(Size/2,20))
+    holoAng(2,ang())
+    
+    Corner = vec2(entity():pos())
+    Zoffset = entity():pos():z() + 20
+    
+    
+    holoScale(2,vec(Size,0)/12)
+}
+
+
+PropPos = vec2(Prop:pos())-Corner
+EntPos = vec2(Ent:pos())-Corner
+
+#This is what I need help with
+PropPos = clamp(PropPos,vec2(),Size)
+EntPos = clamp(EntPos,vec2(),Size)
+
+
+
+#Other stuff only related to the hologram
+Pos = vec(PropPos,0)
+EPos = vec(EntPos,0)
+Diff = (Pos-EPos)
+
+LinePos = (Diff/2+EPos+vec(Corner)):setZ(Zoffset) 
+holoPos(1,LinePos)
+
+
+LineAng = Diff:toAngle()+ang(90,0,0)
+holoAng(1,LineAng)
+
+LineSize = Diff:length()
+holoScale(1,vec(4,4,LineSize)/12)

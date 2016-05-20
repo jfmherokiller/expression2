@@ -1,0 +1,75 @@
+@name Robobuggy Stats
+@inputs Memory:wirelink
+@inputs Reset
+@outputs
+@persist DupeTime
+@persist Started MaxSpeed MaxHeight
+@trigger
+
+interval(33)
+if (Reset) {
+    Started = 0
+}
+if (!Started) {
+    for (I = 0, 17) {
+        Memory:writeString("                              ", 0, I, 999, 0)
+        Memory:writeString("------------------------------", 0, I, 999, 0)
+    }
+    Memory:writeCell(2036, 127)
+    Memory:writeString("Remote controlled buggy       ", 0, 0, 777, 9)
+    Memory:writeString("______________________________", 0, 1, 777, 9)
+    Memory:writeString("Controls:                     ", 0, 2, 777, 9)
+    Memory:writeString("Get off keyboard - Alt        ", 0, 3, 777, 9)
+    Memory:writeString("Movement         - WASD       ", 0, 4, 777, 9)
+    Memory:writeString("Grab toggle      - G          ", 0, 5, 777, 9)
+    Memory:writeString("Jump             - Space      ", 0, 6, 777, 9)
+    Memory:writeString("Explosives       - X          ", 0, 7, 777, 9)
+    Memory:writeString("______________________________", 0, 8, 777, 9)
+    Memory:writeString("                              ", 0, 9, 999, 0)
+    Memory:writeString("Speed:                        ", 0, 10, 999, 0)
+    Memory:writeString("Maximum Speed:                ", 0, 11, 999, 0)
+    Memory:writeString("Height:                       ", 0, 12, 999, 0)
+    Memory:writeString("Maximum Height:               ", 0, 13, 999, 0)
+    Memory:writeString("Nearest Player:               ", 0, 14, 999, 0)
+    Memory:writeString("                              ", 0, 15, 999, 0)
+    Memory:writeString("                              ", 0, 16, 999, 0)
+    Memory:writeString("                              ", 0, 17, 999, 0)
+    Started = 1
+}
+
+if (duped()) {
+    Started = 0
+    DupeTime = curtime()
+}
+if (DupeTime & curtime() - DupeTime > 2) {
+    DupeTime = 0
+    Started = 0
+}
+
+gSetGroup("Buggy")
+EntBuggy = gGetEnt("EntBuggy")
+EntNearest = gGetEnt("EntNearest")
+VecVelocity = EntBuggy:vel()
+Speed = VecVelocity:setZ(0):length()
+VecPos = EntBuggy:pos()
+Height = VecPos:z()
+
+if (Speed > MaxSpeed) {
+    MaxSpeed = Speed
+}
+
+if (Height > MaxHeight) {
+    MaxHeight = Height
+}
+
+Memory:writeString(toString(floor(Speed)) + "   ", 7, 10, 999, 0)
+Memory:writeString(toString(floor(MaxSpeed)) + "   ", 15, 11, 999, 0)
+Memory:writeString(toString(floor(Height)) + "   ", 8, 12, 999, 0)
+Memory:writeString(toString(floor(MaxHeight)) + "   ", 16, 13, 999, 0)
+if (EntNearest) {
+    Memory:writeString(EntNearest:name() + " (" + toString(floor((EntNearest:pos() - VecPos):length())) + ")                           ", 16, 14, 999, 0)
+} else {
+    Memory:writeString("None          ", 16, 14, 999, 0)
+    Memory:writeString("                              ", 0, 15, 999, 0)
+}
+gResetGroup()

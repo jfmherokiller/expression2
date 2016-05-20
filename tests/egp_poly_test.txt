@@ -1,0 +1,222 @@
+@name EGP Poly Test
+@inputs EGP:wirelink
+@outputs 
+@persist Rotate
+@persist Polygons:mtable SelectedPolygon Material Parent Interval
+@trigger 
+
+interval(Interval)
+
+if (first() | duped()) {
+    interval(1000)
+    runOnChat(1)
+    
+    Vertices = array()
+    Vertices:pushVector2(vec2(64, 64))
+    Vertices:pushVector2(vec2(480, 64))
+    Vertices:pushVector2(vec2(480, 480))
+    Vertices:pushVector2(vec2(64, 480))
+    Polygons:pushArray(Vertices)
+    
+    Vertices = array()
+    Vertices:pushVector2(vec2(64, 64))
+    Vertices:pushVector2(vec2(384, 64))
+    Vertices:pushVector2(vec2(128, 160))
+    Vertices:pushVector2(vec2(384, 384))
+    Vertices:pushVector2(vec2(64, 384))
+    Polygons:pushArray(Vertices)
+    
+    Vertices = array()
+    Vertices:pushVector2(vec2(64, 64))
+    Vertices:pushVector2(vec2(384, 64))
+    Vertices:pushVector2(vec2(64, 384))
+    Vertices:pushVector2(vec2(384, 384))
+    Polygons:pushArray(Vertices)
+    
+    Vertices = array()
+    Vertices:pushVector2(vec2(384, 384))
+    Vertices:pushVector2(vec2(128, 128))
+    Vertices:pushVector2(vec2(384, 64))
+    Vertices:pushVector2(vec2(192, 128))
+    Polygons:pushArray(Vertices)
+    
+    Vertices = array()
+    Vertices:pushVector2(vec2(256, 32))
+    Vertices:pushVector2(vec2(300, 200))
+    Vertices:pushVector2(vec2(512, 256))
+    Vertices:pushVector2(vec2(300, 300))
+    Vertices:pushVector2(vec2(256, 512))
+    Vertices:pushVector2(vec2(200, 300))
+    Vertices:pushVector2(vec2(0, 256))
+    Vertices:pushVector2(vec2(200, 200))
+    Vertices:pushVector2(vec2(210, 180))
+    Polygons:pushArray(Vertices)
+    
+    Vertices = array()
+    Vertices:pushVector2(vec2(32, 32))
+    Vertices:pushVector2(vec2(128, 32))
+    Vertices:pushVector2(vec2(384, 344))
+    Vertices:pushVector2(vec2(384, 32))
+    Vertices:pushVector2(vec2(512, 32))
+    Vertices:pushVector2(vec2(512, 512))
+    Vertices:pushVector2(vec2(384, 512))
+    Vertices:pushVector2(vec2(128, 160))
+    Vertices:pushVector2(vec2(128, 512))
+    Vertices:pushVector2(vec2(32, 512))
+    Polygons:pushArray(Vertices)
+    
+    PointCount = 17
+    for (J = 1, 10) {
+        Vertices = array()
+        for (I = 1, PointCount) {
+            Vertices:pushVector2(vec2(256, 256) + vec2(cos(I * 360 / PointCount), sin(I * 360 / PointCount)) * random(0, 216))
+        }
+        Polygons:pushArray(Vertices)
+    } 
+    SelectedPolygon = 1
+    
+    CommandHelp = array()
+    CommandHelp:pushString("EGP Polygon Test")
+    CommandHelp:pushString("!interval - sets the vertex rotation interval")
+    CommandHelp:pushString("!mat - turns on / off polygon texturing")
+    CommandHelp:pushString("!next - cycles to the next polygon")
+    CommandHelp:pushString("!parent - parents / unparents the polygon")
+    CommandHelp:pushString("!prev - cycles to the previous polygon")
+    if (convarnum("wire_expression2_concmd")) {
+        printColor(vec(255, 255, 255), "A list of commands has been printed to your console.")
+        for (I = 1, CommandHelp:count()) {
+            concmd("echo " + CommandHelp[I, string])
+        }
+    } else {
+        for (I = 1, CommandHelp:count()) {
+            printColor(vec(255, 255, 255), CommandHelp[I, string])
+        }
+    }
+    
+    Material = 1
+    Interval = 1000
+    
+    ReinitEGP = 1
+    RedrawEGP = 1
+}
+
+if (clk("interval")) {
+    # Cycle vertices
+    if (Rotate) {
+        Current = Polygons[SelectedPolygon, array]
+        if (Current[1, vector4]) {
+            Current:pushVector4(Current:shiftVector4())
+        } else {
+            Current:pushVector2(Current:shiftVector2())
+        }
+        RedrawEGP = 1
+    }
+}
+
+if (chatClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "interval") {
+                Interval = Arguments:toNumber()
+                printColor(vec(255, 255, 255), "Rotation interval set to " + Interval + " ms.")
+            } elseif (Command == "mat") {
+                Material = 1 - Material
+                if (Material) {
+                    printColor(vec(255, 255, 255), "Texturing is now on.")
+                } else {
+                    printColor(vec(255, 255, 255), "Texturing is now off.")
+                }
+                RedrawEGP = 1
+            } elseif (Command == "next") {
+                SelectedPolygon++
+                if (SelectedPolygon > Polygons:count()) {
+                    SelectedPolygon = 1
+                }
+                ReinitEGP = 1
+                RedrawEGP = 1
+            } elseif (Command == "parent") {
+                Parent = 1 - Parent
+                if (Parent) {
+                    printColor(vec(255, 255, 255), "Polygon is now parented.")
+                } else {
+                    printColor(vec(255, 255, 255), "Polygon is no longer parented.")
+                }
+                RedrawEGP = 1
+            } elseif (Command == "prev") {
+                SelectedPolygon--
+                if (SelectedPolygon < 1) {
+                    SelectedPolygon = Polygons:count()
+                }
+                ReinitEGP = 1
+                RedrawEGP = 1
+            } elseif (Command == "r") {
+                RedrawEGP = 1
+            } elseif (Command == "rotate") {
+                Rotate = 1 - Rotate
+                if (Rotate) {
+                    printColor(vec(255, 255, 255), "Vertex rotation enabled.")
+                } else {
+                    printColor(vec(255, 255, 255), "Vertex rotation disabled.")
+                }
+            }
+        }
+    }
+}
+
+if (ReinitEGP) {
+    EGP:egpClear()
+    EGP:egpBox(1, vec2(256, 16), vec2(512, 32))
+    EGP:egpColor(1, vec(128, 128, 255))
+    EGP:egpText(2, "EGP Concave Polygon Test", vec2(8, 4))
+    EGP:egpBox(3, vec2(10, 10), vec2(10, 10))
+    EGP:egpColor(3, vec(0, 128, 0))
+    EGP:egpMaterial(3, "expression 2/cog")
+    EGP:egpBox(6, vec2(10, 10), vec2(10, 10))
+    EGP:egpParent(3, 6)
+    RedrawEGP = 1
+}
+
+if (RedrawEGP) {    
+    Vertices = Polygons[SelectedPolygon, array]
+    
+    # Add texture coordinates to the vertices
+    if (!Vertices[1, vector4]) {
+        for (I = 1, Vertices:count()) {
+            Vertices[I, vector4] = vec4(Vertices[I, vector2]:x(), Vertices[I, vector2]:y(), Vertices[I, vector2]:x() / 512, Vertices[I, vector2]:y() / 512)
+        }
+    }
+    EGP:egpPoly(10, Vertices)
+    if (Material) {
+        EGP:egpMaterial(10, "expression 2/cog")
+        EGP:egpColor(10, vec4(255, 255, 255, 128))
+    } else {
+        EGP:egpMaterial(10, "")
+        EGP:egpColor(10, vec4(255, 0, 0, 32))
+    }
+    
+    # Show polygon outline
+    for (I = 1, Vertices:count()) {
+        EGP:egpLine(I + 12, vec2(Vertices[I % Vertices:count() + 1, vector4]), vec2(Vertices[(I + 1) % Vertices:count() + 1, vector4]))
+        EGP:egpColor(I + 12, vec(255, 0, 0))
+        EGP:egpSize(I + 12, 4)
+    }
+    
+    # Show polygon start points
+    EGP:egpText(4, "1", vec2(Vertices[1, vector4]))
+    EGP:egpColor(4, vec(128, 128, 255))
+    EGP:egpText(5, "2", vec2(Vertices[2, vector4]))
+    EGP:egpColor(5, vec(128, 128, 255))
+    if (Parent) {
+        EGP:egpParent(10, 3)
+        # EGP:egpParentToCursor(10)
+    } else {
+        EGP:egpUnParent(10)
+    }
+}
+EGP:egpPos(6, vec2(10, 10) + vec2(randvec() * 10))

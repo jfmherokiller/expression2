@@ -1,0 +1,495 @@
+@name E2 Competition Hypervisor
+@inputs ConsoleScreen:wirelink
+@outputs 
+@persist UDFsWorking ULXPresent
+@persist Threads:table EntitiesToThreadIDs:array BusyThreads:array ThreadPlayers:array ThreadPlayerIDs:array FreeThreadCount
+# Maps thread IDs to entity IDs
+
+# Console screen
+@persist ConsoleScreenNextLine
+
+# Output
+@persist BroadcastOutputQueue:array BroadcastOutputQueueIndex LastBroadcastOutputTime
+@persist PrivateMessageQueue:array PrivateMessageQueuePlayers:array PrivateMessageQueueIndex
+
+# Scores
+@persist PlayerNames:table PlayerScores:table PlayerRoundScores:table
+# Steam IDs to names and scores
+
+# State
+@persist CompetitionState StateEndTime RoundNumber
+# 0 - Before start
+# 1 - Waiting for start
+# 2 - Waiting for round end
+# 3 - Post round end wait
+# 4 - Ended
+
+# Round queues
+@persist RoundTestQueueIndex RoundTestQueueNextIndex
+@persist RoundTestQueue:table RoundTestQueuePlayers:array RoundTestQueuePlayerIDs:array
+
+# Competition rounds
+@persist CurrentChallenge
+@persist ChallengeSetName:string ChallengeDescriptions:array ChallengeTimes:array ChallengeTotalPoints:array
+@persist ChallengeInputArgumentCounts:array ChallengeVerifiers:table
+
+@trigger 
+
+interval(100)
+runOnChat(1)
+
+DebugOutputQueue = array()
+CheckTestQueue = 0
+if (first() | duped()) {
+    UDFsWorking = 1
+    ULXPresent = 1
+    
+    if (ConsoleScreen) {
+        ConsoleScreen:writeCell(2041, 1)
+        ConsoleScreen:writeCell(2033, 0)
+        ConsoleScreen:writeCell(2034, 17)
+        DebugOutputQueue:pushString("Screen detected.")
+    }
+    
+    dsJoinGroup("E2 Competition Hypervisor")    # Thread-hypervisor communication
+    dsJoinGroup("E2 Competition")               # Client-hypervisor communication
+    dsSetScope(2)
+    
+    dsSend("DiscoverThreads", "E2 Competition Hypervisor", entity())
+    
+    # Initialization
+    Threads = table()
+    EntitiesToThreadIDs = array()
+    BusyThreads = array()
+    ThreadPlayers = array()
+    ThreadPlayerIDs = array()
+    FreeThreadCount = 0
+    
+    # Console screen
+    ConsoleScreenNextLine = 0
+
+    # Output
+    BroadcastOutputQueue = array()
+    BroadcastOutputQueueIndex = 1
+    LastBroadcastOutputTime = 0
+    PrivateMessageQueue = array()
+    PrivateMessageQueuePlayers = array()
+    PrivateMessageQueueIndex = 1
+    
+    # Scores
+    PlayerScores = table()
+    PlayerRoundScores = table()
+    
+    # Competition state
+    CompetitionState = 0
+    StateEndTime = 0
+    RoundNumber = 1
+
+    # Round queues
+    RoundTestQueueIndex = 1
+    RoundTestQueueNextIndex = 1
+    RoundTestQueue = table()
+    RoundTestQueuePlayers = array()
+    RoundTestQueuePlayerIDs = array()
+    
+    # Competition rounds
+    CurrentChallenge = 1
+    ChallengeSetName = ""
+    ChallengeDescriptions = array()
+    ChallengeTimes = array()
+    ChallengeTotalPoints = array()
+    ChallengeInputArgumentCounts = array()
+    ChallengeVerifiers = table()
+}
+
+if (dsClk()) {
+    if (dsClkName() == "ChallengeSetName") {
+        ChallengeSetName = dsGetString()
+        DebugOutputQueue:pushString("Challenge set " + ChallengeSetName + " loaded.")
+    } elseif (dsClkName() == "LoadChallengeSet" & dsGetGroup() == "E2 Competition Hypervisor") {
+        if (CompetitionState == 0) {
+            Entity = dsGetSender()
+            if (Entity:owner() == owner()) {
+                ChallengeSetName = ""
+                ChallengeDescriptions = array()
+                ChallengeTimes = array()
+                ChallengeTotalPoints = array()
+                ChallengeInputArgumentCounts = array()
+                ChallengeVerifiers = table()
+                dsSendDirect("ChallengeDescriptions", Entity, ChallengeDescriptions)
+                dsSendDirect("ChallengeTimes", Entity, ChallengeTimes)
+                dsSendDirect("ChallengeTotalPoints", Entity, ChallengeTotalPoints)
+                dsSendDirect("ChallengeInputArgumentCounts", Entity, ChallengeInputArgumentCounts)
+                dsSendDirect("ChallengeVerifiers", Entity, ChallengeVerifiers)
+                dsSendDirect("LoadChallengeSet", Entity, dsGetString())
+            }
+        } else {
+            DebugOutputQueue:pushString("You can't change the challenges while a competition is in progress.")
+        }
+    } elseif (dsClkName() == "RegisterThread") {
+        if (dsGetGroup() == "E2 Competition Hypervisor" | dsGetGroup() == "") {
+            ThreadID = EntitiesToThreadIDs:number(dsGetSender():id())
+            if (!ThreadID) {
+                ThreadID = floor(random(1, 9000))
+                while(Threads:entity(toString(ThreadID)) != noentity()) {
+                    ThreadID = floor(random(1, 9000))
+                }
+                FreeThreadCount++
+            } else {
+                if (BusyThreads:number(ThreadID)) {
+                    FreeThreadCount++
+                    BusyThreads:setNumber(ThreadID, 0)
+                    ThreadPlayers:setEntity(ThreadID, noentity())
+                    ThreadPlayerIDs:setString(ThreadID, "")
+                }
+            }
+            Threads:setEntity(toString(ThreadID), dsGetSender())
+            EntitiesToThreadIDs:setNumber(dsGetSender():id(), ThreadID)
+            CheckTestQueue = 1
+            dsSendDirect("ThreadSetThreadID", dsGetSender(), ThreadID)
+        }
+    }
+    if (dsClkName() == "SandboxDone") {
+        Output = dsGetTable()
+        SourceID = dsGetSender():id()
+        if (Threads:entity(toString(Output:number("ThreadID"))):id() == SourceID) {
+            Player = ThreadPlayers:entity(Output:number("ThreadID"))
+            SteamID = ThreadPlayerIDs:string(Output:number("ThreadID"))
+            BusyThreads:setNumber(Output:number("ThreadID"), 0)
+            ThreadPlayers:setEntity(Output:number("ThreadID"), noentity())
+            ThreadPlayerIDs:setString(Output:number("ThreadID"), "")
+            FreeThreadCount++
+            if (CompetitionState == 2) {
+                TestCount = Output:number("TestCount")
+                TestsPassed = Output:number("TestsPassed")
+                ShouldBroadcast = 0
+                ScoredPoints = floor(TestsPassed / TestCount * ChallengeTotalPoints:number(RoundNumber))
+                if (ScoredPoints > PlayerRoundScores:string(SteamID):toNumber()) {
+                    PlayerRoundScores:setString(SteamID, toString(ScoredPoints))
+                    ShouldBroadcast = 1
+                }
+                PassedAll = 0
+                if (TestCount == TestsPassed) {
+                    PassedAll = 1
+                }
+                if (ShouldBroadcast) {
+                    if (PassedAll) {
+                        BroadcastOutputQueue:pushString(PlayerNames:string(SteamID) + " passed all test cases and scored " + ChallengeTotalPoints:number(RoundNumber) + " points!")
+                    } else {
+                        BroadcastOutputQueue:pushString(PlayerNames:string(SteamID) + " passed " + TestsPassed + " / " + TestCount + " test cases and has " + ScoredPoints + " points this round.")
+                    }
+                } else {
+                    PrivateMessageQueue:pushString("Your function passed " + TestsPassed + " / " + TestCount + " test cases. You have " + PlayerRoundScores:string(SteamID) + " points this round.")
+                    PrivateMessageQueuePlayers:pushEntity(Player)
+                }
+            }
+        }
+        CheckTestQueue = 1
+    }
+    if (dsClkName() == "Submit") {
+        if (dsGetGroup() == "E2 Competition") {
+            Sender = dsGetSender()
+            Owner = Sender:owner()
+            SteamID = Owner:steamID()
+            if (CompetitionState == 2) {
+                if (UDFsWorking) {
+                    RoundTestQueue:setFunction(toString(RoundTestQueueNextIndex), dsGetFunction())
+                } else {
+                    RoundTestQueue:setCode(toString(RoundTestQueueNextIndex), dsGetCode())
+                }
+                RoundTestQueuePlayers:pushEntity(Owner)
+                RoundTestQueuePlayerIDs:pushString(SteamID)
+                RoundTestQueueNextIndex++
+                PlayerNames:setString(SteamID, Owner:name())
+                if (PlayerRoundScores:string(SteamID) == "") {
+                    PlayerRoundScores:setString(SteamID, "0")
+                }
+                CheckTestQueue = 1
+            } else {
+                PrivateMessageQueue:pushString("A round is not in progress.")
+                PrivateMessageQueuePlayers:pushEntity(Owner)
+            }
+        }
+    }
+} elseif (chatClk()) {
+    Authorized = 0
+    LastSaid = lastSaid()
+    if (lastSpoke() == owner()) {
+        Authorized = 1
+    }
+    if (Authorized) {
+        LastBroadcastOutputTime = curtime()
+        
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "broadcast") {
+                BroadcastOutputQueue:pushString("[E2]: " + Params)
+            } elseif (Command == "clear") {
+                ConsoleScreen:writeCell(2041, 1)
+                ConsoleScreenNextLine = 0
+            } elseif (Command == "end") {
+                if (CompetitionState == 2) {
+                    StateEndTime = curtime()
+                    BroadcastOutputQueue:pushString("[E2] " + owner():name() + " ended the round.")
+                } else {
+                    DebugOutputQueue:pushString("You are not in the middle of a round.")
+                }
+            } elseif (Command == "extend") {
+                Time = Params:toNumber()
+                if (CompetitionState == 2) {
+                    StateEndTime += Time
+                    BroadcastOutputQueue:pushString("[E2] " + owner():name() + " extended the round by " + Time + " seconds.")
+                } else {
+                    DebugOutputQueue:pushString("You are not in the middle of a round.")
+                }
+            } elseif (Command == "reset") {
+                CompetitionState = 0
+                DebugOutputQueue:pushString("You reset the E2 competition.")
+                
+                Threads = table()
+                EntitiesToThreadIDs = array()
+                BusyThreads = array()
+                ThreadPlayers = array()
+                ThreadPlayerIDs = array()
+                FreeThreadCount = 0
+                dsSend("DiscoverThreads", "E2 Competition Hypervisor", entity())
+            } elseif (Command == "start") {
+                if (CompetitionState == 0) {
+                    if (ChallengeSetName == "") {
+                        DebugOutputQueue:pushString("No competition challenge set selected!")
+                    } else {
+                        BroadcastOutputQueue:pushString("[E2] E2 competition (" + ChallengeSetName + ") starts in 20 seconds.")
+                        if (UDFsWorking) {
+                            BroadcastOutputQueue:pushString("[E2] To submit a function, send a data signal with your function to \"E2 Competition\", named \"Submit\".")
+                        } else {
+                            BroadcastOutputQueue:pushString("[E2] To submit code, send a data signal with your virtCompile()'d code to \"E2 Competition\", named \"Submit\".")
+                        }
+                        CompetitionState = 1
+                        RoundNumber = 1
+                        StateEndTime = curtime() + 20
+                    }
+                } elseif (CompetitionState == 1) {
+                    BroadcastOutputQueue:pushString("[E2] " + owner():name() + " force started the competition.")
+                    StateEndTime = curtime()
+                } elseif (CompetitionState == 2) {
+                    DebugOutputQueue:pushString("A round is in progress.")
+                } elseif (CompetitionState == 3) {
+                    BroadcastOutputQueue:pushString("[E2] " + owner():name() + " force started the next round.")
+                    StateEndTime = curtime()
+                } elseif (CompetitionState == 4 |
+                            CompetitionState == 5) {
+                    DebugOutputQueue:pushString("The competition has ended. Reset it before starting a new one.")
+                }
+            } elseif (Command == "threadcount") {
+                DebugOutputQueue:pushString(toString(Threads:keys():count()) + " thread(s).")
+            }
+        }
+    }
+} elseif (clk("interval")) {
+    LastCompetitionState = CompetitionState
+    if (CompetitionState == 0) {
+        # Null.
+    } elseif (CompetitionState == 1) {
+        # Wait for competition start
+        if (curtime() >= StateEndTime) {
+            RoundNumber = 1
+            PlayerScores = table()
+            PlayerRoundScores = table()
+            CompetitionState = 2
+        }
+    } elseif (CompetitionState == 2) {
+        if (StateEndTime == 0) {
+            BroadcastOutputQueue:pushString("[E2] Round " + RoundNumber + ": " + ChallengeTimes:number(RoundNumber) + " seconds.")
+            BroadcastOutputQueue:pushString("[E2] " + ChallengeDescriptions:string(RoundNumber))
+            PlayerRoundScores = table()
+            StateEndTime = curtime() + ChallengeTimes:number(RoundNumber)
+        } elseif (curtime() >= StateEndTime) {
+            CompetitionState = 3
+        }
+    } elseif (CompetitionState == 3) {
+        if (StateEndTime == 0) {
+            RoundTestQueueIndex = 1
+            RoundTestQueueNextIndex = 1
+            RoundTestQueue = table()
+            RoundTestQueuePlayers = array()
+            RoundTestQueuePlayerIDs = array()
+            
+            dsSend("SandboxAbort", "E2 Competition Hypervisor", entity())
+
+            if (RoundNumber == ChallengeDescriptions:count()) {
+                BroadcastOutputQueue:pushString("[E2] Round " + RoundNumber + " ended. The competition is over.")
+                CompetitionState = 4
+            } else {
+                BroadcastOutputQueue:pushString("[E2] Round " + RoundNumber + " ended. Next round in 20 seconds.")
+            }
+            StateEndTime = curtime() + 20
+            PlayerList = PlayerRoundScores:keys()
+            MaxScore = 0
+            MaxPlayers = array()
+            for (I = 1, PlayerList:count()) {
+                Score = PlayerRoundScores:string(PlayerList:string(I)):toNumber()
+                PlayerScores:setString(PlayerList:string(I), toString(PlayerScores:string(PlayerList:string(I)):toNumber() + Score))
+                if (Score == MaxScore) {
+                    MaxPlayers:pushString(PlayerNames:string(PlayerList:string(I)))
+                } elseif (Score > MaxScore) {
+                    MaxScore = Score
+                    MaxPlayers = array()
+                    MaxPlayers:pushString(PlayerNames:string(PlayerList:string(I)))
+                }
+            }
+            if (!MaxPlayers:count() | !MaxScore) {
+                if (!PlayerList:count()) {
+                    BroadcastOutputQueue:pushString("[E2] No one participated in this round. D:")
+                } else {
+                    BroadcastOutputQueue:pushString("[E2] Everyone completely failed this round.")
+                }
+            } elseif (MaxPlayers:count() == 1) {
+                BroadcastOutputQueue:pushString("[E2] " + MaxPlayers:string(I) + " - A winrar is you! You won this round with " + MaxScore + " points.")
+            } else {
+                Winners = "[E2] The round winners are "
+                for (I = 1, MaxPlayers:count()) {
+                    Winners += MaxPlayers:string(I)
+                    if (I < MaxPlayers:count() - 1) {
+                        Winners += ", "
+                    } elseif (I == MaxPlayers:count() - 1) {
+                        Winners += " and "
+                    }
+                }
+                Winners + " with " + MaxScore + " points."
+                BroadcastOutputQueue:pushString(Winners)
+            }
+            RoundNumber++
+        } elseif (curtime() >= StateEndTime) {
+            CompetitionState = 2
+        }
+    } elseif (CompetitionState == 4) {
+        PlayerList = PlayerScores:keys()
+        MaxScore = -9001
+        MaxPlayers = array()
+        for (I = 1, PlayerList:count()) {
+            Score = PlayerScores:string(PlayerList:string(I)):toNumber()
+            if (Score == MaxScore) {
+                MaxPlayers:pushString(PlayerNames:string(PlayerList:string(I)))
+            } elseif (Score > MaxScore) {
+                MaxScore = Score
+                MaxPlayers = array()
+                MaxPlayers:pushString(PlayerNames:string(PlayerList:string(I)))
+            }
+        }
+        if (!MaxPlayers:count()) {
+            BroadcastOutputQueue:pushString("[E2] No one participated in this competition. D:")
+        } else {
+            if (!MaxScore) {
+                BroadcastOutputQueue:pushString("[E2] You all fail - no one scored more than 0 points.")
+            } elseif (MaxPlayers:count() == 1) {
+                BroadcastOutputQueue:pushString("[E2] " + MaxPlayers:string(I) + " - A winrar is you! You won with " + MaxScore + " points.")
+            } else {
+                Winners = "[E2] The winners are "
+                for (I = 1, MaxPlayers:count()) {
+                    Winners += MaxPlayers:string(I)
+                    if (I < MaxPlayers:count() - 1) {
+                        Winners += ", "
+                    } elseif (I == MaxPlayers:count() - 1) {
+                        Winners += " and "
+                    }
+                }
+                Winners + " with " + MaxScore + " points."
+                BroadcastOutputQueue:pushString(Winners)
+            }
+        }
+        CompetitionState = 5
+    }
+    if (LastCompetitionState != CompetitionState) {
+        StateEndTime = 0
+    }
+}
+
+if (CheckTestQueue) {
+    TestCount = RoundTestQueueNextIndex - RoundTestQueueIndex
+    ThreadList = Threads:keys()
+    ThreadIndex = 1
+    while (FreeThreadCount & TestCount) {
+        while (BusyThreads:number(ThreadList:string(ThreadIndex):toNumber())) {
+             ThreadIndex++
+        }
+        BusyThreads:setNumber(ThreadList:string(ThreadIndex):toNumber(), 1)
+        ThreadPlayers:setEntity(ThreadList:string(ThreadIndex):toNumber(), RoundTestQueuePlayers:entity(1))
+        ThreadPlayerIDs:setString(ThreadList:string(ThreadIndex):toNumber(), RoundTestQueuePlayerIDs:string(1))
+        FreeThreadCount--
+        TestCount--
+
+        Input = table()
+        if (UDFsWorking) {
+            Input["Function", function] = RoundTestQueue[toString(RoundTestQueueIndex), function]
+            Input["Verifier", function] = ChallengeVerifiers[toString(RoundNumber), function]
+        } else {
+            Input["Function", code] = RoundTestQueue:code(toString(RoundTestQueueIndex))
+            Input["Verifier", code] = ChallengeVerifiers:code(toString(RoundNumber))
+        }
+        Input:setNumber("ArgumentCount", ChallengeInputArgumentCounts:number(RoundNumber))
+        dsSendDirect("SandboxFunction", Threads:entity(ThreadList:string(ThreadIndex)), Input)
+        RoundTestQueueIndex++
+    }
+    if (!FreeThreadCount & TestCount) {
+        DebugOutputQueue:pushString("Warning: No free threads to run tests.")
+    }
+}
+
+while (PrivateMessageQueue:string(PrivateMessageQueueIndex) != "") {
+    if (PrivateMessageQueuePlayers:entity(PrivateMessageQueueIndex) == owner()) {
+        DebugOutputQueue:pushString("[E2] " + PrivateMessageQueue:string(PrivateMessageQueueIndex))
+    } elseif (ULXPresent) {
+        concmd("ulx psay \"" + PrivateMessageQueuePlayers:entity(PrivateMessageQueueIndex):name() + "\" [E2] " + PrivateMessageQueue:string(PrivateMessageQueueIndex))
+    } else {
+        BroadcastOutputQueue:pushString("[E2] @" + PrivateMessageQueuePlayers:entity(PrivateMessageQueueIndex):name() + ": " + PrivateMessageQueue:string(PrivateMessageQueueIndex))
+    }
+    PrivateMessageQueueIndex++
+}
+
+if (curtime() - LastBroadcastOutputTime > 1) {
+    if (BroadcastOutputQueue:string(BroadcastOutputQueueIndex) != "") {
+        Message = BroadcastOutputQueue:string(BroadcastOutputQueueIndex)
+        if (ConsoleScreen) {
+            LineCount = ceil(Message:length() / 30)
+            if (LineCount + ConsoleScreenNextLine > 17) {
+                ShiftLines = LineCount + ConsoleScreenNextLine - 18
+                ConsoleScreenNextLine -= ShiftLines
+                ConsoleScreen:writeCell(2038, ShiftLines)
+            }
+            ConsoleScreen:writeString(Message, 0, ConsoleScreenNextLine, 900, 0)
+            ConsoleScreenNextLine += LineCount
+            BroadcastOutputQueueIndex++
+        } else {
+#ifdef printChat(string)
+            printChat(Message)
+            BroadcastOutputQueueIndex++
+#else
+            if (Message:length() <= 105) {
+                BroadcastOutputQueueIndex++
+            } else {
+                Message = Message:sub(1, 105)
+                BroadcastOutputQueue:setString(BroadcastOutputQueueIndex, BroadcastOutputQueue:string(BroadcastOutputQueueIndex):sub(106))
+            }
+            concmd("say " + Message)
+#endif
+        }
+        LastBroadcastOutputTime = curtime()
+    }
+}
+
+for (I = 1, DebugOutputQueue:count()) {
+    hint(DebugOutputQueue:string(I), 10)
+}

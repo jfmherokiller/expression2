@@ -1,0 +1,20 @@
+@name AutoHeal
+@inputs
+@outputs
+@persist
+@trigger
+
+interval(500)
+
+Health = owner():health()
+Armor = owner():armor()
+
+if (owner():isAlive()) {
+    if (Health < 100) {
+        concmd("citrus giveweapon !cake item_healthkit 1")
+    }
+    
+    if (Armor < 100) {
+        concmd("citrus giveweapon !cake item_battery 1")
+    }
+}

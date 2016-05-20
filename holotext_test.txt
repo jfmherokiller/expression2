@@ -1,0 +1,50 @@
+@name Holotext creator
+@inputs 
+@outputs 
+@persist ParentQueueIDs:array ParentQueueParents:array NextHoloID
+@trigger 
+
+interval(200)
+if (first())
+{
+    runOnChat(1)
+    
+    NextHoloID = 100
+    entity():setAlpha(0)
+}
+
+if (clk("interval"))
+{
+    for (I = 1, ParentQueueIDs:count())
+    {
+        holoTextParent(ParentQueueIDs[I, number], ParentQueueParents[I, entity])
+    }
+    ParentQueueIDs:clear()
+    ParentQueueParents:clear()
+}
+
+if (chatClk())
+{
+    if (lastSpoke() == owner())
+    {
+        if (lastSaid():sub(1, 1) == "!" | lastSaid():sub(1, 1) == "/")
+        {
+            hideChat(1)
+            Command = lastSaid():sub(2)
+            ArgumentString = Command:sub(Command:find(" ") + 1)
+            Arguments = ArgumentString:explode(" ")
+            Command = Command:sub(1, Command:find(" ") - 1)
+            if (Command == "panel")
+            {
+                Panel = propSpawn("models/hunter/plates/plate1x1.mdl", owner():eyeTrace():pos(), 1)
+                Panel:setMaterial("models/gibs/metalgibs/metal_gibs")
+                holoTextCreate(NextHoloID)
+                holoText(NextHoloID, ArgumentString)
+                holoTextPos(NextHoloID, Panel:pos() + entity():toWorldAxis(vec(0, 0, 4)))
+                ParentQueueIDs:pushNumber(NextHoloID)
+                ParentQueueParents:pushEntity(Panel)
+                NextHoloID++
+            }
+        }
+    }
+}

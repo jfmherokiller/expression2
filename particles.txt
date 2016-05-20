@@ -1,0 +1,14 @@
+@name Particles
+@inputs
+@outputs
+@outputs
+@persist
+@trigger
+
+runOnChat(1)
+runOnTick(1)
+
+if (first() | duped()) {
+    particleGravity(vec(0, 0, 0))
+    particle(5, 10, 10, "expression 2/cog.vmt", vec(255, 0, 0), entity():pos(), vec(0, 0, 10))
+}

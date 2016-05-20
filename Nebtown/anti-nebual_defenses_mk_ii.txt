@@ -1,0 +1,10 @@
+@name Nebtown/Anti-Nebual Defenses Mk II
+@inputs 
+@outputs 
+@persist CodeFields:array
+@trigger 
+
+ThisTable = entity():entTable()
+# printTable(ThisTable)
+print(ThisTable:getString("original"))
+print(ThisTable:getString("Execute"))

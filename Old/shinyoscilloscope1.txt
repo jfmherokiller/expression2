@@ -1,0 +1,14 @@
+@name ShinyOscilloscope1
+@inputs 
+@outputs X Y
+@persist TimeX TimeY
+@trigger 
+
+interval(10)
+TimeX += 0.01
+TimeY += 5
+X = TimeX
+Y = sin(TimeY) / 2
+if (TimeX >= 1) {
+    TimeX = -1   
+}

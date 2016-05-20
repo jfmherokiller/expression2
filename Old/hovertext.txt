@@ -1,0 +1,49 @@
+@name Hovering Text
+@inputs 
+@outputs Text:string Clk AngDelta:angle
+@persist EntPlayer:entity
+@trigger 
+
+runOnChat(1)
+interval(15)
+Clk = 1
+
+if (chatClk() & lastSpoke() == owner()) {
+    Said = lastSaid()
+    if (Said:find("!msgtarget", 1) == 1) {
+        hideChat(1)
+        Said = Said:sub(11, Said:length()):trimLeft():trimRight()
+        EntPlayer = findPlayerByName(Said)
+    } elseif (Said:find("!msg", 1) == 1) {
+        hideChat(1)
+        Said = Said:sub(5):trimLeft():trimRight()
+        Text = Said
+    }
+}
+
+EntBlock = entity():isWeldedTo()
+VecBlockPos = EntBlock:pos()
+VecBlockVel = EntBlock:vel()
+VecTargetPos = EntPlayer:attachmentPos("eyes") + vec(0, 0, 60)
+VecDelta = VecTargetPos - VecBlockPos - VecBlockVel
+EntBlock:applyForce(VecDelta * EntBlock:mass())
+
+AngBlock = EntBlock:angles()
+AngBlockVel = EntBlock:angVel()
+AngTarget = ang(0, sin(curtime()) * 0.01 * 360 - 180, 0)
+AngDelta = AngTarget - AngBlock
+if (AngDelta:yaw() < -180) {
+    AngDelta:setYaw(AngDelta:yaw() + 360)
+}
+if (AngDelta:yaw() > 180) {
+    AngDelta:setYaw(AngDelta:yaw() - 360)
+}
+AngDelta -= AngBlockVel
+AngDelta = AngDelta:setPitch(0):setRoll(0)
+if (AngDelta:yaw() > 180) {
+    AngDelta = AngDelta:setYaw(180)
+}
+if (AngDelta:yaw() < -180) {
+    AngDelta = AngDelta:setYaw(-180)
+}
+EntBlock:applyAngForce(AngDelta * EntBlock:mass())

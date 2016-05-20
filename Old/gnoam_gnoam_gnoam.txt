@@ -1,0 +1,21 @@
+@name GNOAM GNOAM GNOAM
+@inputs 
+@outputs 
+@persist Created Angle:angle Distance
+@trigger 
+
+interval(500)
+if (!Distance) {
+    Distance = 48
+}
+
+if (Created < 50) {
+    SpawnPos = owner():pos() + Angle:forward() * Distance
+    Angle += ang(0, 20, 0)
+    propSpawn("models/props_junk/gnome.mdl", SpawnPos, Angle + ang(0, 150, 0), 1)
+    if (Angle == ang(0, 360, 0)) {
+        Angle = ang()
+        Distance += 16
+    }
+    Created++
+}

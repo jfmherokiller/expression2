@@ -1,0 +1,17 @@
+@name EGP Look of Disapproval
+@inputs EGP:wirelink
+@outputs
+@persist
+@trigger 
+
+Eye = format("%c%c%c", 224, 178, 160)
+EGP:egpFont(1, "Arial", 72)
+EGP:egpFont(2, "Tunga", 128)
+EGP:egpFont(3, "Arial", 64)
+EGP:egpFont(4, "Arial", 72)
+EGP:egpFont(5, "Tunga", 128)
+EGP:egpText(1, "o", vec2(188 + 2, 214))
+EGP:egpText(2, Eye, vec2(188 + 0, 168))
+EGP:egpText(3, "_", vec2(188 + 48, 216))
+EGP:egpText(4, "o", vec2(188 + 82, 214))
+EGP:egpText(5, Eye, vec2(188 + 80, 168))

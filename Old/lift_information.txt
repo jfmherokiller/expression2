@@ -1,0 +1,63 @@
+@name Lift Information
+@inputs CurrentHeight TargetHeight FloorHeights:array FloorNames:array
+@outputs NearestFloor TargetFloor NearestFloorName:string TargetFloorName:string Distance
+@persist
+@trigger
+
+Distance = abs(TargetHeight - CurrentHeight)
+# Edit the following lines to add / remove floors
+# Or input the floors via FloorHeights
+Heights = array()
+if (FloorHeights:count()) {
+    Heights = FloorHeights
+} else {
+    Heights:setNumber(0, 0)
+    Heights:setNumber(1, 500)
+    Heights:setNumber(2, 700)
+    Heights:setNumber(3, 1000)
+}
+if (FloorNames:count()) {
+    HeightNames = FloorNames
+} else {
+    HeightNames = array()
+    for (I = 0, Heights:maxIndex()) {
+        HeightNames:setString(I, toString(I))
+    }
+}
+MaxFloor = Heights:maxIndex()
+# End of config
+
+# Calculate nearest floor
+HeightDist = array()
+for(I = 0, MaxFloor) {
+    HeightDist:setNumber(I, abs(Heights:number(I) - CurrentHeight))
+}
+
+Min = 10000
+MinIndex = -1
+for(I = 0, MaxFloor) {
+    if (HeightDist:number(I) < Min) {
+        Min = HeightDist:number(I)
+        MinIndex = I
+    }
+}
+
+NearestFloor = MinIndex
+NearestFloorName = HeightNames:string(MinIndex)
+
+# Now calculate target floor
+for(I = 0, MaxFloor) {
+    HeightDist:setNumber(I, abs(Heights:number(I) - TargetHeight))
+}
+
+Min = 10000
+MinIndex = -1
+for(I = 0, MaxFloor) {
+    if (HeightDist:number(I) < Min) {
+        Min = HeightDist:number(I)
+        MinIndex = I
+    }
+}
+
+TargetFloor = MinIndex
+TargetFloorName = HeightNames:string(MinIndex)

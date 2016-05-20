@@ -1,0 +1,17 @@
+@name x86 State Saver
+@inputs 
+@outputs 
+@persist State
+@persist RAM:array I HexString:string
+@trigger 
+
+if (first() | duped())
+{
+    runOnTick(1)
+    
+    G = gTable("x86", 1)
+    RAM = G["SavedRAM", array]
+    I = 0
+    State = 0
+    HexString = ""
+}

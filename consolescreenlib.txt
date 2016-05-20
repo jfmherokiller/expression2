@@ -1,0 +1,236 @@
+@name ConsoleScreenLib
+@inputs 
+@outputs 
+@persist Functions:table
+@trigger 
+
+if (first() | duped()) {
+    dsSetScope(2)
+    dsJoinGroup("ConsoleScreenLib")
+    
+    # Console Screens    
+    Functions["addHeader", function] = function(Screen:wirelink, Text:string, Color:number) {
+        Text = Text + " ":repeat(30 - Text:length())
+        Screen:writeString(Text, 0, Screen[1501], floor(Color / 1000), Color % 1000)
+        Screen[1501] = Screen[1501] + 1
+    }
+    
+    Functions["clearScreen", function] = function(Screen:wirelink) {
+        Screen[2041] = 1
+    }
+    
+    Functions["initializeScreen", function] = function(Screen:wirelink) {
+        Screen[2041] = 1
+        Screen[2046] = 0
+        Screen[1500] = 0    # Lines used
+        Screen[1501] = 0    # Beginning of scroll section
+        Screen[1502] = 17   # End of scrolling section
+    }
+    
+    Functions["setScreenCursorPosition", function] = function(Screen:wirelink, CursorPosition:vector2) {
+        X = CursorPosition:x()
+        Y = CursorPosition:y()
+        if (X < 0 | Y < 0 | X >= 30 | Y >= 18) {
+            Screen[2046] = 0
+        } else {
+            Screen[2046] = 1
+            Y += Screen[1501]
+            Screen[2045] = Y * 60 + CursorPosition:x() * 2
+        }
+    }
+    
+    Functions["setScreenLine", function] = function(Screen:wirelink, Line:number, Text:string, Color:number) {
+        Line += Screen[1501]
+        Text += " ":repeat(30 - Text:length())
+        Screen:writeString(Text, 0, Line, floor(Color / 1000), Color % 1000)
+    }
+    
+    # Keyboards
+    Functions["getKeyboardString", function] = function(Keyboard:table) {
+        return Keyboard["String", string]
+    }
+    
+    Functions["initializeKeyboard", function] = function(Keyboard:table, KeyboardName:string) {
+        Keyboard["AllowNewLines", number] = 0
+        Keyboard["ArrowsCallback", function] = nofunction()
+        Keyboard["BackspaceCallback", function] = nofunction()
+        Keyboard["DeleteCallback", function] = nofunction()
+        Keyboard["EnterCallback", function] = nofunction()
+        Keyboard["Callback", function] = Functions["processKeyboardInputString", function]
+        Keyboard["LastKey", number] = 0
+        Keyboard["LineCallback", function] = nofunction()
+        Keyboard["Name", string] = KeyboardName
+        Keyboard["String", string] = ""
+        Keyboard["StringOffset", number] = 0
+        Keyboard["StringOffsetCallback", function] = nofunction()
+        Keyboard["StringCallback", function] = nofunction()
+    }
+    
+    Functions["processKeyboardInput", function] = function(Keyboard:table, Key:number) {
+        if (Key != Keyboard["LastKey", number]) {
+            Keyboard["LastKey", number] = Key
+            Keyboard["LastKeyTime", number] = 0
+        }
+        if (Key & (curtime() - Keyboard["LastKeyTime", number] > 1)) {
+            LastString = Keyboard["String", string]
+            Handled = 1
+            if (Key == 9) {
+                # Tab key
+                Keyboard["Callback", function](Keyboard, Key, "\t")
+            } elseif (Key == 127 | Key == 148) {
+                # Backspace, delete
+                Keyboard["Callback", function](Keyboard, Key, "")
+            } elseif (Key >= 32 & Key <= 126) {
+                # ASCII
+                Keyboard["Callback", function](Keyboard, Key, format("%c", Key))
+            } elseif (Key == 13) {
+                # Enter
+                Keyboard["Callback", function](Keyboard, Key, "\n")
+            } else {
+                Handled = 0
+                StringLength = Keyboard["String", string]:length()
+                LastStringOffset = Keyboard["StringOffset", number]
+                StringOffset = LastStringOffset
+                if (Key == 19) {
+                    # Left
+                    if (!StringOffset) {
+                        Keyboard["ArrowsCallback", function](Keyboard, -1)
+                    } else {
+                        StringOffset--
+                    }
+                } elseif (Key == 20) {
+                    # Right
+                    if (StringOffset == StringLength) {
+                        Keyboard["ArrowsCallback", function](Keyboard, 1)
+                    } else {
+                        StringOffset++
+                    }
+                } elseif (Key == 149) {
+                    # Home
+                    StringOffset = 0
+                } elseif (Key == 150) {
+                    # End
+                    StringOffset = StringLength
+                }
+                if (StringOffset != LastStringOffset) {
+                    Keyboard["StringOffset", number] = StringOffset
+                    Keyboard["StringOffsetCallback", function](Keyboard, Keyboard["StringOffset", number])
+                }
+                if (Key == 17) {
+                    # Up
+                    Keyboard["LineCallback", function](Keyboard, -1)
+                } elseif (Key == 18) {
+                    # Down
+                    Keyboard["LineCallback", function](Keyboard, 1)
+                }
+            }
+            if (Handled) {
+                if (LastString != Keyboard["String", string]) {
+                    Keyboard["StringCallback", function](Keyboard, Keyboard["String", string], LastString)
+                }
+            }
+            Keyboard["LastKeyTime", number] = curtime()
+        }
+    }
+    
+    Functions["processKeyboardInputString", function] = function(Keyboard:table, Key:number, Char:string) {
+        if (Char == "\n" & !Keyboard["AllowNewLines", number]) {
+            Keyboard["EnterCallback", function](Keyboard)
+            return 0
+        }
+        CurrentString = Keyboard["String", string]
+        CurrentStringOffset = Keyboard["StringOffset", number]
+        if (Key == 127) {
+            # Backspace
+            if (CurrentStringOffset) {
+                Keyboard["String", string] = CurrentString:sub(0, CurrentStringOffset - 1) + CurrentString:sub(CurrentStringOffset + 1)
+                Keyboard["StringOffset", number] = CurrentStringOffset - 1
+                Keyboard["StringOffsetCallback", function](Keyboard, Keyboard["StringOffset", number])
+            } else {
+                Keyboard["BackspaceCallback", function](Keyboard)
+            }
+        } elseif (Key == 148) {
+            # Delete
+            if (CurrentStringOffset == CurrentString:length()) {
+                Keyboard["DeleteCallback", function](Keyboard)
+            } else {
+                Keyboard["String", string] = CurrentString:sub(0, CurrentStringOffset) + CurrentString:sub(CurrentStringOffset + 2, CurrentString:length())
+            }
+        } else {
+            Keyboard["String", string] = CurrentString:sub(0, CurrentStringOffset) + Char + CurrentString:sub(CurrentStringOffset + 1, CurrentString:length())
+            Keyboard["StringOffset", number] = CurrentStringOffset + Char:length()
+            Keyboard["StringOffsetCallback", function](Keyboard, Keyboard["StringOffset", number])
+        }
+        return 1
+    }
+    
+    Functions["setKeyboardAllowNewLines", function] = function(Keyboard:table, AllowNewLines:number) {
+        Keyboard["AllowNewLines", number] = AllowNewLines
+    }
+    
+    Functions["setKeyboardArrowsCallback", function] = function(Keyboard:table, Callback:array) {
+        Keyboard["ArrowsCallback", function] = Callback[1, function]
+    }
+    
+    Functions["setKeyboardBackspaceCallback", function] = function(Keyboard:table, Callback:array) {
+        Keyboard["BackspaceCallback", function] = Callback[1, function]
+    }
+    
+    Functions["setKeyboardCallback", function] = function(Keyboard:table, Callback:array) {
+        Keyboard["Callback", function] = Callback[1, function]
+    }
+    
+    Functions["setKeyboardDeleteCallback", function] = function(Keyboard:table, Callback:array) {
+        Keyboard["DeleteCallback", function] = Callback[1, function]
+    }
+    
+    Functions["setKeyboardEnterCallback", function] = function(Keyboard:table, Callback:array) {
+        Keyboard["EnterCallback", function] = Callback[1, function]
+    }
+    
+    Functions["setKeyboardLineCallback", function] = function(Keyboard:table, Callback:array) {
+        Keyboard["LineCallback", function] = Callback[1, function]
+    }
+    
+    Functions["setKeyboardString", function] = function(Keyboard:table, String:string) {
+        Keyboard["String", string] = String
+        if (Keyboard["StringOffset", number] > String:length()) {
+            Keyboard["StringOffset", number] = String:length()
+            Keyboard["StringOffsetCallback", function](Keyboard, Keyboard["StringOffset", number])
+        }
+    }
+    
+    Functions["setKeyboardStringOffset", function] = function(Keyboard:table, StringOffset:number) {
+        if (StringOffset < 0) {
+            StringOffset = 0
+        }
+        if (StringOffset > Keyboard["String", string]:length()) {
+            StringOffset = Keyboard["String", string]:length()
+        }
+        Keyboard["StringOffset", number] = StringOffset
+        Keyboard["StringOffsetCallback", function](Keyboard, StringOffset)
+    }
+    
+    Functions["setKeyboardStringOffsetCallback", function] = function(Keyboard:table, Callback:array) {
+        Keyboard["StringOffsetCallback", function] = Callback[1, function]
+        Callback[1, function](Keyboard, Keyboard["StringOffset", number])
+    }
+    
+    Functions["setKeyboardStringCallback", function] = function(Keyboard:table, Callback:array) {
+        Keyboard["StringCallback", function] = Callback[1, function]
+    }
+    
+    dsSend("ConsoleScreenLibInitialized", "ConsoleScreenLib", entity())
+}
+
+hint("HI", 10)
+hint(dsClkName(), 10)
+if (signalClk()) {
+    hint("GF", 10)
+}
+
+if (dsClk()) {
+    if (dsClkName() == "GetFunctions") {
+        dsSendDirect("ConsoleScreenLibFunctions", dsGetSender(), Functions)
+    }
+}

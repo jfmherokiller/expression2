@@ -1,0 +1,634 @@
+@name Multiplayer
+@inputs
+@outputs
+# Profiler
+@persist TotalProfilerTime TotalExecutions
+# Receiver
+@persist EntityID
+@persist ClientID ClientIDRequestTime ClientIDRequestInitialTimeout ClientIDRequestTimeout
+# Message reception
+@persist LastRoutedMessageTime IsRouting DataSignalGroup:string
+@persist FileName:string
+# Message processing
+# @local MessagesToProcessAndSend:array
+# This has been moved to a temporary local variable.
+@persist MessageData:array MessageDataSource:array MessageDataIndex
+@persist MessagesToSendData:array MessagesToSendDataIndex
+@persist CommandsToSendData:array CommandsToSendDataIndex
+# Hacky interval
+@persist LastIntervalTime IntervalPeriod
+
+# Gameplay
+@persist IsPlayerInGame
+# Holograms
+@persist NextHologramID
+@persist HoloScaleScale
+
+# Hover
+@persist HoloHover:entity
+
+@persist HoverInfoPeriod
+@persist LastHoverEntityDistance LastHoverEntity:entity LastHoverTime
+@persist LastHoverInfoTime
+
+@persist HologramHoverEntity:entity
+@persist HologramHoverEntityBBoxMin:vector HologramHoverEntityBBoxMax:vector
+@persist HologramHoverEntityDistance
+
+# Selection
+@persist HoloSelectionRect:entity
+@persist HoloSelectionStart:vector
+@persist HoloSelectionEnd:vector
+
+@persist SelectedEntityCount
+@persist SelectedEntities:array SelectedEntityTypes:array SelectedEntityBBoxMins:array SelectedEntityBBoxMaxs:array
+
+# Targetting
+@persist HoloTargetStartTime
+
+# Movement animation
+@persist MovingEntities:array MovementTypes:array MovementSpeeds:array MovementTargets:array
+
+# Input
+@persist Attack1Down Attack2Down UseDown
+
+# Debugging
+@persist Debug
+@trigger 
+
+ProfilerStartTime = systime()
+
+interval(1)
+runOnChat(1)
+runOnFile(1)
+
+if (duped() | first()) {
+    # Profiler
+    TotalExecutions = 1
+    
+    # Messages
+    MessageData = array()
+    MessageDataSource = array()
+    MessageDataIndex = 1
+    EntityID = entity():id()
+    ClientID = 0
+    ClientIDRequestTime = 0
+    ClientIDRequestInitialTimeout = 1
+    ClientIDRequestTimeout = 2
+    
+    MessagesToSendData = array()
+    MessagesToSendDataIndex = 1
+    CommandsToSendData = array()
+    CommandsToSendDataIndex = 1
+    
+    # Interval
+    LastIntervalTime = curtime()
+    IntervalPeriod = 0.05
+    
+    # Debugging
+    Debug = 1
+    
+    # Messages
+    LastRoutedMessageTime = 0
+    IsRouting = 0
+    FileName = "starcraft.txt"
+    fileRemove(FileName)
+    fileLoad(FileName)
+    concmd("lmsg file " + FileName + " starcraft")
+    hint("Multiplayer file: " + FileName, 10)
+    
+    # Routing
+    DataSignalGroup = "multiplayer"
+#ifdef dsSetScope(number)
+    dsSetScope(2)
+    dsJoinGroup(DataSignalGroup)
+#endif
+    
+    # Gameplay
+    IsPlayerInGame = 0
+      
+    # Holograms
+    NextHologramID = 100
+    HoloScaleScale = 0.083333333333
+    
+    HoloHover = holoCreate(1)
+    holoAlpha(1, 0)
+    holoModel(1, "hqcube")
+    HoloSelectionRect = holoCreate(2)
+    holoAlpha(2, 0)
+    holoColor(2, vec(0, 0, 128))
+    
+    holoCreate(3)
+    holoAlpha(3, 0)
+    holoColor(3, vec(255, 0, 0))
+    holoModel(3, "hqcylinder")
+    holoAng(3, ang(180, 0, 0))
+    HoloTargetStartTime = curtime()
+    
+    HoverInfoPeriod = 5
+    LastHoverEntityDistance = 0
+    LastHoverTime = 0
+    LastHoverInfoTime = 0
+    
+    HologramHoverEntityDistance = 32768
+    
+    # Selection
+    SelectedEntityCount = 0
+    SelectedEntities:clear()
+    SelectedEntityTypes:clear()
+    SelectedEntityBBoxMins:clear()
+    SelectedEntityBBoxMaxs:clear()
+    
+    for (I = 1, 12) {
+        holoCreate(I + 10)
+        holoAlpha(I + 10, 0)
+        holoColor(I + 10, vec(0, 255, 0))
+        holoModel(I + 10, "hqcylinder")
+    }
+    
+    # Movement
+    MovingEntities:clear()
+    MovementTypes:clear()
+    MovementSpeeds:clear()
+    MovementTargets:clear()
+    
+    # Debug
+    Attack1Down = 0
+    Attack2Down = 0
+    UseDown = 0
+}
+
+# Instruction buffers
+MessagesToProcessAndSend = array()
+ReceiveMessages = 0
+
+# dsClk needs to go first, since it will be caused by the other events
+#ifdef dsClk()
+if (dsClk()) {
+    SignalType = dsClkName()
+    if (SignalType == "new_router") {
+        if (IsRouting) {
+            IsRouting = 0
+        }
+    } elseif (SignalType == "message") {
+        ReceiveMessages = 3
+    } elseif (SignalType == "command") {
+        if (IsRouting) {
+            # Send directly, since "rts [ClientID] " has already been prepended.
+            concmd("lmsg " + dsGetString())
+        }
+    }
+} elseif (chatClk()) {
+#else
+if (chatClk()) {
+#endif
+    ChatActivated = 0
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        ChatActivated = 1
+    }
+    if (ChatActivated) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        Components = Params:explode(" ")
+        ReducedParams = Params:replace(" ", "")
+        Number = Components:number(1)
+        Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        Player = findPlayerByName(Components:string(1))
+        Message = Params:sub(Params:find(" ") + 1, Params:length())
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "tick") {
+                ReceiveMessages = 1
+            } elseif (Command == "add_base") {
+                Position = owner():eyeTrace():position()
+                CommandsToSendData:pushString("rts_add_base " + Position:x() + " " + Position:y() + " " + Position:z())
+            } elseif (Command == "add_gas") {
+                Position = owner():eyeTrace():position()
+                CommandsToSendData:pushString("rts_add_gas " + Position:x() + " " + Position:y() + " " + Position:z())
+            } elseif (Command == "add_minerals") {
+                Position = owner():eyeTrace():position()
+                CommandsToSendData:pushString("rts_add_minerals " + Position:x() + " " + Position:y() + " " + Position:z())
+            } elseif (Command == "end") {
+                CommandsToSendData:pushString("rts_round_end")
+            } elseif (Command == "h") {
+                CommandsToSendData:pushString("rts_hotkeys \"" + Params + "\"")
+            } elseif (Command == "join") {
+                if (!IsPlayerInGame) {
+                    CommandsToSendData:pushString("rts_join")
+                    IsPlayerInGame = 1
+                }
+            } elseif (Command == "profiler") {
+                print("Total execution time: " + format("%.2f", TotalProfilerTime))
+                print("Total executions: " + format("%f", TotalExecutions))
+                print("Average execution time: " + format("%.2f", TotalProfilerTime / TotalExecutions))
+            } elseif (Command == "remove") {
+                Entity = owner():eyeTrace():entity()
+                if (Entity) {
+                    CommandsToSendData:pushString("rts_remove " + Entity:id())
+                } else {
+                    CommandsToSendData:pushString("rts_remove 0")
+                }
+            } elseif (Command == "say") {
+                MessageTable = table()
+                MessageTable["type", string] = "say"
+                MessageTable["client_id", number] = 0
+                MessageTable["player_name", string] = owner():name()
+                MessageTable["message", string] = Params
+                MessagesToProcessAndSend:pushString(glonEncode(MessageTable))
+                CommandsToSendData:pushString("rts_say " + Params)
+            } elseif (Command == "start") {
+                CommandsToSendData:pushString("rts_round_start")
+            }
+        }
+    }
+} elseif (inputClk()) {
+} elseif (fileClk(FileName)) {
+    IsRouting = 1
+    ReceiveMessages = 2
+#ifdef dsSend(string, string, entity)
+    dsSend("new_router", DataSignalGroup, entity())
+#endif
+}
+
+# Run interval anyway
+if (clk("interval")) {
+    if (curtime() - LastIntervalTime > IntervalPeriod) {
+        DeltaTime = curtime() - LastIntervalTime
+        LastIntervalTime = curtime()
+        # General processing
+        if (!ClientID) {
+            # This is run when the e2 starts.
+            if (ClientIDRequestTime < ClientIDRequestInitialTimeout) {
+                ClientIDRequestTime = curtime()
+                concmd("lmsg rts_register 0 " + entity():id())
+            } else {
+                if (curtime() - ClientIDRequestTime > ClientIDRequestTimeout) {
+                    ClientIDRequestTime = curtime()
+                    CommandsToSendData:pushString("rts_register " + entity():id())
+                }
+            }
+        }
+        # Ping
+        if (ClientID) {
+            CommandsToSendData:pushString("ping " + entity():id())
+        }
+        # Gameplay
+        if (ClientID) {
+            # Object highlight
+            EyeTrace = owner():eyeTrace()
+            HoverEntity = EyeTrace:entity()
+            HoverEntityDistance = EyeTrace:distance()
+            HoverEntityBBoxMin = HoverEntity:boxMin()
+            HoverEntityBBoxMax = HoverEntity:boxMax()
+            
+            EyeDirection = owner():eye()
+            EyePos = owner():attachmentPos("eyes")
+            EyeDirectionString = " " + EyeDirection:x() + " " + EyeDirection:y() + " " + EyeDirection:z()
+            EyePosString = " " + EyePos:x() + " " + EyePos:y() + " " + EyePos:z()
+            
+            TracePos = EyeTrace:position()
+            TracePosString = " " + TracePos:x() + " " + TracePos:y() + " " + TracePos:z()
+        
+            if (HologramHoverEntityDistance < HoverEntityDistance) {
+                HoverEntity = HologramHoverEntity
+                HoverEntityDistance = HologramHoverEntityDistance
+                HoverEntityBBoxMin = HologramHoverEntityBBoxMin
+                HoverEntityBBoxMax = HologramHoverEntityBBoxMax
+            }
+            if (HoverEntity) {
+                holoScale(1, (HoverEntityBBoxMax - HoverEntityBBoxMin + vec(4, 4, 4)) * HoloScaleScale)
+                holoPos(1, HoverEntity:pos() + HoverEntity:boxCenter())
+                Angles = HoverEntity:angles()
+                Angles = Angles:setRoll(round(Angles:roll() / 90) * 90)
+                Angles /= 45
+                Angles = round(Angles) * 45
+                holoAng(1, Angles)
+                holoColor(1, vec(128, 255, 128))
+                # holoAlpha(1, 128)
+                
+                LastHoverTime = curtime()
+                if (LastHoverEntity != HoverEntity | curtime() - LastHoverInfoTime > HoverInfoPeriod) {
+                    LastHoverInfoTime = curtime()
+                    if (HoverEntity != HologramHoverEntity) {
+                        CommandsToSendData:pushString("rts_object_info " + HoverEntity:id())
+                    }
+                }
+                LastHoverEntityDistance = EyeTrace:distance()
+                LastHoverEntity = HoverEntity
+            } else {
+                holoAlpha(1, 0)
+            }
+            
+            # Input
+            if (Attack1Down) {
+                # Do this before showing the hologram.
+                HoloSelectionEnd = TracePos
+                holoPos(2, (HoloSelectionStart + HoloSelectionEnd) * 0.5 + vec(0, 0, 4))
+                Scale = (HoloSelectionEnd - HoloSelectionStart) * HoloScaleScale
+                Scale = vec(abs(Scale:x()), abs(Scale:y()), abs(Scale:z()))
+                holoScale(2, Scale + HoloScaleScale * vec(0, 0, 4))
+            }
+            if (owner():keyAttack1() != Attack1Down) {
+                Attack1Down = owner():keyAttack1()
+                CommandsToSendData:pushString("rts_key_state attack1 " + Attack1Down + EyePosString + EyeDirectionString)
+                HoloSelectionStart = TracePos
+                if (Attack1Down) {
+                    holoAlpha(2, 128)
+                } else {
+                    holoAlpha(2, 0)
+                }
+            }
+            if (owner():keyAttack2() != Attack2Down) {
+                Attack2Down = owner():keyAttack2()
+                CommandsToSendData:pushString("rts_key_state attack2 " + Attack2Down + EyePosString + EyeDirectionString)
+                if (Attack2Down & SelectedEntityCount) {
+                    HoloTargetStartTime = curtime()
+                    holoPos(3, TracePos)
+                    holoAlpha(3, 255)
+                }
+            }
+            if (owner():keyUse() != UseDown) {
+                UseDown = owner():keyUse()
+                CommandsToSendData:pushString("rts_key_state use " + UseDown + EyePosString + EyeDirectionString)
+            }
+            
+            # Selection holos
+            for (I = 1, 12) {
+                Entity = SelectedEntities:entity(I)
+                if (Entity) {
+                    EntityBBoxMin = Entity:boxMin()
+                    EntityBBoxMax = Entity:boxMax()
+                    if (SelectedEntityTypes:number(I)) {
+                        EntityBBoxMin = SelectedEntityBBoxMins:vector(I)
+                        EntityBBoxMax = SelectedEntityBBoxMaxs:vector(I)
+                    }
+                    holoPos(I + 10, Entity:pos())
+                    holoScale(I + 10, (EntityBBoxMax - EntityBBoxMin + vec(4, 4, 4)) * HoloScaleScale * 1.4)
+                    holoAlpha(I + 10, 128)
+                } else {
+                    holoAlpha(I + 10, 0)
+                }
+            }
+            
+            # Target holos
+            if (curtime() - HoloTargetStartTime < 5) {
+                HoloTargetDeltaTime = curtime() - HoloTargetStartTime
+                Alpha = 255 * (0.5 - HoloTargetDeltaTime) / 0.5
+                if (Alpha < 0) {
+                    Alpha = 0
+                }
+                holoAlpha(3, Alpha)
+                Alpha /= 255
+                holoScale(3, vec(Alpha, Alpha, 0.1))
+            }
+            
+            # Animate moving entities
+            for (I = 1, MovingEntities:count()) {
+                MovementType = MovementTypes:number(I)
+                EntityID = MovingEntities:number(I)
+                Entity = entity(EntityID)
+                if (MovementType % 2) {
+                    Entity = holoEntity(EntityID)
+                }
+                DeltaPosition = MovementTargets:vector(I) - Entity:pos()
+                Direction = DeltaPosition:normalized()
+                NewPosition = Entity:pos() + Direction * DeltaTime * MovementSpeeds:number(I)
+                if (DeltaPosition:length() <= DeltaTime * MovementSpeeds:number(I)) {
+                    NewPosition = MovementTargets:vector(I)
+                    MovingEntities:removeNumber(I)
+                    MovementTypes:removeNumber(I)
+                    MovementSpeeds:removeNumber(I)
+                    MovementTargets:remove(I)
+                    I--
+                }
+                if (MovementType % 2) {
+                    holoPos(EntityID, NewPosition)
+                } else {
+                    Entity:reposition(NewPosition)
+                }
+            }
+        }
+    }
+}
+
+# Handle convar data
+if (ReceiveMessages) {
+    EncodedData = ""
+    MessageID = 32768
+    if (ReceiveMessages == 1) {
+        MessageID = convarnum("lmsg_message_proxy_data_id")
+        for (I = 1, convarnum("lmsg_message_proxy_data_count")) {
+            EncodedData = EncodedData + convar("lmsg_message_proxy_data" + I)
+        }
+    } elseif (ReceiveMessages == 2) {
+        EncodedData = fileRead(FileName)
+        fileRemove(FileName)
+        fileLoad(FileName)
+        concmd("lmsg ack " + FileName)
+    }
+    if (ReceiveMessages <= 2) {
+        NewData = glonDecode(EncodedData)
+        for (I = 1, NewData:count()) {
+            if (NewData:string(I):length()) {
+                MessageData:pushString(NewData:string(I))
+                if (Debug) {
+                    # printColor(vec(255, 0, 0), "Data: " + MessageID + ": " + NewData:string(I))
+                }
+            } else {
+                printColor(vec(255, 0, 0), "Message reception failure.")
+            }
+        }
+    } else {
+#ifdef dsGetString()
+        MessageData:pushString(dsGetString())
+#endif
+    }
+    MessageDataSource:pushNumber(ReceiveMessages)
+}
+
+# Process tables
+for (Z = 1, MessagesToProcessAndSend:count()) {
+    MessagesToSendData:pushString(MessagesToProcessAndSend:string(Z))
+	
+    MessageData:pushString(MessagesToProcessAndSend:string(Z))
+    MessageDataSource:pushNumber(100)
+}
+MessagesToProcessAndSend:clear()
+# Receive
+for (Z = MessageDataIndex, MessageData:count()) {
+    GLONString = MessageData:string(Z)
+    MessageTable = glonDecodeTable(GLONString)
+
+    MessageType = MessageTable:string("type")
+    MessageClientID = MessageTable:number("client_id")
+
+    if (MessageType == "alloc_client_id") {
+        MessageEntityID = MessageTable:number("entity_id")
+        if (MessageEntityID == entity():id()) {
+            hint("Received client ID: Entity " + MessageEntityID + " to client " + MessageClientID, 10)
+            ClientID = MessageClientID
+            
+            # Reset game state
+            IsPlayerInGame = 0
+            HologramEntityDistance = 32768
+            
+            # Selection
+            SelectedEntityCount = 0
+            SelectedEntities:clear()
+            SelectedEntityTypes:clear()
+            SelectedEntityBBoxMins:clear()
+            SelectedEntityBBoxMaxs:clear()
+            
+            # Movement
+            MovingEntities:clear()
+            MovementTypes:clear()
+            MovementSpeeds:clear()
+            MovementTargets:clear()
+        }
+    }
+    if (MessageClientID == ClientID | (MessageClientID <= 0 & MessageClientID != -ClientID)) {
+        if (MessageType == "hint") {
+            hint(MessageTable:string("message"), 10)
+        } elseif (MessageType == "holo_create") {
+            Entity = holoCreate(NextHologramID)
+            holoModel(NextHologramID, MessageTable:string("model"))
+            holoPos(NextHologramID, MessageTable:vector("position"))
+            holoAng(NextHologramID, MessageTable:angle("angles"))
+            CommandsToSendData:pushString("rts_hologram_created " + MessageTable:number("rts_entity_id") + " " + NextHologramID + " " + Entity:id())
+            NextHologramID++
+        } elseif (MessageType == "holo_color") {
+            holoColor(MessageTable:number("entity_id"), vec(MessageTable:number("r"), MessageTable:number("g"), MessageTable:number("b")), MessageTable:number("a"))
+        } elseif (MessageType == "holo_delete") {
+            holoDelete(MessageTable:number("entity_id"))
+        } elseif (MessageType == "holo_material") {
+            holoMaterial(MessageTable:number("entity_id"), MessageTable:string("material"))
+        } elseif (MessageType == "holo_pos") {
+            holoPos(MessageTable:number("entity_id"), MessageTable:vector("position"))
+        } elseif (MessageType == "holo_scale") {
+            holoScale(MessageTable:number("entity_id"), MessageTable:vector("scale"))
+        } elseif (MessageType == "hover_entity") {
+            HologramHoverEntity = entity(MessageTable:number("entity_id"))
+            HologramHoverEntityDistance = MessageTable:number("distance")
+            HologramHoverEntityBBoxMin = MessageTable:vector("bbox_min")
+            HologramHoverEntityBBoxMax = MessageTable:vector("bbox_max")
+        } elseif (MessageType == "lerp_position") {
+            for (I = 1, MovingEntities:count()) {
+                if (MovingEntities:number(I) == MessageTable:number("entity_id") &
+                    MovementTypes:number(I) % 2 == MessageTable:number("is_hologram")) {
+                    MovingEntities:removeNumber(I)
+                    MovementTypes:removeNumber(I)
+                    MovementSpeeds:removeNumber(I)
+                    MovementTargets:remove(I)
+                    break
+                }
+            }
+            MovingEntities:pushNumber(MessageTable:number("entity_id"))
+            MovementTypes:pushNumber(MessageTable:number("is_hologram"))
+            MovementSpeeds:pushNumber(MessageTable:number("speed"))
+            MovementTargets:pushVector(MessageTable:vector("target_position"))
+        } elseif (MessageType == "object_color") {
+            entity(MessageTable:number("entity_id")):setColor(MessageTable:number("r"), MessageTable:number("g"), MessageTable:number("b"), MessageTable:number("a"))
+        } elseif (MessageType == "object_create") {
+#ifdef propSpawn(string, vector, angle, number)
+            Entity = propSpawn(MessageTable:string("model"), MessageTable:vector("position"), MessageTable:angle("angles"), 1)
+#else
+            Entity = propSpawn(MessageTable:string("model"), MessageTable:vector("position"), MessageTable:angle("angles"))
+#endif
+#ifdef entity:propGravity(number)
+            Entity:propGravity(0)
+#endif
+            CommandsToSendData:pushString("rts_entity_created " + MessageTable:number("rts_entity_id") + " " + Entity:id())
+        } elseif (MessageType == "object_delete") {
+            Entity = entity(MessageTable:number("entity_id"))
+            Entity:propDelete()
+        } elseif (MessageType == "object_material") {
+            entity(MessageTable:number("entity_id")):setMaterial(MessageTable:string("material"))
+        } elseif (MessageType == "player_joined") {
+            if (MessageTable:number("player_client_id") == ClientID) {
+                printColor(vec(0, 0, 128), "RTS: ", vec(0, 128, 0), "You have joined the game.")
+            } else {
+                printColor(vec(0, 0, 128), "RTS: ", vec(128, 128, 255), MessageTable:string("player_name"), vec(0, 128, 0), " has joined the game.")
+            }
+        } elseif (MessageType == "request_player_id") {
+            CommandsToSendData:pushString("rts_player_id " + owner():id())
+        } elseif (MessageType == "say") {
+            printColor(vec(0, 0, 128), "RTS: ", vec(128, 128, 255), MessageTable:string("player_name"), vec(255, 255, 255), ": ", MessageTable:string("message"))
+        } elseif (MessageType == "selection_add") {
+            Index = SelectedEntities:count() + 1
+            SelectedEntities:setEntity(Index, entity(MessageTable:number("entity_id")))
+            SelectedEntityTypes:setNumber(Index, MessageTable:number("is_hologram"))
+            SelectedEntityBBoxMins:setVector(Index, MessageTable:vector("bbox_min"))
+            SelectedEntityBBoxMaxs:setVector(Index, MessageTable:vector("bbox_max"))
+            SelectedEntityCount++
+        } elseif (MessageType == "selection_clear") {
+            SelectedEntities:clear()
+            SelectedEntityTypes:clear()
+            SelectedEntityBBoxMins:clear()
+            SelectedEntityBBoxMaxs:clear()
+            SelectedEntityCount = 0
+        } elseif (MessageType == "selection_remove") {
+            EntityID = MessageTable:number("entity_id")
+            for (I = 1, 12) {
+                if (SelectedEntities:entity(I):id() == EntityID) {
+                    SelectedEntities:setEntity(I, noentity())
+                    SelectedEntityCount--
+                    break
+                }
+            }
+        } elseif (MessageType == "system_message") {
+            printColor(vec(0, 0, 128), "RTS: ", vec(255, 0, 0), MessageTable:string("message"))
+        }
+        if (Debug) {
+            printColor(vec(0, 0, 255), "Processed command " + MessageType + ".")
+        }
+    } else {
+        printColor(vec(255, 0, 0), "Ignored command " + MessageType + ".")
+    }
+    if (MessageClientID != ClientID) {
+        if (IsRouting & MessageDataSource:number(Z) <= 2) {
+            # Push the message onto the routing queue.
+            MessagesToSendData:pushString(GLONString)
+        }
+    }
+    MessageData:setString(Z, "")
+    MessageDataIndex++
+}
+
+# Send internal messages
+for (Z = MessagesToSendDataIndex, MessagesToSendData:count()) {
+    # Messages broadcast will not be received by the chip that sent them.
+#ifdef dsSend(string, string, string)
+    dsSend("message", DataSignalGroup, MessagesToSendData:string(Z))
+#endif
+    MessagesToSendData:setString(Z, "")
+    MessagesToSendDataIndex++
+}
+
+# Send console command messages
+for (Z = CommandsToSendDataIndex, CommandsToSendData:count()) {
+    if (IsRouting) {
+        concmd("lmsg rts " + ClientID + " " + CommandsToSendData:string(Z))
+    } else {
+#ifdef dsSend(string, string, string)
+        dsSend("command", DataSignalGroup, "rts " + ClientID + " " + CommandsToSendData:string(Z))
+#endif
+    }
+    CommandsToSendData:setString(Z, "")
+    CommandsToSendDataIndex++
+}
+
+TotalExecutions++
+TotalProfilerTime += systime() - ProfilerStartTime

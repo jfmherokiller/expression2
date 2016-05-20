@@ -1,0 +1,38 @@
+@name tracker
+@inputs EntTarget:entity Angle
+@outputs VeryNear Near TargetHeight
+@persist
+@trigger
+
+interval(10)
+
+VecTargetPos = EntTarget:pos()
+TargetFound = EntTarget ? 1 : 0
+VecDir = EntTarget:pos() - entity():pos()
+Near = 0
+VeryNear = 0
+entity():isWeldedTo():applyAngForce(-entity():isWeldedTo():angVel() * entity():isWeldedTo():mass())
+if (!TargetFound) {
+    VecDir = vec(0, 0, 0)
+    Near = 0
+} else {
+    if (VecDir:length() <= 250) {
+        if (VecDir:length() <= 100) {
+            VeryNear = 1
+        }
+        if (VecDir:length() <= 50) {
+            VecDir = vec(0, 0, 0)
+        } else {
+            VecDir = vec(VecDir:x(), VecDir:y(), 0)
+        }
+        Near = 1
+    } else {
+        Near = 0
+        VecDir = vec(VecDir:x(), VecDir:y(), 0)
+    }
+    TargetHeight = VecTargetPos:z() + 30
+}
+VecDir -= entity():vel():setZ(0)
+entity():isWeldedTo():applyForce(VecDir * entity():isWeldedTo():mass())
+
+LastTargetHeight = TargetHeight

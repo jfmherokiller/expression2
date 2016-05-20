@@ -1,0 +1,16 @@
+@name HoloText Test
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+interval(1)
+
+holoTextCreate(-1, "lol")
+holoTextCreate(1, toString(curtime()))
+if (first()) {
+    holoTextPos(1, entity():pos() + vec(0, 0, 16))
+    holoTextParent(1, entity())
+}
+holoTextSize(1, 20)
+holoTextColor(1, randvec(vec(0, 0, 0), vec(255, 255, 255)))

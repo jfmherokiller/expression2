@@ -1,0 +1,478 @@
+@name Custom GMessenger Client
+@inputs Screen:wirelink
+@inputs KeyboardUser:entity KeyCode
+@outputs
+@persist ClientVersion:string
+
+# Settings
+@persist ImportChat
+@persist PrintToChat SayInChat
+@persist SuppressChat
+
+# HTTP
+@persist LastUpdated UpdateInterval
+@persist UpdateNeeded
+@persist HTTPQueue:array
+
+# Processing
+@persist ProcessStage HTTPData:string HTTPLines:array
+@persist HTTPLineNumber
+@persist SeenMessengerMessages:array
+@persist NewMessageStartIndex
+@persist NewMessengerPlayerNames:array NewMessengerMessages:array # Stores all the messages in the HTTP response
+@persist NewMessagePlayers:array NewMessageMessages:array         # Stores only the new messages
+@persist IgnoreHTTPMessages:table IgnoreChatMessages:table
+@persist MessageHistoryPlayerNames:array MessageHistoryMessages:array MessageHistoryLines:array
+@persist MessageHistoryIndex
+
+# Screen
+@persist ScreenLockedTopLines ScreenLockedBottomLines CurrentScreenLine
+@persist ScreenInScroll ScreenNeedsUpdating
+
+# Keyboard
+@persist LastKeyCode KeyboardString:string KeyboardStringOffset
+@persist PreviousMessages:array PreviousMessageOffset
+@trigger 
+
+runOnChat(1)
+runOnHTTP(1)
+interval(100)
+
+if (first() | duped()) {
+    ClientVersion = "1.1"
+    ImportChat = 0
+    PrintToChat = 1
+    SuppressChat = 1
+    SayInChat = 0
+    
+    # HTTP
+    LastUpdated = 0
+    UpdateInterval = 10
+    UpdatedNeeded = 0
+    HTTPQueue:clear()
+    
+    # Processing
+    ProcessStage = 0
+    MessageHistoryPlayerNames:clear()
+    MessageHistoryMessages:clear()
+    MessageHistoryLines:clear()
+    MessageHistoryLine = 1
+    
+    # Screen
+    ScreenLockedTopLines = 2
+    ScreenLockedBottomLines = 2
+    CurrentScreenLine = 0
+    if (Screen) {
+        Screen[2041] = 1
+        Screen[2033] = ScreenLockedTopLines
+        Screen[2034] = 17 - ScreenLockedBottomLines
+        Screen:writeString("Custom GMessenger Client      ", 0, 0, 999, 9)
+        Screen:writeString("Service hosted by thetree     ", 0, 1, 999, 339)
+        Screen:writeString(">                             ", 0, 16, 999, 449)
+        Screen:writeString("                              ", 0, 17, 999, 449)
+        Screen[2044] = 1
+        Screen[2046] = 1
+        Screen[2045] = 16 * 60 + 2
+    }
+    
+    # Keyboard
+    LastKeyCode = 0
+    KeyboardString = ""
+    KeyboardStringOffset = 1
+    PreviousMessages:clear()
+    PreviousMessageOffset = 1
+}
+
+if (httpCanRequest()) {
+    if (UpdateNeeded & ProcessStage == 0) {
+        ProcessStage = 0
+        httpRequest("http://www.joethetree.lil.org.uk/test/chat/chatsend.php")
+    } else {
+        if (HTTPQueue:count()) {
+            HTTPURI = HTTPQueue:shiftString()
+            print(HTTPURI)
+            httpRequest(HTTPURI)
+        }
+    }
+}
+
+if (httpClk() |
+    (ProcessStage == 0 &
+     UpdateNeeded & httpData())) {
+    HTTPRequestURL = httpRequestUrl()
+    if (HTTPRequestURL == "http://www.joethetree.lil.org.uk/test/chat/chatsend.php") {
+        ProcessStage = 1
+        HTTPData = httpData()
+        HTTPLines:clear()
+        HTTPLines = HTTPData:explode("\n")
+        
+        NewMessengerPlayerNames:clear()
+        NewMessengerMessages:clear()
+        
+        NewMessagePlayers:clear()
+        NewMessageMessages:clear()
+        
+        HTTPLineNumber = 1
+        ProcessStage = 2
+    } else {
+        Status = httpData():trim()
+        if (Status:find("data written")) {
+            UpdateNeeded = 1
+        } elseif (Status:find("user banned")) {
+            printColor(vec(255, 0, 0), "Failed to post message: User is banned.")
+        } elseif (Status:find("old version")) {
+            printColor(vec(255, 128, 0), "Failed to post message: GMessenger client is outdated.")
+        } else {
+            printColor(vec(255, 128, 0), "Unknown status message: \"" + Status + "\".")
+        }
+    }
+}
+
+#ifdef e:lol()
+if (1) {
+    J = 0
+    while (opcounter() < 5000) {
+        A = opcounter()
+        HTTPData:unicodeLength()
+        J++
+    }
+    print(J, opcounter() - A)
+}
+#endif
+
+if (ProcessStage == 0) {
+    if (curtime()  - LastUpdated > UpdateInterval & !UpdateNeeded) {
+        UpdateNeeded = 1
+    }
+} elseif (ProcessStage == 2) {
+    while (HTTPLineNumber <= HTTPLines:count() &
+           opcounter() < 4000) {
+        Line = HTTPLines[HTTPLineNumber, string]
+        MessageStart = Line:find("`")
+        Name = Line:sub(1, MessageStart - 2):replace("\\\"", "\""):replace("\\'", "'")
+        Message = Line:sub(MessageStart + 2, Line:length() - 1):replace("\\\"", "\""):replace("\\'", "'")
+        if (Name & Message) {
+            NewMessengerPlayerNames:pushString(Name)
+            NewMessengerMessages:pushString(Message)
+        }
+        HTTPLineNumber++
+    }
+    if (HTTPLineNumber > HTTPLines:count()) {
+        HTTPLineNumber = NewMessengerPlayerNames:count()
+        while (SeenMessengerMessages:count() > 10) {
+            SeenMessengerMessages:shift()
+        }
+        if (SeenMessengerMessages:count()) {
+            ProcessStage = 3
+        } else {
+            HTTPLineNumber = 1
+            ProcessStage = 4
+        }
+    }
+} elseif (ProcessStage == 3) {
+    # Determine which messages are new
+    while (HTTPLineNumber > 0 &
+           opcounter() < 4000) {
+        I = 0
+        Matched = 1
+        while (I < HTTPLineNumber & I < SeenMessengerMessages:count()) {
+            MatchString = NewMessengerPlayerNames[HTTPLineNumber - I, string] + "|" + NewMessengerMessages[HTTPLineNumber - I, string]
+            if (SeenMessengerMessages[SeenMessengerMessages:count() - I, string] != MatchString) {
+                Matched = 0
+                break
+            }
+            I++
+        }
+        if (Matched) {
+            HTTPLineNumber++
+            NewMessageStartIndex = HTTPLineNumber
+            ProcessStage = 4
+            break
+        } else {
+            HTTPLineNumber--
+        }
+    }
+    if  (HTTPLineNumber == 0) {
+        HTTPLineNumber++
+        NewMessageStartIndex = HTTPLineNumber
+        ProcessStage = 4
+    }
+} elseif (ProcessStage == 4) {
+    # Process new messages
+    while (HTTPLineNumber <= NewMessengerPlayerNames:count() &
+           perf()) {
+        IgnoreID = NewMessengerPlayerNames[HTTPLineNumber, string] + "|" + NewMessengerMessages[HTTPLineNumber, string]
+        if (IgnoreHTTPMessages[IgnoreID, number]) {
+            IgnoreHTTPMessages[IgnoreID, number] = IgnoreHTTPMessages[IgnoreID, number] - 1
+        } else {
+            NewMessagePlayers:pushString(NewMessengerPlayerNames[HTTPLineNumber, string])
+            NewMessageMessages:pushString(NewMessengerMessages[HTTPLineNumber, string])
+        }
+        
+        # Screen
+        PlayerName = NewMessengerPlayerNames[HTTPLineNumber, string]
+        Message = NewMessengerMessages[HTTPLineNumber, string]
+        MessageLines = (PlayerName + ": " + Message):explode("\n")
+        ScreenLinesNeeded = 0
+        for (I = 1, MessageLines:count()) {
+#ifdef string:unicodeLength()
+            ScreenLinesNeeded += ceil(MessageLines[I, string]:unicodeLength() / 30)
+#else
+            ScreenLinesNeeded += ceil(MessageLines[I, string]:length() / 30)
+#endif
+        }
+        if (NewMessengerPlayerNames:count() - HTTPLineNumber < 18) {
+            ScreenLinesAvailable = 18 - ScreenLockedTopLines - ScreenLockedBottomLines - CurrentScreenLine
+            if (!ScreenInScroll | ScreenLinesAvailable) {
+                if (ScreenLinesAvailable < ScreenLinesNeeded) {
+                    CurrentScreenLine -= ScreenLinesNeeded - ScreenLinesAvailable
+                    Screen[2038] = ScreenLinesNeeded - ScreenLinesAvailable
+                }
+                if (ScreenLinesAvailable <= ScreenLinesNeeded) {
+                    ScreenInScroll = 0
+                }
+#ifdef wirelink:writeUnicodeString(string, number, number, number, number)
+                Screen:writeUnicodeString(PlayerName, 0, ScreenLockedTopLines + CurrentScreenLine, 229, 0)
+                Screen:writeUnicodeString(": " + Message, PlayerName:unicodeLength(), ScreenLockedTopLines + CurrentScreenLine)
+#else
+                Screen:writeString(PlayerName, 0, ScreenLockedTopLines + CurrentScreenLine, 229, 0)
+                Screen:writeString(": " + Message, PlayerName:length(), ScreenLockedTopLines + CurrentScreenLine)
+#endif
+                CurrentScreenLine += ScreenLinesNeeded
+            }
+        }
+        
+        MessageHistoryPlayerNames:pushString(PlayerName)
+        MessageHistoryMessages:pushString(Message)
+        MessageHistoryLines:pushNumber(ScreenLinesNeeded)
+        MessageHistoryIndex++
+        
+        SeenMessengerMessages:pushString(NewMessengerPlayerNames[HTTPLineNumber, string] + "|" + NewMessengerMessages[HTTPLineNumber, string])
+        HTTPLineNumber++
+    }
+    if (HTTPLineNumber > NewMessengerPlayerNames:count()) {
+        HTTPLineNumber = NewMessageStartIndex
+        ProcessStage = 5
+    }
+} elseif (ProcessStage == 5) {
+    while (HTTPLineNumber <= NewMessengerPlayerNames:count() &
+           perf()) {
+        PlayerName = NewMessengerPlayerNames[HTTPLineNumber, string]
+        Message = NewMessengerMessages[HTTPLineNumber, string]
+        if (SayInChat) {
+            if (ImportChat) {
+                IgnoreID = owner():name() + "|[GM] " + PlayerName + ": " + Message
+                IgnoreChatMessages[IgnoreID, number] = IgnoreChatMessages[IgnoreID, number] + 1
+            }
+            concmd("say [GM] " + PlayerName + ": " + Message)
+        } elseif (PrintToChat & !SuppressChat) {
+            printColor(vec(128, 128, 255), "[GM] ", vec(64, 64, 255), PlayerName, vec(255, 255, 255), ": " + Message)
+        }
+        HTTPLineNumber++
+    }
+    if (HTTPLineNumber > NewMessagePlayers:count()) {
+        LastUpdated = curtime()
+        
+        SuppressChat = 0
+        
+        # Clear data
+        HTTPData = ""
+        HTTPLines:clear()
+        
+        NewMessengerPlayerNames:clear()
+        NewMessengerMessages:clear()
+        
+        NewMessagePlayers:clear()
+        NewMessageMessages:clear()
+        
+        ProcessStage = 0
+        UpdateNeeded = 0
+    }
+}
+
+MessageDispatchQueuePlayers = array()
+MessageDispatchQueueMessages = array()
+if (chatClk()) {
+    LastSaid = lastSaid()
+    LastSpoke = lastSpoke()
+    if (LastSaid[1] == "!" |
+        LastSaid[1] == "/") {
+        hideChat(1)
+        FullCommand = LastSaid:sub(2)
+        Parts = FullCommand:explode(" ")
+        Arguments = FullCommand:sub(Parts[1, string]:length() + 2)
+        Command = Parts[1, string]
+        if (Command == "gm") {
+            Arguments = Arguments:trim()
+            if (Arguments:length()) {
+                MessageDispatchQueuePlayers:pushEntity(LastSpoke)
+                MessageDispatchQueueMessages:pushString(Arguments)
+            }
+        } elseif (Command == "input") {
+            if (Arguments == "none") {
+                ImportChat = 0
+                hint("Chat messages will now not be forwarded.", 10)
+            } elseif (Arguments == "chat") {
+                ImportChat = 1
+                hint("Chat messages will now be forwarded.", 10)
+            }
+        } elseif (Command == "output") {
+            if (Arguments == "none") {
+                PrintToChat = 0
+                SayInChat = 0
+                hint("Messages will now not be shown.", 10)
+            } elseif (Arguments == "print") {
+                PrintToChat = 1
+                SayInChat = 0
+                hint("Messages will now be shown in your chat.", 10)
+            } elseif (Arguments == "say") {
+                PrintToChat = 0
+                SayInChat = 1
+                hint("Messages will now be said out loud.", 10)
+            }
+        }
+    } else {
+        if (ImportChat) {
+            IgnoreID = LastSpoke:name() + "|" + LastSaid
+            if (IgnoreChatMessages[IgnoreID, number]) {
+                IgnoreChatMessages[IgnoreID, number] = IgnoreChatMessages[IgnoreID, number] - 1
+            } else {
+                IgnoreID = LastSpoke:name() + "|" + LastSaid
+                IgnoreHTTPMessages[IgnoreID, string] = IgnoreHTTPMessages[IgnoreID, string] + 1
+                MessageDispatchQueuePlayers:pushEntity(LastSpoke)
+                MessageDispatchQueueMessages:pushString(LastSaid)
+            }
+        }
+    }
+}
+
+if (KeyCode != LastKeyCode) {
+    if (KeyCode) {
+        if (KeyCode >= 32 & KeyCode < 127) {
+            KeyboardString = KeyboardString:sub(1, KeyboardStringOffset - 1) + toChar(KeyCode) + KeyboardString:sub(KeyboardStringOffset)
+            KeyboardStringOffset++
+        } elseif (KeyCode == 127) {
+            # Backspace
+            if (KeyboardStringOffset > 1) {
+                KeyboardString = KeyboardString:sub(1, KeyboardStringOffset - 2) + KeyboardString:sub(KeyboardStringOffset)
+                KeyboardStringOffset--
+            }
+        } elseif (KeyCode == 148) {
+            # Delete
+            if (KeyboardStringOffset <= KeyboardString:length()) {
+                KeyboardString = KeyboardString:sub(1, KeyboardStringOffset - 1) + KeyboardString:sub(KeyboardStringOffset + 1)
+            }
+        } elseif (KeyCode == 149) {
+            # Home
+            KeyboardStringOffset = 1
+        } elseif (KeyCode == 150) {
+            # End
+            KeyboardStringOffset = KeyboardString:length() + 1
+        } elseif (KeyCode == 151) {
+            # Page up
+            if (MessageHistoryIndex > 1) {
+                MessageHistoryIndex--
+                Screen[2038] = -MessageHistoryLines[MessageHistoryIndex, number]
+                ScreenNeedsUpdating = 1
+            }
+        } elseif (KeyCode == 152) {
+            # Page down
+            if (MessageHistoryIndex < MessageHistoryPlayerNames:count()) {
+                Screen[2038] = MessageHistoryLines[MessageHistoryIndex, number]
+                MessageHistoryIndex++
+                ScreenNeedsUpdating = 1
+            }
+        } elseif (KeyCode == 13) {
+            # Enter
+            MessageDispatchQueuePlayers:pushEntity(KeyboardUser)
+            MessageDispatchQueueMessages:pushString(KeyboardString)
+            PreviousMessages:pushString(KeyboardString)
+            PreviousMessageOffset++
+            if (PreviousMessages:count() > 20) {
+                PreviousMessages:shift()
+                PreviousMessageOffset--
+            }
+            KeyboardString = ""
+            KeyboardStringOffset = 1
+        } elseif (KeyCode == 19) {
+            # Left arrow
+            if (KeyboardStringOffset > 1) {
+                KeyboardStringOffset--
+            }
+        } elseif (KeyCode == 20) {
+            # Right arrow
+            if (KeyboardStringOffset <= KeyboardString:length()) {
+                KeyboardStringOffset++
+            }
+        }
+        
+        if (KeyCode == 17) {
+            # Up arrow
+            if (PreviousMessageOffset > 1) {
+                PreviousMessageOffset--
+                KeyboardString = PreviousMessages[PreviousMessageOffset, string]
+                KeyboardStringOffset = KeyboardString:length() + 1
+            }
+        } elseif (KeyCode == 18) {
+            # Down arrow
+            if (PreviousMessageOffset <= PreviousMessages:count()) {
+                PreviousMessageOffset++
+                KeyboardString = PreviousMessages[PreviousMessageOffset, string]
+                KeyboardStringOffset = KeyboardString:length() + 1
+            }
+        } else {
+            PreviousMessageOffset = PreviousMessages:count() + 1
+        }
+        
+        Input = ">" + KeyboardString
+        if (Input:length() < 60) {
+            Input += " ":repeat(60 - Input:length())
+        }
+        Screen:writeString(Input, 0, 16, 999, 449)
+        Screen[2045] = 16 * 60 + KeyboardStringOffset * 2
+    }
+    LastKeyCode = KeyCode
+}
+
+if (ScreenNeedsUpdating) {
+    # Redraw the chat view.
+    I = MessageHistoryIndex
+    if (!ScreenInScroll) {
+        Screen[2038] = CurrentScreenLine
+        ScreenInScroll = 1
+    }
+    CurrentScreenLine = 0
+    
+    while (I <= MessageHistoryPlayerNames:count()) {
+        PlayerName = MessageHistoryPlayerNames[I, string]
+        Message = MessageHistoryMessages[I, string]
+        ScreenLinesNeeded = MessageHistoryLines[I, number]
+        ScreenLinesAvailable = 18 - ScreenLockedTopLines - ScreenLockedBottomLines - CurrentScreenLine
+        if (ScreenLinesAvailable < ScreenLinesNeeded) {
+            ScreenLinesNeeded = ScreenLinesAvailable
+        }
+#ifdef wirelink:writeUnicodeString(string, number, number, number, number)
+        Screen:writeUnicodeString(PlayerName, 0, ScreenLockedTopLines + CurrentScreenLine, 229, 0)
+        Screen:writeUnicodeString(": " + Message:sub(1, ScreenLinesNeeded * 30 - PlayerName:unicodeLength() - 2), PlayerName:unicodeLength(), ScreenLockedTopLines + CurrentScreenLine)
+#else
+        Screen:writeString(PlayerName, 0, ScreenLockedTopLines + CurrentScreenLine, 229, 0)
+        Screen:writeString(": " + Message:sub(1, ScreenLinesNeeded * 30 - PlayerName:length() - 2), PlayerName:length(), ScreenLockedTopLines + CurrentScreenLine)
+#endif
+        CurrentScreenLine += ScreenLinesNeeded
+        I++
+        if (18 - ScreenLockedTopLines - ScreenLockedBottomLines - CurrentScreenLine == 0) {
+            break
+        }
+    }
+    ScreenNeedsUpdating = 0
+}
+
+for (I = 1, MessageDispatchQueuePlayers:count()) {
+    URI = "http://www.joethetree.lil.org.uk/test/chat/chatwrite.php"
+    URI += "?name=" + httpUrlEncode(MessageDispatchQueuePlayers[I, entity]:name())
+    URI += "&message=" + httpUrlEncode(" " + MessageDispatchQueueMessages[I, string])
+    URI += "&steamid=" + httpUrlEncode(MessageDispatchQueuePlayers[I, entity]:steamID())
+    URI += "&version=" + ClientVersion
+    HTTPQueue:pushString(URI)
+}
+

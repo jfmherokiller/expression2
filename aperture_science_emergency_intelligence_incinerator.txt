@@ -1,0 +1,75 @@
+@name Aperture Science Emergency Intelligence Incinerator
+@inputs
+@outputs
+@persist InIncinerator:array IncineratorEntryTime:array
+@trigger
+@model
+
+runOnTick(1)
+
+if (first() | duped()) {
+    State = 0
+    holoCreate(1)
+#ifdef entity:setModel(string)
+    holoEntity(1):setModel("models/props_bts/glados_aperturedoor.mdl")
+#else
+    holoModel(1, "models/props_bts/glados_aperturedoor.mdl")
+#endif
+    holoAng(1, ang(0, 0, 0))
+    holoPos(1, entity():pos() + vec(0, 0, 64))
+    holoParent(1, entity())
+    holoAnim(1, 1)
+}
+
+findInSphere(entity():pos(), 24)
+R = findToArray()
+for (I = 1, R:count())
+{
+    if (R[I, entity]:type() != "prop_physics") { continue }
+    
+    local Found = 0
+    for (J = 1, InIncinerator:count())
+    {
+        if (InIncinerator[J, entity] == R[I, entity])
+        {
+            Found = 1
+            EntryTime = IncineratorEntryTime[J, number]
+            if (curtime() - EntryTime > 2)
+            {
+                concmd("echo " + curtime() + ":Remove " + R[I, entity]:id() + " " + EntryTime)
+                R[I, entity]:propDelete()
+                InIncinerator:remove(J)
+                IncineratorEntryTime:remove(J)
+                break
+            }
+        }
+    }
+    if (!Found)
+    {
+        concmd("echo " + curtime() + ":Add " + R[I, entity]:id() + " " + curtime())
+        InIncinerator:pushEntity(R[I, entity])
+        IncineratorEntryTime:pushNumber(curtime())
+    }
+}
+
+I = 1
+while (I < InIncinerator:count())
+{
+    local Found = 0
+    for (J = 1, R:count())
+    {
+        if (InIncinerator[I, entity] == R[I, entity])
+        {
+            Found = 1
+        }
+    }
+    if (!Found)
+    {
+        InIncinerator:remove(I)
+        IncineratorEntryTime:remove(I)
+    }
+    else
+    {
+        I++
+    }
+}

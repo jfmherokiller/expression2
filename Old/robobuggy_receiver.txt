@@ -1,0 +1,69 @@
+@name Robobuggy_Receiver
+@inputs EntNearest:entity Holding
+@outputs Wheels Speed Camera Explode Grab
+@persist 
+@trigger 
+
+interval(10)
+
+EntBody = entity():isWeldedTo()
+Wheels = 0
+Turn = 0
+
+gSetGroup("Buggy")
+gShare(1)
+gSetEnt("EntBuggy", EntBody)
+gSetEnt("EntNearest", EntNearest)
+gSetNum("Holding", Holding)
+W = gGetNum("W")
+S = gGetNum("S")
+A = gGetNum("A")
+D = gGetNum("D")
+G = gGetNum("G")
+Grab = G
+X = gGetNum("X")
+Space = gGetNum("Space")
+if (gGetNum("Off") == 0) {
+    Camera = 1   
+} else {
+    Camera = 0
+}
+gResetGroup()
+
+Speed = 100
+if (W) {
+    Wheels += 1
+}
+if (S) {
+    Wheels -= 1   
+}
+if (A) {
+    Turn -= 1
+}
+if (D) {
+    Turn += 1
+}
+if (X) {
+    Explode = 1   
+} else {
+    Explode = 0
+}
+
+if (Wheels) {
+    VecTarget = vec(0, -Wheels, 0)
+    VecTarget = EntBody:toWorld(VecTarget) - EntBody:toWorld(vec(0, 0, 0))
+    VecTarget *= 150
+    EntBody:applyForce((VecTarget - EntBody:vel():setZ(0)) * EntBody:mass())
+} else {
+    EntBody:applyForce(-EntBody:vel():setZ(0) * EntBody:mass())   
+}
+if (Space) {
+    EntBody:applyForce(vec(0, 0, 100) * EntBody:mass())   
+}
+Wheels = 0
+if (Turn) {
+    AngTarget = ang(0, -Turn * 90, 0)
+    EntBody:applyAngForce((AngTarget - EntBody:angVel()) * EntBody:mass())
+} else {
+    EntBody:applyAngForce(-EntBody:angVel() * EntBody:mass())
+}

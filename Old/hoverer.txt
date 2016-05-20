@@ -1,0 +1,22 @@
+@name Hoverer
+@inputs Floor Height
+@outputs VecThrust:vector
+@persist 
+@trigger
+
+interval(10)
+
+if (Floor == 0) {
+    TargetHeight = 20
+} else {
+    TargetHeight = 4800
+}
+VecVel = entity():isWeldedTo():vel()
+Mass = entity():isWeldedTo():mass()
+
+VecThrust = (vec(0, 0, TargetHeight - Height) - VecVel)
+if (VecThrust:length() > 10) {
+    VecThrust = VecThrust:normalized() * 10
+}
+entity():isWeldedTo():applyForce(VecThrust * Mass)
+entity():isWeldedTo():applyAngForce(-entity():isWeldedTo():angVel() * Mass)

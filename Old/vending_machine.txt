@@ -1,0 +1,26 @@
+@name Vending Machine
+@inputs BlueCan RedCan YellowCan BabyCan Can:entity
+@outputs SpawnCan SpawnBaby
+@persist NextSkin
+@trigger 
+
+interval(500)
+SpawnCan = 0
+SpawnBaby = 0
+if (BabyCan) {
+    SpawnBaby = 1
+}
+if (BlueCan | RedCan | YellowCan) {
+    SpawnCan = 1
+} else {
+    Can:setSkin(NextSkin)
+}
+if (BlueCan) {
+    NextSkin = 0
+}
+if (RedCan) {
+    NextSkin = 1
+}
+if (YellowCan) {
+    NextSkin = 2
+}

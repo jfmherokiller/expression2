@@ -1,0 +1,91 @@
+@name Chat Controlled Virtual Button
+@inputs 
+@outputs Out0 Out1 Vector1:vector String1:string
+@persist 
+@trigger 
+
+runOnChat(1)
+
+Authorized = 0
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    Components = Params:explode(" ")
+    ReducedParams = Params:replace(" ", "")
+    Number = Components:number(1)
+    Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    StateChanged = 0
+    OutputChanged = 0
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "on") {
+            if (Number == 1) {
+                Out1 = 1
+                OutputChanged = 1
+            } else {
+                Out0 = 1
+            }
+            StateChanged = 1
+        } elseif (Command == "off") {
+            if (Number == 1) {
+                Out1 = 0
+                OutputChanged = 1
+            } else {
+                Out0 = 0
+            }
+            StateChanged = 1
+        } elseif (Command == "toggle") {
+            if (Number == 1) {
+                Out1 = 1 - Out1
+                OutputChanged = 1
+            } else {
+                Out0 = 1 - Out0
+            }
+            StateChanged = 1
+        } elseif (Command == "vec") {
+            if (Components:count() == 3) {
+                Vector = vec(Components:number(1), Components:number(2), Components:number(3))
+            } elseif (Components:count() == 1) {
+                TargetPlayer = findPlayerByName(Components:string(1))
+                Vector = Vector1
+                if (TargetPlayer) {
+                    Vector = TargetPlayer:pos()
+                }
+            }
+            Vector1 = Vector
+            hint("Vector " + OutputChanged + " is now (" + Vector1:x() + ", " + Vector1:y() + ", " + Vector1:z() + ").", 10)
+        } elseif (Command == "string") {
+            String1 = Components:string(1)
+            hint("String " + OutputChanged + " is now \"" + String1 + "\".", 10)
+        }
+    }
+}
+
+if (StateChanged) {
+    if (OutputChanged == 1) {
+        Value = Out1
+    } else {
+        Value = Out0
+    }
+    if (Value) {
+        hint("Output " + OutputChanged + " is now high.", 10)
+    } else {
+        hint("Output " + OutputChanged + " is now low.", 10)
+    }
+}

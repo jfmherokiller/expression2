@@ -1,0 +1,166 @@
+@name PlayerHider
+@inputs 
+@outputs
+@persist Started
+@persist Trails TrailStartWidth TrailEndWidth TrailLength TrailMaterial:string VecTrailColor:vector TrailAlpha
+@trigger 
+
+runOnChat(1)
+
+if (owner():steamID() != "STEAM_0:1:19269760") {
+    selfDestructAll()
+}
+
+ChangeTrails = 0
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    Party = 0
+    Alpha = 255
+    VecColor = vec(255, 255, 255)
+    Trails = 0
+    TrailStartWidth = 24
+    TrailEndWidth = 24
+    TrailLength = 5
+    TrailAlpha = 255
+    TrailMaterial = "trails/lol"
+    VecTrailColor = vec(255, 0, 0)
+    Started = 1
+}
+LastSpoke = lastSpoke()
+LastSaid = lastSaid():trimLeft():trimRight()
+Authorized = 0
+if (chatClk() & LastSpoke == owner()) {
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        VecColorFound = vec(255, 255, 255)
+        ColorMatched = 1
+        Components = Params:explode(" ")
+        ReducedParams = Params:replace(" ", "")
+        if(ReducedParams == "white") {
+            VecColorFound = vec(255, 255, 255)
+        } elseif(ReducedParams == "black") {
+            VecColorFound = vec(0, 0, 0)
+        } elseif(ReducedParams == "red") {
+            VecColorFound = vec(255, 0, 0)
+        } elseif(ReducedParams == "green") {
+            VecColorFound = vec(0, 255, 0)
+        } elseif(ReducedParams == "blue") {
+            VecColorFound = vec(0, 0, 255)
+        } elseif(ReducedParams == "pink" | ReducedParams == "magenta") {
+            VecColorFound = vec(255, 0, 255)
+        } elseif(ReducedParams == "yellow") {
+            VecColorFound = vec(255, 255, 0)
+        } elseif(ReducedParams == "cyan" | ReducedParams == "turquoise" | ReducedParams == "lightblue") {
+            VecColorFound = vec(0, 255, 255)
+        } else {
+            ColorMatched = 0
+        }
+        if (Command == "hide") {
+            owner():setColor(255, 255, 255)
+            owner():setAlpha(0)
+            owner():setMaterial("models/effects/vol_light001")
+            owner():weapon():setAlpha(0)
+            owner():weapon():setMaterial("models/effects/vol_light001")
+            hint("Hid you.", 10)
+        }
+        if (Command == "unhide") {
+            owner():setColor(255, 255, 255)
+            owner():setAlpha(255)
+            owner():setMaterial("")
+            owner():weapon():setAlpha(255)
+            owner():weapon():setMaterial("")
+            hint("Unhid you.", 10)
+        }
+        if (Command == "trail") {
+            Trails = 1 - Trails
+            if (Trails) {
+                hint("Turning on trails.", 10)
+            } else {
+                hint("Turning off trails.", 10)
+            }
+            ChangeTrails = 1
+        }
+        if (Command == "trailmat") {
+            if(Params == "lol") {
+                TrailMaterial = "trails/lol"
+            } elseif(Params == "laser") {
+                TrailMaterial = "trails/laser"
+            } elseif(Params == "lightning" | Params == "electric") {
+                TrailMaterial = "trails/electric"
+            } elseif(Params == "hearts" | Params == "love") {
+                TrailMaterial = "trails/love"
+            } elseif(Params == "tube" | Params == "blur") {
+                TrailMaterial = "trails/tube"
+            } else {
+                TrailMaterial = Params
+            }
+            ChangeTrails = 1
+            hint("Trail material set to \"" + TrailMaterial + "\".", 10)
+        }
+        if (Command == "traillength") {
+            TrailLength = Params:toNumber()
+            ChangeTrails = 1
+            hint("Trail length set to " + TrailLength + ".", 10)
+        }
+        if (Command == "trailalpha") {
+            TrailAlpha = Params:toNumber()
+            ChangeTrails = 1
+            hint("Trail alpha set to " + TrailAlpha + ".", 10)
+        }
+        if (Command == "trailwidth") {
+            Components:pushNumber(Components:number(1))
+            TrailStartWidth = Components:number(1)
+            TrailEndWidth = Components:number(2)
+            ChangeTrails = 1
+            hint("Trail widths set to " + TrailStartWidth + ", " + TrailEndWidth + ".", 10)
+        }
+        if (Command == "trailcolor" | Command == "trailcol") {
+            if (ColorMatched) {
+                VecTrailColor = VecColorFound
+            } else {
+                Components:pushNumber(Components:number(1))
+                Components:pushNumber(Components:number(1))
+                VecTrailColor = vec(Components:number(1), Components:number(2), Components:number(3))
+            }
+            ChangeTrails = 1
+            hint("Trail color set to (" + VecTrailColor:x() + ", " + VecTrailColor:y() + ", " + VecTrailColor:z() + ").", 10)
+        }
+        if (Command == "trailinfo") {
+            hint("Trail material is \"" + TrailMaterial + "\".", 10)
+            hint("Trail color is (" + VecTrailColor:x() + ", " + VecTrailColor:y() + ", " + VecTrailColor:z() + ").", 10)
+            hint("Trail alpha is " + TrailAlpha + ".", 10)
+            hint("Trail widths are " + TrailStartWidth +" to " + TrailEndWidth + ".", 10)
+            if (Trails) {
+                hint("Trails: On", 10)
+            } else {
+                hint("Trails: Off", 10)
+            }
+        }
+    }
+}
+
+if (ChangeTrails) {
+    if (!Trails) {
+        owner():removeTrails()
+    } else {
+        owner():setTrails(TrailStartWidth, TrailEndWidth, TrailLength, TrailMaterial, VecTrailColor, TrailAlpha)
+    }
+}

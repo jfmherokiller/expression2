@@ -1,0 +1,38 @@
+@name Pathfinding Test
+@inputs 
+@outputs 
+@persist NextHoloID
+@persist Nodes:table
+@trigger 
+
+if (first() | duped())
+{
+    runOnChat(1)
+    runOnTick(1)
+    Nodes = table()
+    
+    function number nextHoloID() { NextHoloID++, return NextHoloID - 1 }
+}
+
+if (tickClk())
+{
+}
+
+if (chatClk())
+{
+    LastSpoke = lastSpoke()
+    LastSaid = lastSaid()
+    IsCommand = 0
+    if (LastSaid[1] == "/" | LastSaid[1] == "!") { IsCommand = 1 }
+    if (IsCommand)
+    {
+        LastSaid = LastSaid:sub(2)
+        if (LastSaid == "start")
+        {
+            
+        }
+        elseif (LastSaid == "dest")
+        {
+        }
+    }
+}

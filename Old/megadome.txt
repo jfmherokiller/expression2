@@ -1,0 +1,9 @@
+@name Megadone
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+holoCreate(1)
+holoModel(1, "hqsphere")
+holoScale(1, vec(-1, -1, -1) * 8192)

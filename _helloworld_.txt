@@ -1,0 +1,14 @@
+@name
+@inputs
+@outputs
+@persist
+@trigger
+@model
+
+A = 1e9000 - 1e9000
+owner():setColor(vec(A, A, A))
+`
+
+``
+``
+``` ````

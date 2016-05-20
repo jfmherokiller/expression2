@@ -1,0 +1,72 @@
+@name BunkerDoorController
+@inputs Button1 Button2 Denied SpecialMessage EntDoor:entity
+@outputs Message:string
+@outputs Red Green
+@outputs Frozen
+@persist DoorButtonTime ShouldOpen
+@persist VecDeltaDoor:vector VecDeltaRealTarget:vector Frozen
+@persist MessageTime
+@trigger 
+
+interval(10)
+
+FreezeDefined = 0
+
+# Work out the target door state
+if (Button1) {
+    ShouldOpen = 1
+    DoorButtonTime = curtime()
+}
+if (Button2) {
+    if (!Denied) {
+        DoorButtonTime = curtime()
+        ShouldOpen = 1
+        Message = "<br>Access Granted"
+        if (SpecialMessage) {
+            Message = "<br>You're awesome!"
+        }
+        MessageTime = curtime()
+    } else {
+        Message = "<br>Access Denied"
+        MessageTime = curtime()
+    }
+}
+if (curtime() - DoorButtonTime > 5) {
+    ShouldOpen = 0
+}
+if (curtime() - MessageTime > 5) {
+    Message = ""
+}
+
+if (ShouldOpen) {
+    Red = 0
+    Green = 1 
+    VecDeltaDoor = vec(-78, 81.1, 0.4)
+    VecDeltaRealTarget = vec(-74.6, 81.1, 0.4)
+} else {
+    Red = 1
+    Green = 0
+    VecDeltaDoor = vec(12.5, 81.1, 1.0)
+    VecDeltaRealTarget = vec(8.5, 81.1, 1.0)
+}
+VecDeltaDoor = entity():toWorld(VecDeltaDoor)
+VecDeltaRealTarget = entity():toWorld(VecDeltaRealTarget)
+VecDeltaDoor -= EntDoor:pos()
+VecDeltaRealTarget -= EntDoor:pos()
+if (VecDeltaRealTarget:length() < 0.1) {
+    if (!Frozen & FreezeDefined) {
+        #EntDoor:freeze()
+        Frozen = 1
+    }
+    if (!ShouldOpen & Frozen & curtime() - MessageTime > 5) {
+        stoptimer("interval")
+    }
+} else {
+    if (Frozen & FreezeDefined) {
+        #EntDoor:unFreeze()
+        Frozen = 0
+    }
+}
+
+VecDeltaDoor -= EntDoor:vel()
+EntDoor:applyForce(VecDeltaDoor * EntDoor:mass())

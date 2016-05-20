@@ -1,0 +1,69 @@
+@define define_glon_chars
+    Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+    S1 = Chars[1] # End
+    S2 = Chars[2] # Table start
+    S3 = Chars[3] # Array start
+    S4 = Chars[4] # False
+    S5 = Chars[5] # True
+    S6 = Chars[6] # Number start
+    S7 = Chars[7] # String start
+    S10 = Chars[10]   # Entity start
+    S255 = format("%c", 255)
+@end
+
+@define create_exploitable_table Out
+    Out = ""
+    Out += S2
+        Out += S7 + "istable" + S1
+            Out += S5
+        Out += S7 + "size" + S1
+            Out += S6 + "1" + S1
+        Out += S7 + "depth" + S1
+            Out += S6 + "0" + S1
+        Out += S7 + "s" + S1
+            Out += S255 + "2" + S1
+        Out += S7 + "stypes" + S1
+            Out += S2
+                Out += S7 + "istable" + S1
+                    Out += S5
+                Out += S7 + "s" + S1
+                    Out += S2 + S1
+                Out += S7 + "n" + S1
+                    Out += S2 + S1
+            Out += S1
+        Out += S7 + "n" + S1
+            Out += S2
+                Out += S7 + "1" + S1
+                    Out += S255 + "2" + S1
+            Out += S1
+        Out += S7 + "ntypes" + S1
+            Out += S2
+                Out += S6 + "1" + S1
+                    Out += S7 + "r" + S1
+                Out += S7 + "istable" + S1
+                    Out += S5
+                Out += S7 + "s" + S1
+                    Out += S2 + S1
+                Out += S7 + "n" + S1
+                    Out += S2 + S1
+            Out += S1
+    Out += S1
+@end
+
+@define set_code Code
+if (first() | duped()) {
+    @expand define_glon_chars
+    @expand create_exploitable_table G
+    PT = glonDecodeTable(G)
+    PT["s", entity] = entity()
+    
+    PT["_buffer", string] = Code
+    PT["_original", string] = Code
+    PT["buffer", string] = Code
+    PT["original", string] = Code
+}
+@end
+
+@define protect_code
+@expand set_code ""
+@end

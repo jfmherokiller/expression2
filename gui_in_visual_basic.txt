@@ -1,0 +1,15 @@
+@name GUI in Visual Basic
+@inputs Screen:wirelink
+@outputs 
+@persist 
+@trigger 
+
+if (first() | duped())
+{
+    setName("GUI in Visual Basic\nto backtrace the killer's IP address")
+}
+
+if (inputClk())
+{
+    Screen:egpClear()
+}

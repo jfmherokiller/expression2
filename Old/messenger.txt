@@ -1,0 +1,82 @@
+@name Messenger
+@inputs
+@outputs
+@persist
+@trigger
+
+runOnChat(1)
+
+ChatActivated = 0
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    ChatActivated = 1
+}
+if (ChatActivated) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    Components = Params:explode(" ")
+    ReducedParams = Params:replace(" ", "")
+    Number = Components:number(1)
+    Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    Player = findPlayerByName(Components:string(1))
+    Message = Params:sub(Params:find(" ") + 1, Params:length())
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "pm" | Command == "msg") {
+            Player:print(LastSpoke:name() + ": " + Message)
+            LastSpoke:print(LastSpoke:name() + " to " + Player:name() + ": " + Message)
+        } elseif (Command == "broadcast") {
+            for (I = 1, maxPlayers()) {
+                if (entity(I)) {
+                    entity(I):print(LastSpoke:name() + " to all: " + Params)
+                }
+            }
+        } elseif (Command == "impersonate") {
+            for (I = 1, maxPlayers()) {
+                if (entity(I)) {
+                    entity(I):printColor(teamColor(Player:team()), Player:name(), vec(255, 255, 255), ": " + Message)
+                }
+            }
+        } elseif (Command == "info") {
+            if (Components:number(1)) {
+                Entity = entity(Components:number(1))
+                hint(toString(Entity), 10)
+            } elseif (LastSpoke:aimEntity():isPlayer()) {
+                Target = LastSpoke:aimEntity()
+                hint(Target:name(), 10)
+                if (Target:isAdmin()) {
+                    hint("Admin", 10)
+                } elseif (Target:isSuperAdmin()) {
+                    hint("Super Admin", 10)
+                }
+            }
+        } elseif (Command == "explode") {
+            if (Components:number(1)) {
+                Entity = entity(Components:number(1))
+                hint("Exploded " + toString(Entity) + ".", 10)
+                Entity:explode()
+            } elseif (LastSpoke:aimEntity()) {
+                LastSpoke:aimEntity():explode()
+            }
+        } elseif (Command == "nuke") {
+            Props = LastSpoke:aimEntity():getConstraints()
+            hint("Found " + (Props:count() + 1) + " props.", 10)
+            for (I = 1, Props:count()) {
+                Props:entity(I):propDelete()
+            }
+            LastSpoke:aimEntity():propDelete()
+        }
+    }
+}

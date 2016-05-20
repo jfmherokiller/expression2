@@ -1,0 +1,29 @@
+@name Array Test
+@inputs
+@outputs
+@persist
+@trigger
+
+Array = array()
+Array:pushNumber(1)
+Array:pushNumber(2)
+Array:pushNumber(3)
+Array:pushNumber(4)
+Array2 = array()
+Array2:pushNumber(1)
+Array3 = array()
+Array4 = array()
+
+for (I = 1, Array:count()) {
+    hint(toString(Array:count()) + " killers.", 10)
+    hint(entity(Array:number(I)):name() + " commited murder.", 10)
+    if (Array3:number(Array:number(I))) {
+        Array4:pushNumber(1)
+    }
+}
+for (I = 1, Array2:count()) {
+    hint(toString(Array:count()) + " killers.", 10)
+    hint(entity(Array2:number(I)):name() + " died.", 10)
+}
+
+hint("There are " + Array:count() + " elements in the array.", 10)

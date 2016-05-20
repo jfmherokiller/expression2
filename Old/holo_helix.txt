@@ -1,0 +1,20 @@
+@name Holo Helix
+@inputs Holo:wirelink Holo2:wirelink Active
+@persist Timer
+
+interval(20)
+Timer += 0.02
+PlayerPos = owner():pos()
+
+Holo:setNumber("X",sin(Timer*180)*20 + PlayerPos:x() - Holo:entity():pos():x())
+Holo:setNumber("Y",cos(Timer*180)*20 + PlayerPos:y() - Holo:entity():pos():y())
+Holo:setNumber("Z",cosr(Timer)*35 + 35 + PlayerPos:z() - Holo:entity():pos():z())
+
+Holo2:setNumber("X",sin(Timer*180 + 180)*20 + PlayerPos:x() - Holo2:entity():pos():x())
+Holo2:setNumber("Y",cos(Timer*180 + 180)*20 + PlayerPos:y() - Holo2:entity():pos():y())
+Holo2:setNumber("Z",cosr(Timer)*35 + 35 + PlayerPos:z() - Holo2:entity():pos():z())
+
+Holo:setNumber("FadeRate",50)
+Holo:setNumber("Active",Active)
+Holo2:setNumber("FadeRate",50)
+Holo2:setNumber("Active",Active)

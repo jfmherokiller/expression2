@@ -1,0 +1,60 @@
+@name AutoTitle
+@inputs 
+@outputs 
+@persist Id Messages:array Started
+@trigger 
+
+interval(3000)
+
+if (!Started) {
+    Messages = array("We're no stranges to love",
+                     "You know the rules and so do I",
+                     "A full commitment's what I'm",
+                     "thinking of",
+                     "You wouldnt get this from any",
+                     "other guy",
+
+                     "I just wanna tell you how",
+                     "I'm feeling",
+                     "Gotta make you understand",
+
+                     "Never gonna give you up",
+                     "Never gonna let you down",
+                     "Never gonna run around",
+                     "and desert you",
+                     "Never gonna make you cry",
+                     "Never gonna say goodbye",
+                     "Never gonna tell a lie",
+                     "and hurt you",
+                    
+                     "We've know each other for so",
+                     "loooong",
+                     "Your heart's been aching",
+                     "But you're too shy to say it",
+                     "Inside we both know what's been going on",
+                     "We know the game and were gonna",
+                     "play it",
+
+                     "And if you ask me",
+                     "how I'm feeling",
+                     "Don't tell me you're",
+                     "too blind to see",
+
+                     "Never gonna give you up",
+                     "Never gonna let you down",
+                     "Never gonna run around",
+                     "and desert you",
+                     "Never gonna make you cry",
+                     "Never gonna say goodbye",
+                     "Never gonna tell a lie",
+                     "and hurt you")
+    Started = 1
+}
+
+Id++
+if (Id == Messages:count() + 1) {
+    Id = 1
+}
+
+#concmd("say !settitle " + Messages[Id, string])
+concmd("citrus title \"" + Messages[Id, string]:sub(0, 32) + "\"")

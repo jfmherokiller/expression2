@@ -1,0 +1,17 @@
+@name Quotespam
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+interval(1000)
+runOnChat(1)
+if (chatClk())
+{
+    if (lastSpoke() == owner())
+    {
+        if (lastSaid() == "/quote") { hideChat(1) }
+    }
+}
+
+concmd("say /quote")

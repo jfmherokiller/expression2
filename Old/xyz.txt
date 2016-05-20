@@ -1,0 +1,26 @@
+@model models/hunter/blocks/cube075x075x075.mdl
+@name XYZ
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+interval(100)
+holoCreate(1)
+holoCreate(2)
+holoCreate(3)
+
+Length = 64
+Width = 4
+
+holoPos(1, entity():pos() + vec(Length / 2, 0, 0))
+holoPos(2, entity():pos() + vec(0, Length / 2, 0))
+holoPos(3, entity():pos() + vec(0, 0, Length / 2))
+
+holoScale(1, vec(Length / 12, Width / 12, Width / 12))
+holoScale(2, vec(Width / 12, Length / 12, Width / 12))
+holoScale(3, vec(Width / 12, Width / 12, Length / 12))
+
+holoColor(1, vec(255, 0, 0))
+holoColor(2, vec(0, 255, 0))
+holoColor(3, vec(0, 0, 255))

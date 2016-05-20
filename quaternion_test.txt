@@ -1,0 +1,57 @@
+@name 
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+function entity showVec(N, Name:string, Vec:vector, Color:vector4)
+{
+    holoCreate(N * 2)
+    holoPos(N * 2, entity():pos() + Vec)
+    holoColor(N * 2, Color)
+    holoModel(N * 2, "hqsphere")
+    holoScale(N * 2, vec(0.25, 0.25, 0.25))
+#ifdef entity:setText(string)
+    holoEntity(N * 2):setText(Name)
+#endif
+    
+    holoCreate(N * 2 + 1)
+    holoPos(N * 2 + 1, entity():pos() + Vec / 2)
+    holoColor(N * 2 + 1, Color)
+    holoModel(N * 2 + 1, "hqcylinder")
+    holoAng(N * 2 + 1, Vec:toAngle() + ang(90, 0, 0))
+    holoScale(N * 2 + 1, vec(0.1, 0.1, Vec:length() / 12))
+    
+    return holoEntity(N * 2)
+}
+
+function entity showQuat(N, Name:string, Quat:quaternion, Color:vector4)
+{
+    local Scale = 1
+    if (abs(Quat) <= 1) { Scale = 64 }
+    local E = showVec(N, Name, Scale * vec(Quat:i(), Quat:j(), Quat:k()), Color)
+#ifdef entity:setText(string)
+    E:setText(Name + ": " + format("(%.3f, %.3f, %.3f, %.3f)", Quat:real(), Quat:i(), Quat:j(), Quat:k()))
+#endif
+    
+    return E
+}
+
+showVec(1, "x", vec(64,  0,  0), vec4(255,   0,   0, 255))
+showVec(2, "y", vec( 0, 64,  0), vec4(  0, 255,   0, 255))
+showVec(3, "z", vec( 0,  0, 64), vec4(  0,   0, 255, 255))
+
+Q = quat(0, sqrt(1 / 3), sqrt(1 / 3), sqrt(1 / 3))
+showQuat(4, "q", Q, vec4(255, 255, 255, 255))
+
+VVec = vec(10, 20, 30)
+showVec(5, "v", VVec, vec4(128, 128, 128, 255))
+
+V = quat(0, 10, 20, 30)
+showQuat(5, "v", V, vec4(128, 128, 128, 255))
+
+VQ_ = V * conj(Q)
+showQuat(6, "vq*", VQ_, vec4(255, 255, 0, 255))
+
+QVQ_ = Q * V * conj(Q)
+showQuat(6, "qvq*", QVQ_, vec4(0, 255, 255, 255))

@@ -1,0 +1,88 @@
+@name GLON Unit Tests
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+Array1 = array()
+Array1:pushString("derp")
+Array1:pushNumber(2)
+Array1:pushAngle(ang(100, 101, 102))
+Array1:pushVector(vec(300, 400, 500))
+T = table()
+T["a1", array] = Array1
+T = glonDecodeTable(glonEncode(T))
+Array1 = T["a1", array]
+
+if (Array1[1, string] != "derp")             { print("Test 1 failed.") }
+if (Array1[2, number] != 2)                  { print("Test 2 failed.") }
+if (Array1[3, angle] != ang(100, 101, 102))  { print("Test 3 failed.") }
+if (Array1[4, vector] != vec(300, 400, 500)) { print("Test 4 failed.") }
+
+T = table()
+T["itself", table] = T
+T = glonDecodeTable(glonEncode(T))
+
+printTable(T:parent())
+printTable(T)
+
+Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+S1 = Chars[1] # End
+S2 = Chars[2] # Table start
+S3 = Chars[3] # Array start
+S4 = Chars[4] # False
+S5 = Chars[5] # True
+S6 = Chars[6] # Number start
+S7 = Chars[7] # String start
+S10 = Chars[10]   # Entity start
+S255 = format("%c", 255)
+
+Out = ""
+Out += S2
+    Out += S7 + "istable" + S1
+        Out += S5
+    Out += S7 + "size" + S1
+        Out += S6 + "1" + S1
+    Out += S7 + "depth" + S1
+        Out += S6 + "0" + S1
+    Out += S7 + "s" + S1
+        Out += S2
+            Out += S7 + "wirelinkTest" + S1
+                Out += S10 + entity():id() + S1
+            Out += S7 + "invalidType" + S1
+                Out += S10 + entity():id() + S1
+            Out += S7 + "invalidType2" + S1
+                Out += S10 + entity():id() + S1
+            Out += S7 + "invalidVector" + S1
+                Out += S3
+                    Out += S2 + S1
+                    Out += S7 + "10" + S1
+                    Out += S6 + "10" + S1
+                Out += S1
+            Out += S7 + "invalidAngle" + S1
+                Out += S7 + "not an array of numbers" + S1
+        Out += S1
+    Out += S7 + "stypes" + S1
+        Out += S2
+            Out += S7 + "wirelinkTest" + S1
+                Out += S7 + "xwl" + S1
+            Out += S7 + "invalidType" + S1
+                Out += S7 + "xzz" + S1
+            Out += S7 + "invalidType2" + S1
+                Out += S7 + "s" + S1
+            Out += S7 + "invalidVector" + S1
+                Out += S7 + "v" + S1
+            Out += S7 + "invalidAngle" + S1
+                Out += S7 + "a" + S1
+        Out += S1
+    Out += S7 + "n" + S1
+        Out += S2 + S1
+    Out += S7 + "ntypes" + S1
+        Out += S2 + S1
+Out += S1
+
+T = glonDecodeTable(Out)
+T = table()
+T["testVector", vector] = vec(1, 2, 3)
+T["testAngle", angle] = ang(4, 5, 6)
+T = glonDecodeTable(glonEncode(T))

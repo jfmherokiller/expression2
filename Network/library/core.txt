@@ -1,0 +1,74 @@
+@define net_preinit
+@persist DeviceType:string
+@persist IPAddress IPBlockMask
+@persist Network:gtable
+@end
+@define net_init
+DSClk = dsClk () | dsGetArray ():count ()
+First = !DSClk & (first () | duped ())
+Last = !DSClk & last ()
+if (First) {
+    runOnChat (1)
+	   runOnLast (1)
+	   dsSetScope (2)
+	   dsJoinGroup ("Network")
+	   
+	   DeviceType = "Unknown"
+	   IPAddress = 0
+	   IPBlockMask = 32
+	   Network = gTable ("Network", 1)
+}
+@end
+
+@define net_format_ip IP String
+String = floor (IP / 256 / 256 / 256) + "." + floor (IP / 256 / 256 % 256) + "." + floor (IP / 256 % 256) + "." + (IP % 256)
+@end
+
+@define net_update_name
+if (IPBlockMask == 32) {
+    setName (DeviceType + "\n" + floor (IPAddress / 256 / 256 / 256) + "." + floor (IPAddress / 256 / 256 % 256) + "." + floor (IPAddress / 256 % 256) + "." + (IPAddress % 256))
+} else {
+    setName (DeviceType + "\n" + floor (IPAddress / 256 / 256 / 256) + "." + floor (IPAddress / 256 / 256 % 256) + "." + floor (IPAddress / 256 % 256) + "." + (IPAddress % 256) + "/" + IPBlockMask)
+}
+@end
+
+@define net_begin_chat
+if (!DSClk & chatClk ()) {
+    if (lastSpoke() == owner()) {
+		      LastSaid = lastSaid()
+		      if (LastSaid:sub(1, 1) == "!") {
+			         hideChat(1)
+			         LookingAtThis = 0
+			         if (owner():eyeTrace():entity() == entity()) {
+				            LookingAtThis = 1
+			         }
+			         LastSaid = LastSaid:sub(2)
+			         Parts = LastSaid:explode(" ")
+			         Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+			         Command = Parts[1, string]
+			         if (Command == "") {
+@end
+@define net_end_chat
+			         }
+		      }
+	   }
+}
+@end
+
+@define net_begin_ds
+if (DSClk) {
+    Message = dsGetArray()
+	   DestMAC = Message[1, entity]
+	   SrcMAC = Message[2, entity]
+	   DestIP = Message[3, number]
+	   SrcIP = Message[4, number]
+	   Type = Message[5, string]
+	   print("Received message " + Type + " from " + SrcMAC:id())
+	   if (!DestMAC | DestMAC == entity()) {
+		      if (0) {
+@end
+@define net_end_ds
+        }
+    }
+}
+@end

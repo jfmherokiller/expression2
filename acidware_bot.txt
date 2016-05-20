@@ -1,0 +1,55 @@
+@name AcidWare Bot
+@inputs
+@outputs
+@persist InGame ExpectingChallenge Hoster:entity
+@trigger
+@model
+
+runOnChat(1)
+hideChat(1)
+
+if (chatClk()) {
+    LastSaid = lastSaid():lower()
+    if (LastSaid:find("new game of acidware")) {
+        Hoster = lastSpoke()
+        InGame = 1
+    } elseif (LastSaid:find("prepare for another challenge") |
+              LastSaid:find("has won")) {
+        Hoster = lastSpoke()
+        concmd("-forward")
+        concmd("-back")
+    } elseif (LastSaid:find("get into noclip")) {
+        if (!owner():inNoclip()) {
+            concmd("noclip")
+        }
+    } elseif (LastSaid:find("add") & lastSpoke() == Hoster) {
+        Words = LastSaid:explode(" ")
+        A = Words[2, string]:toNumber()
+        B = Words[4, string]:toNumber()
+        concmd("say " + (A + B))
+    } elseif (LastSaid:find("closest to the chip")) {
+        findByClass("gmod_wire_expression2")
+        R = findToArray()
+        Chip = noentity()
+        for (I = 1, R:count()) {
+            if (R[I, entity]:owner() == lastSpoke()) {
+                Chip = R[I, entity]
+                break
+            }
+        }
+        concmd("cadmin ent_aim " + Chip:id())
+        concmd("+forward")
+    } elseif (LastSaid:find("furthest away from the chip")) {
+        findByClass("gmod_wire_expression2")
+        R = findToArray()
+        Chip = noentity()
+        for (I = 1, R:count()) {
+            if (R[I, entity]:owner() == lastSpoke()) {
+                Chip = R[I, entity]
+                break
+            }
+        }
+        concmd("cadmin ent_aim " + Chip:id())
+        concmd("+back")
+    }
+}

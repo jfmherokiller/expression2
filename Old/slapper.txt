@@ -1,0 +1,12 @@
+@name Slapper
+@inputs Gyro
+@outputs T1 T2
+
+
+if (Gyro <=0) {
+    T1 = 1
+    T2 = 0
+} else {
+    T1 = 0
+    T2 = 1
+}

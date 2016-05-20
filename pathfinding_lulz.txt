@@ -1,0 +1,47 @@
+@name Pathfinding Lulz
+@inputs 
+@outputs 
+@persist Nodes:table
+@trigger 
+
+if (first())
+{
+    runOnChat(1)
+    runOnFile(1)
+    fileLoad(map() + ".txt")
+}
+
+if (fileClk(map() + ".txt"))
+{
+    if (fileStatus() == _FILE_404)
+    {
+        
+    }
+    else
+    {
+        Data = fileRead()
+        
+    }
+}
+
+if (chatClk())
+{
+    if (lastSpoke() == owner())
+    {
+        LastSaid = lastSaid():trim()
+        Bits = LastSaid:explode(" ")
+        Command = Bits[1, string]
+        Char = Command[1]
+        Command = Command:sub(2)
+        if (Char == "!" | Char == "/")
+        {
+            if (Command == "node")
+            {
+                Trace = owner():eyeTrace()
+                NodePosition = Trace:position()
+                Node = table()
+                Node["position", vector] = NodePosition
+            }
+        }
+    }
+}

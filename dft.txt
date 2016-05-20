@@ -1,0 +1,288 @@
+@name DFT
+@inputs SignalScreen:wirelink ProcessScreen:wirelink DFTScreen:wirelink
+@outputs 
+@persist MaxAmplitude Timescale SamplePeriod
+
+# Signal Screen
+@persist SignalHeaderSize SignalSubHeading:string
+@persist SignalUsableWidth SignalUsableHeight
+@persist SignalOriginX SignalOriginY
+@persist SignalPixelsPerUnit
+
+# Process Screen
+@persist ProcessHeaderSize
+@persist ProcessUsableWidth ProcessUsableHeight
+@persist ProcessOrigin:vector2 ProcessOriginX ProcessOriginY
+@persist ProcessPixelsPerUnit
+
+# DFT Screen
+@persist DFTHeaderSize DFTSubHeading:string
+@persist DFTUsableWidth DFTUsableHeight
+@persist DFTOriginX DFTOriginY
+@persist DFTPixelsPerUnit
+
+@persist InitDFTScreen UpdateDFTScreen
+
+@persist SampleSize
+@persist Sample:array
+
+# DFT
+@persist MinimumFrequency MaximumFrequency
+@persist CurrentFrequency LastFrequencyProcessed
+@persist LastProcessTime
+
+@persist DFTOutput:array
+
+@trigger 
+
+interval(100)
+
+InitSignalScreen = 0
+InitProcessScreen = 0
+UpdateSignalScreen = 0
+UpdateProcessScreen = 0
+
+if (first())
+{
+    InitSignalScreen = 1
+    InitProcessScreen = 1
+    InitDFTScreen = 1
+    
+    MaxAmplitude = 1
+    Timescale = 1
+    
+    SampleSize = 64
+    SamplePeriod = Timescale / (SampleSize - 1)
+    
+    SignalSubHeading = "square wave"
+    for (I = 1, SampleSize)
+    {
+        Sample[I, number] = random(2 * MaxAmplitude) - MaxAmplitude
+        #Sample[I, number] = Sample[I, number] + sinr(2 * _PI * 3.3 * SamplePeriod * (I - 1))
+        #Sample[I, number] = Sample[I, number] + sinr(2 * _PI * 7.2 * SamplePeriod * (I - 1))
+        #Sample[I, number] = Sample[I, number] / 3
+        if (floor(I / 8) % 2 == 0)
+        {
+            Sample[I, number] = 0.5
+        }
+        else
+        {
+            Sample[I, number] = -0.5
+        }
+        if (floor(I / 16) % 2 == 0)
+        {
+            # Sample[I, number] = Sample[I, number] + 0.25
+        }
+        else
+        {
+            # Sample[I, number] = Sample[I, number] + -0.25
+        }
+        # Sample[I, number] = Sample[I, number] + random(0.2) - 0.1
+    }
+    
+    # Signal Screen
+    SignalHeaderSize = 40
+    SignalUsableWidth = 512
+    SignalUsableHeight = 512 - SignalHeaderSize
+    SignalOriginX = SignalUsableWidth / 2
+    SignalOriginY = SignalHeaderSize + SignalUsableHeight / 2
+    
+    SignalPixelsPerUnit = SignalUsableHeight / 2 / MaxAmplitude
+    
+    # Process Screen
+    ProcessHeaderSize = 40
+    ProcessUsableWidth = 512
+    ProcessUsableHeight = 512 - ProcessHeaderSize
+    ProcessOriginX = ProcessUsableWidth / 2
+    ProcessOriginY = ProcessHeaderSize + ProcessUsableHeight / 2
+    ProcessOrigin = vec2(ProcessOriginX, ProcessOriginY)
+    
+    ProcessPixelsPerUnit = min(ProcessUsableWidth, ProcessUsableHeight) / 2 * 0.8 / MaxAmplitude
+    
+    # DFT Screen
+    DFTHeaderSize = 40
+    DFTUsableWidth = 512
+    DFTUsableHeight = 512 - DFTHeaderSize
+    DFTOriginX = DFTUsableWidth / 2
+    DFTOriginY = DFTHeaderSize + DFTUsableHeight / 2
+    
+    DFTPixelsPerUnit = DFTUsableHeight / 2 / MaxAmplitude
+    
+    # DFT
+    MinimumFrequency = 0
+    MaximumFrequency = 70
+    CurrentFrequency = MinimumFrequency
+    LastFrequencyProcess = -1
+}
+
+if (changed(SignalScreen))
+{
+    InitSignalScreen = 1
+}
+if (changed(ProcessScreen))
+{
+    InitProcessScreen = 1
+}
+if (changed(DFTScreen))
+{
+    InitDFTScreen = 1
+}
+
+if (InitSignalScreen)
+{
+    UpdateSignalScreen = 1
+    
+    SignalScreen:egpClear()
+    SignalScreen:egpDrawTopLeft(1)
+    SignalScreen:egpBox(1, vec2(0, 0), vec2(512, SignalHeaderSize / 2))
+    SignalScreen:egpColor(1, vec(128, 128, 255))
+    SignalScreen:egpBox(2, vec2(0, SignalHeaderSize / 2), vec2(512, SignalHeaderSize / 2))
+    SignalScreen:egpColor(2, vec(160, 160, 255))
+    SignalScreen:egpText(3, "Discrete Fourier Transform: Signal", vec2(4, 0))
+    SignalScreen:egpText(4, SignalSubHeading, vec2(4, SignalHeaderSize / 2))
+    SignalScreen:egpLine(5, vec2(0, SignalOriginY), vec2(512, SignalOriginY))
+    SignalScreen:egpColor(5, vec(0, 128, 0))
+    SignalScreen:egpLine(6, vec2(SignalOriginX, SignalHeaderSize), vec2(SignalOriginX, 512))
+    SignalScreen:egpColor(6, vec(0, 128, 0))
+}
+
+if (InitProcessScreen)
+{
+    UpdateProcessScreen = 1
+    
+    ProcessScreen:egpClear()
+    ProcessScreen:egpDrawTopLeft(1)
+    ProcessScreen:egpBox(1, vec2(0, 0), vec2(512, ProcessHeaderSize / 2))
+    ProcessScreen:egpColor(1, vec(128, 128, 255))
+    ProcessScreen:egpBox(2, vec2(0, ProcessHeaderSize / 2), vec2(512, ProcessHeaderSize / 2))
+    ProcessScreen:egpColor(2, vec(160, 160, 255))
+    ProcessScreen:egpText(3, "Discrete Fourier Transform: I don't even", vec2(4, 0))
+    ProcessScreen:egpText(4, "0 Hz", vec2(4, ProcessHeaderSize / 2))
+    ProcessScreen:egpLine(5, vec2(0, ProcessOriginY), vec2(512, ProcessOriginY))
+    ProcessScreen:egpColor(5, vec(0, 128, 0))
+    ProcessScreen:egpLine(6, vec2(ProcessOriginX, ProcessHeaderSize), vec2(ProcessOriginX, 512))
+    ProcessScreen:egpColor(6, vec(0, 128, 0))
+    
+    ProcessScreen:egpCircleOutline(7, vec2(ProcessOriginX, ProcessOriginY), vec2(MaxAmplitude * ProcessPixelsPerUnit, MaxAmplitude * ProcessPixelsPerUnit))
+    ProcessScreen:egpColor(7, vec(0, 128, 0))
+}
+
+if (InitDFTScreen)
+{
+    InitDFTScreen = 0
+    UpdateDFTScreen = 1
+    
+    DFTScreen:egpClear()
+    DFTScreen:egpDrawTopLeft(1)
+    DFTScreen:egpBox(1, vec2(0, 0), vec2(512, DFTHeaderSize / 2))
+    DFTScreen:egpColor(1, vec(128, 128, 255))
+    DFTScreen:egpBox(2, vec2(0, DFTHeaderSize / 2), vec2(512, DFTHeaderSize / 2))
+    DFTScreen:egpColor(2, vec(160, 160, 255))
+    DFTScreen:egpText(3, "Discrete Fourier Transform", vec2(4, 0))
+    DFTScreen:egpText(4, "Output", vec2(4, DFTHeaderSize / 2))
+    DFTScreen:egpLine(5, vec2(0, SignalOriginY), vec2(512, DFTOriginY))
+    DFTScreen:egpColor(5, vec(0, 128, 0))
+    DFTScreen:egpLine(6, vec2(DFTOriginX, DFTHeaderSize), vec2(DFTOriginX, 512))
+    DFTScreen:egpColor(6, vec(0, 128, 0))
+    
+    # Frequency labels
+    FrequencySkip = (MaximumFrequency - MinimumFrequency) / 4
+    FrequencyIntervalCount = MaximumFrequency - MinimumFrequency
+    for (I = 1, 5)
+    {
+        P = vec2(512 / FrequencyIntervalCount * (I - 1) * FrequencySkip, DFTOriginY)
+        DFTScreen:egpText(10 + I, ((I - 1) * FrequencySkip):toString(), P)
+        if (I == 1)
+        {
+            DFTScreen:egpAlign(10 + I, 0, 0)
+        }
+        elseif (I == 5)
+        {
+            DFTScreen:egpAlign(10 + I, 2, 0)
+        }
+        else
+        {
+            DFTScreen:egpAlign(10 + I, 1, 0)
+        }
+    }
+}
+
+if (UpdateSignalScreen & maxquota() > SampleSize * 20)
+{
+    Value2 = Sample[1, number]
+    P2 = vec2(0, Value2 * -SignalPixelsPerUnit + SignalOriginY)
+    for (I = 1, SampleSize - 1)
+    {
+        Value1 = Value2
+        P1 = P2
+        
+        Value2 = Sample[I + 1, number]
+        P2 = vec2(512 / (SampleSize - 1) * I, Value2 * -SignalPixelsPerUnit + SignalOriginY)
+        SignalScreen:egpLine(10 + I, P1, P2)
+    }
+}
+
+if (LastFrequencyProcessed != CurrentFrequency)
+{
+    UpdateProcessScreen = 1
+}
+elseif (CurrentFrequency < MaximumFrequency)
+{
+    CurrentFrequency++
+    UpdateProcessScreen = 1
+}
+
+if (UpdateProcessScreen & maxquota() > SampleSize * 100 & curtime() - LastProcessTime > 1)
+{
+    ProcessScreen:egpText(4, CurrentFrequency:toString() + " Hz", vec2(4, ProcessHeaderSize / 2))
+    
+    W = 2 * _PI * CurrentFrequency
+    
+    Value2 = Sample[1, number]
+    AveragePos = vec2()
+    P2 = vec2(Value1, 0)
+    AveragePos += P2
+    P2 = ProcessPixelsPerUnit * P2 + ProcessOrigin
+    for (I = 1, SampleSize - 1)
+    {
+        Value1 = Value2
+        P1 = P2
+        
+        Value2 = Sample[I + 1, number]
+        P2 = Value2 * vec2(cosr(W * SamplePeriod * I), sinr(W * SamplePeriod * I))
+        AveragePos += P2
+        P2 = ProcessPixelsPerUnit * P2 + ProcessOrigin
+        ProcessScreen:egpLine(10 + I, P1, P2)
+    }
+    
+    AveragePos /= SampleSize
+    DFTOutput[CurrentFrequency, number] = AveragePos:length()
+    
+    ProcessScreen:egpLine(256, ProcessOrigin, ProcessPixelsPerUnit * AveragePos + ProcessOrigin)
+    ProcessScreen:egpColor(256, vec(255, 0, 0))
+    ProcessScreen:egpCircle(257, ProcessPixelsPerUnit * AveragePos + ProcessOrigin, vec2(4, 4))
+    ProcessScreen:egpColor(257, vec(255, 0, 0))
+    
+    LastFrequencyProcessed = CurrentFrequency
+    LastProcessTime = curtime()
+    
+    UpdateDFTScreen = 1
+}
+
+if (UpdateDFTScreen & maxquota() > (MaximumFrequency - MinimumFrequency) * 20)
+{
+    UpdateDFTScreen = 0
+    
+    Value2 = DFTOutput[MinimumFrequency, number]
+    P2 = vec2(0, Value2 * -DFTPixelsPerUnit + DFTOriginY)
+    LineCount = MaximumFrequency - MinimumFrequency
+    for (I = 1, LineCount)
+    {
+        Value1 = Value2
+        P1 = P2
+        
+        Value2 = DFTOutput[MinimumFrequency + I, number]
+        P2 = vec2(512 / LineCount * I, Value2 * -DFTPixelsPerUnit + DFTOriginY)
+        DFTScreen:egpLine(100 + I, P1, P2)
+    }
+}

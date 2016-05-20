@@ -1,0 +1,34 @@
+@import Network/library/core
+@import Network/library/bgp
+@import Network/library/dhcp
+@import Network/library/iptable
+@name Network/Client
+@inputs
+@outputs
+@expand net_preinit
+@expand dhcp_client_preinit
+@expand iptable_preinit
+@persist
+@trigger
+@model models/props_lab/harddrive02.mdl
+
+@expand net_init
+interval(1000)
+
+if (First) {
+    DeviceType = "Client"
+    @expand net_update_name
+} elseif (Last) {
+    @expand dhcp_release
+}
+
+@expand dhcp_request_address
+
+@expand net_begin_chat
+    @expand iptable_chat_handlers
+@expand net_end_chat
+
+@expand net_begin_ds
+    @expand bgp_ds_handlers
+    @expand dhcp_client_ds_handlers
+@expand net_end_ds

@@ -1,0 +1,274 @@
+@name Wiremod Fora Feed
+@inputs Screen:wirelink
+@inputs KeyCode
+@outputs
+
+@persist ForeColor1 ForeColor2 BackColor1 BackColor2
+@persist UIScreen
+
+@persist Title:string Address:string
+@persist Fields:array FieldStarts:array FieldEnds:array
+@persist HTTPUpdateInterval
+@persist HTTPProcessStage HTTPProcessIndex LastHTTPRequestTime
+@persist HTTPData:string HTTPTags:array Posts:table
+
+@persist LastKeyCode SelectedItemIndex SelectedItemScrollOffset LastScrollTime
+@trigger 
+
+runOnChat(1)
+runOnHTTP(1)
+interval(50)
+
+LinesToRedraw = array()
+
+if (first() | duped()) {
+    if (!Screen) {
+#ifdef entitySpawn(string, vector, angle, number)
+        Console = entitySpawn("gmod_wire_consolescreen", entity():pos() + vec(0, 0, 64), ang(90, 0, 0), 1)
+        Console:setModel("models/cheeze/pcb/pcb7.mdl")
+        Keyboard = entitySpawn("gmod_wire_keyboard", entity():pos() + vec(32, 0, 32), ang(0, 0, 0), 1)
+        Keyboard:setModel("models/beer/wiremod/keyboard.mdl")
+#endif
+    }
+    
+    UIScreen = 0
+    ForeColor1 = 111
+    ForeColor2 = 111
+    BackColor1 = 666
+    BackColor2 = 444
+    
+    HTTPUpdateInterval = 120
+    LastKeyCode = 0
+    SelectedItemIndex = 1
+    SelectedItemScrollOffset = 1
+    
+    Screen[2041] = 1
+    Title = "Wiremod Fora"
+    Address = "http://www.wiremod.com/forum/external.php?type=RSS2"
+    Title = "Reddit"
+    Address = "http://www.reddit.com/new/.rss"
+    setName(Title + " Feed")
+    
+    Screen:writeString(Title + " ":repeat(30 - Title:length()), 0, 0, 999, 229)
+    
+    Fields:pushString("Title")
+    FieldStarts:pushString("<title>")
+    FieldEnds:pushString("</title>")
+    Fields:pushString("URL")
+    FieldStarts:pushString("<link>")
+    FieldEnds:pushString("</link>")
+    Fields:pushString("Time")
+    FieldStarts:pushString("<pubData>")
+    FieldEnds:pushString("</pubData>")
+    Fields:pushString("Content")
+    FieldStarts:pushString("<content:encoded><![CDATA[<div><!-- google_ad_section_start -->")
+    FieldEnds:pushString("</div>")
+    
+    for (I = 1, 16) {
+        LinesToRedraw:pushNumber(I)
+    }
+}
+
+if (httpClk()) {
+    HTTPProcessStage = 2
+    HTTPData = httpData()
+    
+    HTTPTags:clear()
+    Posts:clear()
+    
+    # Find tags
+    HTTPProcessIndex = 1
+}
+
+if (HTTPProcessStage == 2) {
+    while (HTTPProcessIndex > 0) {
+        HTTPProcessIndex = HTTPData:find("<item>", HTTPProcessIndex)
+        if (HTTPProcessIndex < 1) {
+            break
+        }
+        HTTPProcessIndex += "<item>":length()
+        StartOffset = HTTPProcessIndex
+        HTTPProcessIndex = HTTPData:find("</item>", HTTPProcessIndex)
+        HTTPTags:pushString(HTTPData:sub(StartOffset, HTTPProcessIndex):trim())
+    }
+    if (HTTPProcessIndex < 1) {
+        HTTPProcessStage = 3
+        HTTPProcessIndex = 1
+    }
+}
+
+if (HTTPProcessStage == 3) {   
+    while (HTTPProcessIndex <= HTTPTags:count() &
+           opcounter() < 4000) {
+        TagSoup = HTTPTags[HTTPProcessIndex, string]
+        for (J = 1, Fields:count()) {
+            StartOffset = TagSoup:find(FieldStarts[J, string], 1) + FieldStarts[J, string]:length()
+            EndOffset = TagSoup:find(FieldEnds[J, string], StartOffset) - 1
+            Posts["Post" + HTTPProcessIndex + Fields[J, string], string] = TagSoup:sub(StartOffset, EndOffset):replace("&quot;", "\""):replace("&amp;", "&")
+        }
+        HTTPProcessIndex++
+    }
+    if (HTTPProcessIndex > HTTPTags:count()) {
+        HTTPProcessStage = 4
+        HTTPProcessIndex = 1
+    }
+}
+
+if (HTTPProcessStage == 4) {
+    Alt = 0
+    while (HTTPProcessIndex <= HTTPTags:count() &
+           opcounter() < 4000) {
+        LinesToRedraw:pushNumber(HTTPProcessIndex)
+        
+        HTTPProcessIndex++
+    }
+    if (HTTPProcessIndex > HTTPTags:count()) {
+        SelectedItemScrollOffset = 1
+        HTTPProcessStage = 0
+        LastHTTPRequestTime = curtime()
+    }
+}
+
+if (!HTTPProcessStage) {
+    LastUpdated = "Last updated "
+    DeltaTime = curtime() - LastHTTPRequestTime
+    Unit = ""
+    
+    # Metric system, fuck yeah
+    if (DeltaTime < 1) {
+        DeltaTime *= 1000
+        Unit = "m"
+    } elseif (DeltaTime > 1000000) {
+        DeltaTime /= 1000000
+        Unit = "M"
+    } elseif (DeltaTime > 1000) {
+        DeltaTime /= 1000
+        Unit = "k"
+    }
+    LastUpdated += floor(DeltaTime)    
+    LastUpdated += " " + Unit + "s ago."
+    LastUpdated += " ":repeat(30 - LastUpdated:length())
+    Screen:writeString(LastUpdated, 0, 17, 999, 229)
+    if (curtime() - LastHTTPRequestTime > HTTPUpdateInterval &
+        httpCanRequest()) {
+        httpRequest(Address)
+        Screen:writeString("Updating...                   ", 0, 17, 999, 229)
+        HTTPProcessStage = 1
+    }
+}
+
+if (chatClk() & !dsClk() & !signalClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LookingAtThis = 0
+            if (owner():eyeTrace():entity() == entity()) {
+                LookingAtThis = 1
+            }
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "info") {
+                print("Stage: " + HTTPProcessStage + " (" + HTTPProcessIndex + ").")
+            } elseif (Command == "update") {
+                LastHTTPRequestTime = 0
+            }
+        }
+    }
+}
+
+if (LastKeyCode != KeyCode) {
+    if (KeyCode) {
+        if (KeyCode == 17) {
+            # Up arrow
+            if (SelectedItemIndex > 1) {
+                LinesToRedraw:pushNumber(SelectedItemIndex)
+                SelectedItemIndex--
+                Screen[SelectedItemIndex * 60] = toByte(">")
+                SelectedItemScrollOffset = 1
+            }
+        } elseif (KeyCode == 18) {
+            # Down arrow
+            if (SelectedItemIndex < HTTPTags:count() &
+                SelectedItemIndex < 16) {
+                LinesToRedraw:pushNumber(SelectedItemIndex)
+                SelectedItemIndex++
+                Screen[SelectedItemIndex * 60] = toByte(">")
+                SelectedItemScrollOffset = 1
+            }
+        } elseif (KeyCode == 19) {
+            # Left
+            if (UIScreen == 1) {
+                SelectedItemScrollOffset = 1
+                for (I = 1, 16) {
+                    LinesToRedraw:pushNumber(I)
+                }
+                UIScreen = 0
+            }
+        } elseif (KeyCode == 20) {
+            # Left
+            if (UIScreen == 0) {
+                UIScreen = 1
+            }
+        }
+    }
+    LastKeyCode = KeyCode
+}
+
+# Scrolling
+if (UIScreen == 0 &
+    curtime() - LastScrollTime > 0.1 &
+    Posts["Post" + SelectedItemIndex + "Title", string]:length() > 28) {
+    Screen[2031] = 2
+    Screen[2032] = 29
+    Screen[2033] = SelectedItemIndex
+    Screen[2034] = SelectedItemIndex
+    Screen[2037] = -1
+    FullPostTitle = Posts["Post" + SelectedItemIndex + "Title", string]
+    if (SelectedItemScrollOffset > FullPostTitle:length()) {
+        PostTitle = " ":repeat(28 - SelectedItemScrollOffset + FullPostTitle:length())
+        PostTitle += FullPostTitle
+    } else {
+        PostTitle = FullPostTitle:sub(SelectedItemScrollOffset)
+    }
+    PostTitle = PostTitle:sub(1, 28)
+    PostTitle += " ":repeat(28 - PostTitle:length())
+    if (SelectedItemIndex % 2) {
+        ForeColor = ForeColor1
+        BackColor = BackColor1
+    } else {
+        ForeColor = ForeColor2
+        BackColor = BackColor2
+    }
+    Screen:writeString(PostTitle, 2, SelectedItemIndex, ForeColor, BackColor)
+    if (SelectedItemScrollOffset > FullPostTitle:length() + 26) {
+        SelectedItemScrollOffset = 1
+    } else {
+        SelectedItemScrollOffset++
+    }
+    LastScrollTime = curtime()
+}
+
+for (I = 1, LinesToRedraw:count()) {
+    if (UIScreen == 0) {
+        Alt = LinesToRedraw[I, number] % 2
+        if (Alt) {
+            ForeColor = ForeColor1
+            BackColor = BackColor1
+        } else {
+            ForeColor = ForeColor2
+            BackColor = BackColor2
+        }
+        Line = " "
+        if (LinesToRedraw[I, number] == SelectedItemIndex) {
+            Line = ">"
+        }
+        Line += "*"
+        Line += Posts["Post" + LinesToRedraw[I, number] + "Title", string]
+        Line += " ":repeat(30 - Line:length())
+        Line = Line:sub(1, 30)
+        Screen:writeString(Line, 0, LinesToRedraw[I, number], ForeColor, BackColor)
+    }
+}

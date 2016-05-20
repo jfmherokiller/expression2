@@ -1,0 +1,24 @@
+@name Solka's Lift Controller
+@inputs F0 F1 F2 F3 FloorHeights:array
+@outputs HydraulicLength TargetHeight
+@persist GoingUp SF:array TargetFloor
+@trigger
+
+if (F0) {
+    TargetFloor = 0
+}
+
+if (F1) {
+    TargetFloor = 1
+}
+
+if (F2) {
+    TargetFloor = 2
+}
+
+if (F3) {
+    TargetFloor = 3
+}
+
+TargetHeight = FloorHeights:number(TargetFloor)
+HydraulicLength = TargetHeight

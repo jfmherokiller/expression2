@@ -1,0 +1,72 @@
+@name Server Log 2
+@inputs Screen:wirelink
+@outputs 
+@persist 
+# Screen
+@persist ScreenHeight
+@persist LineOffset LinesUsed
+# Messages
+@persist MessageData:array MessageDataIndex
+@persist FileName:string
+@trigger
+
+runOnChat(1)
+runOnFile(1)
+
+if (first() | duped()) {
+    # Screen
+    Screen[2041] = 1
+    Screen:writeString("[Insert title here]          ", 0, 0)
+    Screen:writeString("_____________________________", 0, 1)
+    ScreenHeight = 18
+    LineOffset = 2
+    LinesUsed = 0
+    
+    # Messages
+    MessageData = array()
+    MessageDataIndex = 1
+    FileName = "server_log.txt"
+    fileRemove(FileName)
+    fileLoad(FileName)
+    concmd("lmsg file " + FileName + "server_log")
+}
+
+if (fileClk()) {
+    EncodedData = fileRead(FileName)
+    fileRemove(FileName)
+    fileLoad(FileName)
+    concmd("lmsg ack " + FileName)
+    
+    ReceivedData = glonDecode(EncodedData)
+    for (I = 1, ReceivedData:count()) {
+        if (ReceivedData:string(I):length()) {
+            MessageData:pushString(ReceivedData:string(I))
+        }
+    }
+}
+
+for (Z = MessageDataIndex, MessageData:count()) {
+    EncodedString = MessageData:string(Z)
+    MessageTable = glonDecodeTable(EncodedString)
+    
+    MessageType = MessageTable:string("type")
+    if (MessageType == "text") {
+        Text = MessageTable:string("text")
+        
+        TextLength = Text:length()
+        LineCount = ceil(TextLength / 30)
+        
+        # Handle overflow
+        if (LineCount + LinesUsed > ScreenHeight - LineOffset) {
+            Screen:writeCell(2033, LineOffset)
+            Screen:writeCell(2034, 17)
+            LineShiftCount = LineCount - ScreenHeight + LineOffset + LinesUsed
+            Screen:writeCell(2038, LineShiftCount)
+            LinesUsed -= LineShiftCount
+        }
+        
+        StartLine = LinesUsed + LineOffset
+        Screen:writeString(Text, 0, StartLine)
+        LinesUsed += LineCount
+    }
+}

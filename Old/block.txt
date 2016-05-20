@@ -1,0 +1,53 @@
+@name Block
+@inputs 
+@outputs 
+@persist PlayerName:string Player:entity
+@trigger 
+@model models/props_wasteland/kitchen_fridge001a.mdl
+
+runOnChat(1)
+runOnTick(1)
+
+if (duped() | first()) {
+    entity():setMass(50000)
+    PlayerName = ""
+}
+
+if (chatClk()) {
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        Authorized = 1
+    }
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "follow") {
+                PlayerName = Params
+            }
+        }
+    }
+} else {
+    if (PlayerName:length()) {
+        if (!Player) {
+            Player = findPlayerByName(PlayerName)
+        }
+        TargetPos = Player:toWorld(Player:boxCenter())
+        CurrentPos = entity():toWorld(entity():boxCenter())
+        
+        entity():applyForce((TargetPos - CurrentPos - entity():vel()) * entity():mass())
+    }
+}

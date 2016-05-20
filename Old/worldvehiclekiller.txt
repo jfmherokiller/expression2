@@ -1,0 +1,25 @@
+@name 
+@inputs 
+@outputs
+@persist
+@trigger
+
+runOnChat(1)
+if (chatClk() & lastSpoke() == owner()) {
+    if (lastSaid() == "!kill") {
+        hideChat(1)
+        VehicleCount = findByClass("prop_vehicle*")
+        hint("Found " + VehicleCount + " vehicles.", 10)
+        for(I = 1, VehicleCount) {
+            EntVehicle = findResult(I)
+            EntVehicle:killPod()
+        }
+        if (entity():driver() != owner()) {
+            entity():isWeldedTo():killPod()
+        }
+    } elseif (lastSaid() == "!count") {
+        hideChat(1)
+        VehicleCount = findByClass("prop_vehicle*")
+        hint("Found " + VehicleCount + " vehicles.", 10)
+    }
+}

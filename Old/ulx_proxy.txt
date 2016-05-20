@@ -1,0 +1,40 @@
+@name ULX Proxy
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+runOnChat(1)
+
+LastSpoke = lastSpoke()
+if (chatClk()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "god") {
+            concmd("ulx god \"" + LastSpoke:name() + "\"")
+        } elseif (Command == "ungod") {
+            concmd("ulx ungod \"" + LastSpoke:name() + "\"")
+        } elseif (Command == "ragdoll") {
+            concmd("ulx ragdoll \"" + LastSpoke:name() + "\"")
+        } elseif (Command == "unragdoll") {
+            concmd("ulx unragdoll \"" + LastSpoke:name() + "\"")
+        }
+    }
+}

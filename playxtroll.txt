@@ -1,0 +1,27 @@
+@name 
+@inputs 
+@outputs 
+@persist Colors:array
+@trigger 
+
+interval(100)
+
+if (first() | duped())
+{    
+    findByModel("models/props/cs_assault/billboard.mdl")
+    R = findToArray()
+    E = R[1, entity]
+    holoCreate(1, E:toWorld(vec(1, 0, 0)))
+    holoAng(1, E:angles())
+    holoScale(1, vec(0.4, 239.7296, 137.2356) / 12.5)
+    
+    Colors = array(
+        vec4(0, 255, 0, 255),
+        vec4(0, 255, 0, 0)
+    )
+    holoColor(1, vec4(0, 0, 0, 255))
+}
+else
+{
+    holoColor(1, Colors[randint(1, Colors:count()), vector4])
+}

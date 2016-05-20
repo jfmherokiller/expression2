@@ -1,0 +1,341 @@
+@name Holo Laser
+@inputs Screen:wirelink Keyboard
+@outputs LastReceived
+@persist Type:string
+@persist TraceFromEyes
+@persist GlassMaterials:table GlassModels:table GlassMatTypes:table
+
+@persist SourceEntity:entity DestEntity:entity
+@persist TraceCount LastTraceTime TraceInterval
+@persist RayStarts:array RayEnds:array
+
+@persist HeaderLines FooterLines MessageLines
+@persist LastKeyboard LastKeyboardKey KeyboardInput:string
+@trigger 
+@model models/weapons/w_slam.mdl
+
+runOnChat(1)
+runOnLast(1)
+runOnTick(1)
+interval(50)
+
+#@import protector
+if (first() | duped())
+{
+    #@expand set_code "maek_lazor()\nmaek_lazor_reflect()\nmaek_lazor_refract()\nmaek_lazor_look_awesome()"
+}
+
+Type = "Source"
+Messages = array()
+if (last()) {
+    dsSendDirect("LaserUnhit", DestEntity, "")
+}
+if (first() | duped()) {
+#ifdef setName(string)
+    if (Type == "Source") {
+        setName("Laser Source")
+    } else {
+        setName("Laser Relay")
+    }
+#endif
+    dsJoinGroup("LaserNet")
+    dsSetScope(2)
+    
+    gSetGroup("LaserNet")
+    gShare(1)
+    
+    GlassMaterials:clear()
+    GlassMaterials["tools/toolsnodraw", number] = 1
+    
+    GlassMaterials["models/effects/vol_light001", number] = 1.5
+    GlassMaterials["models/props_c17/fisheyelens", number] = 2.419
+    GlassMaterials["models/props_combine/health_charger_glass", number] = 1.5
+    GlassMaterials["models/props_combine/tprings_globe", number] = 1.333
+    GlassMaterials["models/props_lab/tank_glass001", number] = 1.55
+    GlassMaterials["models/shadertest/predator", number] = 1.333
+    GlassMaterials["phoenix_storms/glass", number] = 1.5
+    GlassMaterials["maps/gm_construct_m_24/metastruct_2/glass_1_-3288_3247_-15706", number] = 1.5
+
+    GlassModels:clear()
+    GlassModels["models/props_c17/fence01a.mdl", number] = 1
+    GlassModels["models/props_c17/fence01b.mdl", number] = 1
+    GlassModels["models/props_c17/fence02a.mdl", number] = 1
+    GlassModels["models/props_c17/fence02b.mdl", number] = 1
+    GlassModels["models/props_c17/fence03a.mdl", number] = 1
+    GlassModels["models/props_c17/fence04a.mdl", number] = 1
+    GlassModels["models/props_c17/furniturebed001a.mdl", number] = 1
+    
+    GlassModels["models/props_phx/construct/glass/glass_curve180x1.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_curve180x2.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_curve360x1.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_curve360x2.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_curve90x1.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_curve90x2.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_dome180.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_dome360.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_dome90.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_plate4x4.mdl", number] = 1.5
+    GlassModels["models/props_phx/construct/glass/glass_plate2x4.mdl", number] = 1.5
+    
+    GlassMatTypes:clear()
+    GlassMatTypes["glass", number] = 1.5
+    
+    TraceCount = 20
+    LastTraceTime = 0
+    TraceInterval = 0.2
+    
+    Screen[2033] = 1
+    Screen[2034] = 16
+    Screen[2041] = 1
+    Screen[2042] = 9000
+    HeaderLines = 1
+    FooterLines = 1
+    Screen:writeString("Laser network                 ", 0, 0, 999, 9)
+    Screen:writeString(">                             ", 0, 17, 999, 9)
+}
+
+# Do trace
+if (curtime() - LastTraceTime > TraceInterval) {
+    RayStarts:clear()
+    RayEnds:clear()
+    Origin = entity():pos() + entity():toWorldAxis(vec(0, -1.5, 0))
+    Direction = entity():angles():up()
+    NewDestEntity = noentity()
+    HurtEntities = table()
+    WasRefracting = 0
+    
+    if (Type == "Source" | SourceEntity) {
+        if (Type == "Source" & TraceFromEyes) {
+            rangerFilter(owner())
+            Origin = owner():attachmentPos("eyes")
+            Direction = owner():eye()
+        }
+        for (I = 1, TraceCount) {
+            Ranger = rangerOffset(600, Origin, Direction)
+            
+            RayStarts:pushVector(Origin)
+            RayEnds:pushVector(Ranger:position())
+            Origin = Ranger:position()
+            if (WasRefracting) {
+                rangerReset()
+                rangerFilter(Ranger:entity())
+                Ranger2 = rangerOffset(600, Origin, -Direction)
+                rangerReset()
+                if (Ranger2:entity()) {
+                    if (!Ranger2:fraction()) {
+                        rangerFilter(Ranger2:entity())
+                    } else {
+                        RefractiveIndex = GlassMaterials[Ranger2:entity():getMaterial():lower(), number]
+                        if (!RefractiveIndex) {
+                            RefractiveIndex = GlassModels[Ranger2:entity():model(), number]
+                        }
+                        if (!RefractiveIndex) {
+                            RefractiveIndex = GlassMatTypes[Ranger2:matType(), number]
+                        }
+                        Cos1 = (-Ranger2:hitNormal()):dot(-Direction)
+                        Determinant = 1 - RefractiveIndex * RefractiveIndex * (1 - Cos1 * Cos1)
+                        if (Determinant < 0) {
+                            Direction = Direction - 2 * Ranger2:hitNormal():dot(Direction) * Ranger2:hitNormal()
+                            rangerFilter(Ranger2:entity())
+                            Origin = Ranger2:position()                            
+                            RayEnds:popVector()
+                            RayEnds:pushVector(Origin)
+                        } else {
+                            Cos2 = sqrt(Determinant)
+                            Direction = (Direction * RefractiveIndex + (RefractiveIndex * Cos1 - Cos2) * -Ranger2:hitNormal()):normalized()
+                            Origin = Ranger2:position()
+                            
+                            WasRefracting = 0
+                                
+                            RayEnds:popVector()
+                            RayEnds:pushVector(Origin)
+                        }
+                    }
+                }
+            } elseif (Ranger:hit()) {
+                if (Ranger:entity():type() == "gmod_wire_expression2") {
+                    NewDestEntity = Ranger:entity()
+                    break
+                } else {
+                    RefractiveIndex = 0
+                    Material = ""
+                    Model = ""
+                    if (Ranger:hitWorld()) {
+                        Material = Ranger:hitTexture():lower()
+                    }
+                    else
+                    {
+                        Material = Ranger:entity():getMaterial():lower()
+                        Model = Ranger:entity():model()
+                    }
+                    RefractiveIndex = GlassMaterials[Material, number]
+                    if (!RefractiveIndex) {
+                        RefractiveIndex = GlassModels[Model, number]
+                    }
+                    if (!RefractiveIndex) {
+                        RefractiveIndex = GlassMatTypes[Ranger:matType(), number]
+                    }
+                    if (!RefractiveIndex) {
+                        # Detailed model checks
+                        if (Model == "models/props_combine/combine_barricade_tall02b.mdl") {
+                            LocalPos = Ranger:entity():toLocal(Ranger:position())
+                            if (LocalPos:z() > 168) {
+                                RefractiveIndex = 1.5
+                            }
+                        }
+                    }
+    #ifdef e:setDamage(number)
+                    if (!RefractiveIndex) {
+                        if (!HurtEntities[toString(Ranger:entity():id()), number]) {
+                            Ranger:entity():setDamage(5)
+                            HurtEntities[toString(Ranger:entity():id()), number] = 1
+                        }
+                    }
+    #endif
+                    DirectionDotNormal = Ranger:hitNormal():dot(Direction)
+                    if (RefractiveIndex == 0) {
+                        Direction = Direction - 2 * DirectionDotNormal * Ranger:hitNormal()
+                    } else {
+                        RefractiveIndex = 1 / RefractiveIndex
+                        Cos1 = Ranger:hitNormal():dot(-Direction)
+                        Cos2 = sqrt(1 - RefractiveIndex * RefractiveIndex * (1 - Cos1 * Cos1))
+                        Direction = (Direction * RefractiveIndex + (RefractiveIndex * Cos1 - Cos2) * Ranger:hitNormal()):normalized()
+                        rangerFilter(Ranger:entity())
+                        WasRefracting = 1
+                    }
+                }
+            }
+        }
+        
+        for (I = 1, RayStarts:count()) {
+            Start = RayStarts[I, vector]
+            End = RayEnds[I, vector]
+            holoCreate(I)
+            holoPos(I, (Start + End) * 0.5)
+            holoScale(I, vec(0.05, 0.05, (Start - End):length() / 12))
+            holoMaterial(I, "models/alyx/emptool_glow")
+            Direction = End - Start
+            Angle = Direction:toAngle()
+            Angle = Angle + ang(90, 0, 0)
+            holoAng(I, Angle)
+            holoColor(I, vec4(255, 0, 0, 255 - 255 / TraceCount * I))
+            holoModel(I, "hqcylinder")
+        }
+    }
+        
+    for (I = RayStarts:count() + 1, TraceCount) {
+        holoDelete(I)
+    }
+    
+    if (NewDestEntity != DestEntity) {
+        if (DestEntity) {
+            dsSendDirect("LaserUnhit", DestEntity, "")
+        }
+        DestEntity = NewDestEntity
+        if (DestEntity) {
+            dsSendDirect("LaserHit", DestEntity, array(Ranger:position(), Direction))
+        }
+    }
+    
+    LastTraceTime = curtime()
+}
+
+if (chatClk() & !dsClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LookingAtThis = 0
+            if (owner():eyeTrace():entity() == entity()) {
+                LookingAtThis = 1
+            }
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "angle") {
+#ifdef entity:setAng(angle)
+                entity():setAng(entity():angles():setYaw(Arguments:toNumber()))
+#endif
+            } elseif (Command == "byte") {
+                if (LookingAtThis) {
+                    Byte = Arguments:toNumber()
+                    dsSendDirect("LaserNumber", DestEntity, Byte)
+                }
+            } elseif (Command == "eye") {
+                TraceFromEyes = Arguments:toNumber()
+            } elseif (Command == "hitinfo") {
+                hint(owner():eyeTrace():entity():model(), 10)
+                hint(owner():eyeTrace():matType(), 10)
+                hint(owner():eyeTrace():hitGroup(), 10)
+            } elseif (Command == "msg") {
+                Messages:pushString(Arguments)
+            }
+        }
+    }
+}
+
+if (Keyboard != LastKeyboard) {
+    if (Keyboard) {
+        if (Keyboard >= 32 & Keyboard < 127) {
+            KeyboardInput += toChar(Keyboard)
+        } elseif (Keyboard == 127) {
+            if (KeyboardInput:length()) {
+                KeyboardInput = KeyboardInput:sub(1, KeyboardInput:length() - 1)
+            }
+        }
+        if (Keyboard == 13) {
+            dsSendDirect("LaserString", DestEntity, KeyboardInput)
+            KeyboardInput = ""
+        }
+        
+        Input = "> " + KeyboardInput
+        if (Input:length() < 30) {
+            Input += " ":repeat(30 - Input:length())
+        }
+        Screen:writeString(Input, 0, 17, 999, 9)
+    }
+    LastKeyboard = Keyboard
+}
+
+if (dsClk()) {
+    if (dsClkName() == "LaserNumber") {
+        LastReceived = dsGetNumber()
+        hint("Received " + toString(dsGetNumber()), 10)
+    } elseif (dsClkName() == "LaserString") {
+        print("RECV: " + dsGetString())
+        Messages:pushString(dsGetString())
+    } elseif (dsClkName() == "LaserHit") {
+        SourceEntity = dsGetSender()
+        print("Laser hit")
+    } elseif (dsClkName() == "LaserUnhit") {
+        SourceEntity = noentity()
+        print("Laser unhit")
+    }
+    if (Type == "Relay") {
+        Dest = DestEntity
+        if (dsGetSender() == DestEntity) {
+            Dest = SourceEntity
+        }
+        if (dsClkName() == "LaserNumber") {
+            dsSendDirect(dsClkName(), Dest, dsGetNumber())
+        } elseif (dsClkName() == "LaserString") {
+            dsSendDirect(dsClkName(), Dest, dsGetString())
+        }
+    }
+}
+
+for (I = 1, Messages:count()) {
+    TextBits = Messages[I, string]:explode("\n")
+    LinesNeeded = 0
+    for (I = 1, TextBits:count()) {
+        LinesNeeded += ceil(TextBits[I, string]:length() / 30)
+    }
+    LinesAvailable = 18 - HeaderLines - FooterLines - MessageLines
+    if (LinesAvailable < LinesNeeded) {
+        MessageLines -= LinesNeeded - LinesAvailable
+        Screen:writeCell(2038, LinesNeeded - LinesAvailable)
+    }
+    Screen:writeString(Messages[I, string], 0, HeaderLines + MessageLines)
+    MessageLines += LinesNeeded
+}

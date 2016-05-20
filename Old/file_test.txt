@@ -1,0 +1,8 @@
+@name File Test
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+Text = fileRead("../Ulib/users.txt")
+hint(Text, 10)

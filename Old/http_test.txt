@@ -1,0 +1,13 @@
+@name HTTP Test
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+if (first()) {
+    httpGet("www.google.com")
+}
+
+if (httpClk()) {
+    hint(httpContents(), 10)
+}

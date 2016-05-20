@@ -1,0 +1,88 @@
+@model models\props/cs_office/computer.mdl
+@name EUT[v1.21 CLIENT]
+@persist RECIEVE:string TRANSMIT:string Name:string SAFE:string SAFE2:string SAFE3:string
+@persist O:entity NameCol:string NameCols:vector SERVERANN:string
+
+if (duped()) {reset()}
+
+if (first()) {
+    O = owner()
+    
+    Name = O:name()
+    NameCol = glonEncode("0 180 0":explode(" "))
+    
+    printColor(vec(77,134,219),"EUT CLIENT",vec(255,255,255),": Thank you for using EUT client. [v1.21 [ALPHA]]")
+    printColor(vec(77,134,219),"EUT CLIENT",vec(255,255,255),": Please check /commands")
+    #printColor(vec(77,134,219),"EUT CLIENT",vec(255,255,255),": Your name has been set to '"+O:name()+"'.")
+
+    
+    gShare(1)
+    gSetStr("EUTSANNTRANS",Name+" entered the server.")
+    
+    printColor(vec(77,134,219),"EUT CLIENT",vec(255,255,255),": "+gGetStr("EUTHOST"))
+    runOnTick(1)
+    runOnChat(1)
+}
+
+
+if (chatClk(O) & O:lastSaid():left(1):lower() == "/") {
+    LS = lastSaid()
+    hideChat(1)
+
+    #Commands
+    if (LS:lower() == "/commands") {
+    printColor(vec(77,134,219),"EUT CLIENT",vec(255,255,255),": Chat : /s [MESSAGE] or : ! [MessageHere] | Name Change : /name [NAME] | Name Colour : /namecol R G B")
+    }
+    
+    
+    #Name Setup
+    if (LS:explode(" "):string(1):lower() == "/name") {
+        Name = LS:right(LS:length() - 6)
+        #printColor(vec(77,134,219),"EUT CLIENT",vec(255,255,255),": Your name has been set to '"+Name +"'.")
+        gSetStr("EUTSANNTRANS",O:name() +" changed their name to '"+Name +"'!")
+    }
+    if (LS:explode(" "):string(1):lower() == "/namecol") {
+        TempR1 = LS:right(LS:length() - 9):explode(" ")
+        if (TempR1:string(1):toNumber() < 0 | TempR1:string(1):toNumber() > 255 | TempR1:string(2):toNumber() < 0 | TempR1:string(1):toNumber() > 255| TempR1:string(3):toNumber() < 0 | TempR1:string(1):toNumber() > 255) {
+            printColor(vec(77,134,219),"EUT CLIENT",vec(255,255,255),": Incorrect data!")
+        }else{
+                printColor(vec(77,134,219),"EUT CLIENT",vec(255,255,255),": Your name looks like ",vec(TempR1:string(1):toNumber(),TempR1:string(2):toNumber(),TempR1:string(3):toNumber()),Name)
+                NameCol = glonEncode(LS:explode("/namecol "):string(2):right(LS:length() - 9):explode(" "))
+    }
+}    
+    
+    #Chat Transmit
+    if (LS:left(2):lower() == "/s") {
+        TRANSMIT = LS:right(LS:length() - 3)
+        
+        gSetStr("EUTCC",""+Name+": "+TRANSMIT)
+        gSetStr("NAMECOLC",NameCol)
+        
+    }         
+}
+        
+
+#Server announcement
+SERVER = gGetStr("EUTSANNREC")
+if (SERVER == SAFE2) {}else{
+    SAFE2 = SERVER
+    
+    printColor(vec(77,134,219),"EUT SERVER",vec(255,255,255),": "+SERVER)
+}
+SERVERANN = gGetStr("EUTSANNRECPURP")
+if (SERVERANN == SAFE3) {}else{
+    SAFE3 = SERVERANN
+    
+    printColor(vec(77,134,219),"EUT SERVER",vec(255,255,255),": "+SERVERANN)
+}
+
+#Get Chat
+RECIEVE = gGetStr("EUTSC")
+if (RECIEVE == SAFE) {}else{
+    RECNAME = RECIEVE:find(":")-1
+    RECOL = glonDecode(gGetStr("NAMECOLS"))
+    
+    printColor(vec(255, 255, 255), "EUT: ", vec(RECOL:string(1):toNumber(),RECOL:string(2):toNumber(),RECOL:string(3):toNumber()),RECIEVE:left(RECNAME),vec(255,255,255),RECIEVE:right(RECIEVE:length()-RECNAME))
+    
+    SAFE = RECIEVE
+}

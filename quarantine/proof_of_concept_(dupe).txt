@@ -1,0 +1,7 @@
+@name Proof Of Concept (Arrays)
+@inputs
+@outputs 
+@persist A:table
+@trigger 
+
+runOnChat(1)

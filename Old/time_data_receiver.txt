@@ -1,0 +1,13 @@
+@name Time Data Receiver
+@inputs
+@outputs Time Player:string EntPlayer:entity
+@persist EntPlayer:entity
+@trigger 
+interval(10)
+
+gSetGroup("timer")
+Time = gGetNum("lasttime")
+Time = floor(Time * 10) / 10
+EntPlayer = gGetEnt("player")
+Player = EntPlayer:name()
+gResetGroup()

@@ -1,0 +1,96 @@
+@name EGP Unicode Test
+@inputs EGP:wirelink
+@outputs
+@persist LastUse
+@persist CharsPerLine LinesPerScreen
+@persist ShouldRenderChars NextRenderLine
+@persist BaseCharacter
+@trigger 
+
+interval(100)
+
+if (duped() | first()) {
+    BaseCharacter = 0
+    
+    CharsPerLine = 16
+    LinesPerScreen = 16
+    
+    ShouldRenderChars = 1
+    NextRenderLine = 0
+}
+
+UsePressed = 0
+if (owner():keyUse() & owner():keyUse() != LastUse) {
+    UsePressed = 1
+}
+ScreenPos = EGP:egpCursor(owner())
+if (ScreenPos != vec2(-1, -1)) {
+    if (UsePressed) {
+        if (ScreenPos:y() > 496) {
+            if (ScreenPos:x() < 32) {
+                BaseCharacter -= 4096
+                if (BaseCharacter < 0) {
+                    BaseCharacter = 65536 - 4096
+                }
+                ShouldRenderChars = 1
+            } elseif (ScreenPos:x() > 60 & ScreenPos:x() < 108) {
+                BaseCharacter -= 256
+                if (BaseCharacter < 0) {
+                    BaseCharacter = 65536 - 256
+                }
+                ShouldRenderChars = 1
+            } elseif (ScreenPos:x() > 404 & ScreenPos:x() < 452) {
+                BaseCharacter += 256
+                if (BaseCharacter >= 65536) {
+                    BaseCharacter = 0
+                }
+                ShouldRenderChars = 1
+            } elseif (ScreenPos:x() > 464) {
+                BaseCharacter += 4096
+                if (BaseCharacter >= 65536) {
+                    BaseCharacter = 0
+                }
+                ShouldRenderChars = 1
+            }
+        }
+        if (ShouldRenderChars) {
+            EGP:egpText(4, "Starting at 0x" + format("%.4X", BaseCharacter), vec2(0, 24))
+        }
+    }
+}
+LastUse = owner():keyUse()
+
+if (ShouldRenderChars) {
+    OutOfCPU = 0
+    Y = NextRenderLine
+    while (Y <= LinesPerScreen - 1)
+    {
+        if (opcounter() > 2000) {
+            OutOfCPU = 1
+            NextRenderLine = Y
+            break
+        }
+        hint("Preparing line " + Y, 10)
+        Line = ""
+        for (X = 0, CharsPerLine - 1) {
+            Char = BaseCharacter + Y * CharsPerLine + X
+            if (Char < 128) {
+                UTF8 = format("%c", Char)
+            } elseif (Char < 2048) {
+                UTF8 = format("%c%c", 192 + bShr(Char, 6), 128 + bAnd(Char, 63))
+            } elseif (Char < 65536) {
+                UTF8 = format("%c%c%c", 224 + bShr(Char, 12), 128 + bAnd(bShr(Char, 6), 63), 128 + bAnd(Char, 63))
+            }
+            Line = Line + UTF8 + " "
+        }
+        # hint(Line, 10)
+        if (EGP:entity()) {
+            EGP:egpText(13 + Y, Line, vec2(100, 48 + Y * 24))
+        }
+        Y++
+    }
+    if (!OutOfCPU & Y >= LinesPerScreen) {
+        ShouldRenderChars = 0
+        NextRenderLine = 0
+    }
+}

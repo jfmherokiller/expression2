@@ -1,0 +1,100 @@
+@name Server Log
+@inputs Monitor:wirelink Overflow1:wirelink Overflow2:wirelink
+@inputs Reset
+@inputs Messages:array MessageColors:array
+@inputs MessageClk
+@outputs
+@persist Started LinesUsed EventClk LastReset
+@trigger 
+
+# Made by !cake
+
+if (owner():steamID() != "STEAM_0:1:19269760") {
+    selfDestructAll()
+}
+
+interval(333)
+runOnChat(1)
+
+if (Reset & curtime() - LastReset > 1) {
+    LinesUsed = 0
+    Message = ""
+    Started = 0
+    LastReset = curtime()
+}
+# Only do this once
+if (!Started) {
+    for (I = 0, 17) {
+        Monitor:writeString("                              ", 0, I, 999, 0)
+        Monitor:writeString("------------------------------", 0, I, 999, 0)
+        Overflow1:writeString("                              ", 0, I, 999, 0)
+        Overflow1:writeString("------------------------------", 0, I, 999, 0)
+        Overflow2:writeString("                              ", 0, I, 999, 0)
+        Overflow2:writeString("------------------------------", 0, I, 999, 0)
+    }
+    Monitor:writeString("Server Log                    ", 0, 0, 777, 9)
+    Monitor:writeString("______________________________", 0, 1, 777, 9)
+    Overflow1:writeString("Server Log (Page 2)           ", 0, 0, 777, 9)
+    Overflow1:writeString("______________________________", 0, 1, 777, 9)
+    Overflow2:writeString("Server Log (Page 3)           ", 0, 0, 777, 9)
+    Overflow2:writeString("______________________________", 0, 1, 777, 9)
+    for (I = 2, 17) {
+        Monitor:writeString("                              ", 0, I, 999, 0)
+        Overflow1:writeString("                              ", 0, I, 999, 0)
+        Overflow2:writeString("                              ", 0, I, 999, 0)
+    }
+    Started = 1
+}
+
+if (duped()) {
+    LinesUsed = 0
+    Started = 0
+    LastReset = 0
+}
+
+if (EventClk != MessageClk) {
+    EventClk = MessageClk
+    for (I = 1, Messages:count()) {
+        MessageColor = MessageColors:number(I)
+        if (!MessageColor) {
+            MessageColor = 999
+        }
+        Message = Messages:string(I)
+        RequiredLength = Message:length()
+        Lines = ceil(RequiredLength / 30)
+        
+        # Now shift
+        if (LinesUsed + Lines > 16) {
+            Monitor:writeCell(2033, 2)
+            Monitor:writeCell(2034, 17)
+            Overflow1:writeCell(2033, 2)
+            Overflow1:writeCell(2034, 17)
+            Overflow2:writeCell(2033, 2)
+            Overflow2:writeCell(2034, 17)
+            LinesToShift = Lines - 16 + LinesUsed
+            Overflow2:writeCell(2038, LinesToShift)
+            for (I = 1, LinesToShift) {
+                ArrData = array()
+                for (J = 1, 60) {
+                    ArrData:setNumber(J, Overflow1:readCell((I + 1) * 60 + J - 1))
+                }
+                Overflow2:writeArray((17 - LinesToShift + I) * 60, ArrData)
+            }
+            Overflow1:writeCell(2038, LinesToShift)
+            for (I = 1, LinesToShift) {
+                ArrData = array()
+                for (J = 1, 60) {
+                    ArrData:setNumber(J, Monitor:readCell((I + 1) * 60 + J - 1))
+                }
+                Overflow1:writeArray((17 - LinesToShift + I) * 60, ArrData)
+            }
+            Monitor:writeCell(2038, LinesToShift)
+            LinesUsed -= LinesToShift
+        }
+        
+        StartLine = LinesUsed + 2
+        CharsWritten = 0
+        Monitor:writeString(Message, 0, StartLine, MessageColor, 0)
+        LinesUsed += Lines
+    }
+}

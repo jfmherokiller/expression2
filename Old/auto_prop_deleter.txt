@@ -1,0 +1,62 @@
+@name Auto Prop Deleter
+@inputs
+@outputs OwnerIndex
+@persist OwnerProps:array
+@trigger
+
+runOnChat(1)
+interval(1000)
+if (!OwnerIndex) {
+    OwnerIndex = owner():id()
+    findIncludePlayerProps(owner())
+}
+
+Nuke = 0
+
+if (!entity(OwnerIndex)) {
+    Nuke = 1
+}
+
+ChatActivated = 0
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    ChatActivated = 1
+}
+if (ChatActivated) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "nuke") {
+            Props = LastSpoke:aimEntity():getConstraints()
+            hint("Found " + (Props:count() + 1) + " props.", 10)
+            for (I = 1, Props:count()) {
+                Props:entity(I):propDelete()
+            }
+            LastSpoke:aimEntity():propDelete()
+        }
+    }
+}
+
+if (Nuke) {
+    hint("Nuking " + OwnerProps:count() + " props.", 10)
+    for (I = 1, OwnerProps:count()) {
+        # OwnerProps:entity(I):propDelete()
+    }    
+} else {
+    findInBox(vec(-16384, -16384, -16384), vec(16384, 16384, 16384))
+    OwnerProps = findToArray()
+    hint("Found " + OwnerProps:count() + " props.", 10)
+}

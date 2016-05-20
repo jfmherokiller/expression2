@@ -1,0 +1,71 @@
+@name PlayerInfo
+@inputs 
+@outputs
+@persist Started
+@persist 
+@persist 
+@persist
+@trigger
+
+runOnChat(1)
+
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    hint("Initializing Player Info.", 10)
+    Started = 1
+}
+
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Params:length()) {
+            EntPlayer = findPlayerByName(Params)
+        }
+        if (Command == "tools" | Command == "weapons") {
+            findByClass("player")
+            Players = findToArray()
+            for (I = 1, Players:count()) {
+                if (Players:entity(I):weapon():type() == "gmod_tool") {
+                    hint(Players:entity(I):name() + ": " + Players:entity(I):tool(), 20)
+                } else {
+                    hint(Players:entity(I):name() + ": " + Players:entity(I):weapon():type(), 20)
+                    #hint("Model: " + Players:entity(I):weapon():model(), 20)
+                }
+            }
+        }
+        if (Command == "props") {
+            FoundCount = findInBox(vec(-16384, -16384, -16384), vec(16384, 16384, 16384))
+            hint("There are " + FoundCount + " entities.", 10)
+        }
+        if (Command == "players") {
+            PlayerCount = numPlayers()
+            hint(PlayerCount + " players connected.", 10)
+            for (I = 1, maxPlayers()) {
+                EntPlayer = entity(I)
+                if (EntPlayer) {
+                    hint("[" + I + "] \"" + EntPlayer:name() + "\" " + EntPlayer:steamID(), 10)
+                }
+            }
+        }
+    }
+}

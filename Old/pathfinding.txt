@@ -1,0 +1,54 @@
+@name Pathfinding
+@inputs
+@outputs
+@persist Nodes:array
+@trigger
+
+runOnChat(1)
+
+if (first() | duped()) {
+    Nodes = array()
+}
+
+if (chatClk()) {
+    Authorized = 0
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        Authorized = 1
+    }
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "end") {
+                holoCreate(2, owner():eyeTrace():position())
+                holoMaterial(2, "models/cheeze/buttons2/multiply")
+                holoScale(2, vec(0.5, 0.5, 0.05))
+                holoAng(2, owner():eyeTrace():hitNormal():toAngle() + ang(90, 0, 0))
+                
+                Nodes:setVector(2, owner():eyeTrace():position())
+            } elseif (Command == "start") {
+                holoCreate(1, owner():eyeTrace():position())
+                holoMaterial(1, "models/cheeze/buttons2/multiply")
+                holoScale(1, vec(0.5, 0.5, 0.05))
+                holoAng(1, owner():eyeTrace():hitNormal():toAngle() + ang(90, 0, 0))
+                
+                Nodes:setVector(1, owner():eyeTrace():position())
+            } elseif (Command == "trace") {
+                
+            }
+        }
+    }
+}

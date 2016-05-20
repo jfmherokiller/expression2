@@ -1,0 +1,11 @@
+@name Message
+@inputs On
+@outputs Message:string
+@persist
+@trigger
+
+if (On) {
+    Message = "Kittens.<br>That is all."
+} else {
+    Message = ""
+}

@@ -1,0 +1,330 @@
+@name PathFinder!
+@persist [EE O]:entity
+@persist [OpenList ClosedList]:table
+@persist [NodePos GScoreList]:table
+@persist [ScoreList ParentNode]:table 
+@outputs [Array LowG]:array
+@persist [Final Final2]:array
+@persist RA RA2 RA3 ShowVis ResOff
+@persist [ParentPos TPos]:vector LastParent:string
+@persist [GridSize HitSize ChunkSize Rate]
+@persist VisType
+@outputs Result:array
+
+if (first()) {
+    EE = entity()
+    O = owner()
+    ParentPos = EE:pos() + vec(0, 0, 24)
+    
+    GridSize = 45
+    HitSize = GridSize
+    ChunkSize = 2
+    Rate = 66 #Run a tick every ####ms
+    OpenList["0x0", number] = 0
+    NodePos["0x0", vector] = ParentPos
+    ClosedList["0x0", number] = 1
+    
+    VisType = 2#1 -- All 2--- random
+    ShowVis = 1
+    
+    TPos = gGetVec("TPos")
+    
+    if (TPos) {
+        holoCreate(0, TPos)
+        holoScale(0, vec(2, 2, 2))
+        holoColor(0, vec(0, 100, 0))
+    }
+    #ScoreList["0x0", number] = round(toUnit("dm", ParentPos:distance(TPos)))
+    
+    #timer("Tick", 50)
+    runOnChat(1)
+    timer("Tick2", Rate * 2)
+}
+
+LS = lastSaid()
+
+if (LS:left(1) == "-" & chatClk(O)) {
+    hideChat(1)
+    LS = LS:sub(2, LS:length())
+    LSO = LS:lower()
+    LSE = LSO:explode(" ")
+    
+    if (LSO == "tpos") {
+        TPos = O:aimPos() + vec(0, 0, 24)
+        gSetVec("TPos", TPos)
+        
+        holoCreate(0, TPos)
+        holoScale(0, vec(2, 2, 2))
+        holoColor(0, vec(0, 100, 0))
+    }
+    
+    if (LSO == "go") {
+        holoDeleteAll()
+        ParentPos = EE:pos() + vec(0, 0, 24)
+        timer("Tick", 25)  
+        
+        holoCreate(0, TPos)
+        holoScale(0, vec(2, 2, 2))
+        holoColor(0, vec(0, 100, 0))
+        holoCreate(1)
+        holoAlpha(1, 0)
+        
+        ScoreList:clear()
+        GScoreList:clear()
+        NodePos:clear()
+        OpenList:clear()
+        ClosedList:clear()
+        Final:clear()
+        Final2:clear()
+        ParentNode:clear()
+        Result:clear()
+        RA = 0
+        RA2 = 0
+        RA3 = 0
+        
+        OpenList["0x0", number] = 0
+        NodePos["0x0", vector] = ParentPos
+        ClosedList["0x0", number] = 1
+    }
+}
+
+if (clk("Tick")) {
+    for (CS = 1, ChunkSize) {
+        CX = (EE:pos() + vec(0,0, 24)):x() - ParentPos:x()
+        CY = (EE:pos() + vec(0,0, 24)):y() - ParentPos:y()
+        CurrentPos = CX + "x" + CY
+        
+        for (I = 1, 8) {
+
+            
+            if (I == 1) {Offset = vec(GridSize, 0, 0), G = 10}
+            if (I == 2) {Offset = vec(-GridSize, 0 ,0), G = 10}
+            if (I == 3) {Offset = vec(0, GridSize ,0), G = 10}
+            if (I == 4) {Offset = vec(0, -GridSize, 0), G = 10}
+            
+            if (I == 5) {Offset = vec(GridSize, GridSize, 0), G = 14}
+            if (I == 6) {Offset = vec(GridSize, -GridSize, 0), G = 14}
+            if (I == 7) {Offset = vec(-GridSize, -GridSize, 0), G = 14}
+            if (I == 8) {Offset = vec(-GridSize, GridSize, 0), G = 14}
+            Pos = ParentPos + Offset
+            
+            TNX = (EE:pos() + vec(0, 0, 24)):x() - Pos:x()
+            TNY = (EE:pos() + vec(0, 0, 24)):y() - Pos:y()
+            NodingPos = TNX + "x" + TNY
+            
+             #ParentNode[NodingPos, string] = CurrentPos
+            IsAvailable = !OpenList[NodingPos, number] & !ClosedList[NodingPos, number]
+            
+            
+            if (IsAvailable) {
+                OpenList[NodingPos, number] = 1
+                RD = rangerOffset(HitSize + 46, Pos + vec(0, 0, 8), vec(0, 0, -1))
+                if (RD:position():z() > rangerOffset(HitSize + 46, NodePos[CurrentPos, vector], vec(0, 0, -1)):position():z()) {
+                    
+                
+                ZS = NodePos[CurrentPos, vector]:z() - (RD:position() + vec(0, 0, 24)):z()
+                ZS = round(ZS * GridSize * 2.15)
+                
+                if (ZS < 0) {ZS = 0} 
+        }else{ZS = 0}
+                
+                #hint(ZS:toString(), 3)
+                
+                RF = rangerOffset(HitSize - ZS, Pos, vec(1, 0, 0))
+                RB = rangerOffset(HitSize - ZS, Pos, vec(-1, 0, 0))
+                RL = rangerOffset(HitSize - ZS, Pos, vec(0, -1, 0))
+                RR = rangerOffset(HitSize - ZS, Pos, vec(0, 1, 0))
+                
+                holoPos(1, Pos:setZ(RD:position():z()) + vec(0, 0, 2))
+                if (!RF:hit() & !RB:hit() & !RR:hit() & !RL:hit() & RD:hit()) {
+                    H = toUnit("dm", Pos:distance(TPos))
+                    H = round(H)
+                 
+                    GM = round(ZS / 2.25)
+                    if (GM < 1) {GM = 1}
+                    InWater = holoEntity(1):isUnderWater() * 32
+                    if (InWater < 1) {InWater = 1}
+                    
+                    NodePos[NodingPos, vector] = Pos:setZ(RD:position():z() + 24)
+                    
+                    #GScoring
+                    
+                    GScore = GScoreList[CurrentPos, number] + G + GM + InWater
+                    GScoreList[NodingPos, number] = GScore
+                    
+                    
+                    #NormScoring
+                    F = GScore + H
+                    ScoreList[NodingPos, number] = F
+                    
+
+                    #Vis
+                    #ID = random(2, 124124)
+                    #holoCreate(ID, Pos)
+                    #holoScale(ID, vec(1, 1, 1))
+                    #holoColor(ID, vec(0, 0, 100))
+                    
+                    ParentNode[NodingPos, string] = CurrentPos
+        
+                    
+            }else{ClosedList[NodingPos, number] = 1}
+                    
+            
+
+            }
+           
+        }
+        
+        if (ShowVis) {
+        ID = randint(2, 48)
+        
+        if (!holoEntity(ID)) {
+            holoCreate(ID, ParentPos)
+            holoScale(ID, vec(1.2, 1.2, 1.2))
+            holoColor(ID, vec(0, 80, 0)) 
+    }else{holoPos(ID, ParentPos)}
+        }
+        
+        Array = ScoreList:values()
+        MinValue = Array:minIndex()
+        MinNode = ScoreList:keys()[MinValue, string]
+        
+        for (I = 1, 8) {
+            CE = MinNode:explode("x")
+            C1 = CE[1, string]:toNumber()
+            C2 = CE[2, string]:toNumber()
+            
+            GS = GridSize
+            #Hor/Ver
+            if (I == 1) {C1 = C1 + GS}
+            if (I == 2) {C2 = C2 + GS}
+            if (I == 3) {C1 = C1 - GS}
+            if (I == 4) {C2 = C2 - GS}
+            
+            #Diag
+            if (I == 5) {C1 = C1 + GS, C2 = C2 + GS}
+            if (I == 6) {C1 = C1 - GS, C2 = C2 + GS}
+            if (I == 7) {C1 = C1 - GS, C2 = C2 - GS}
+            if (I == 8) {C1 = C1 + GS, C2 = C2 - GS}
+            
+            CheckNode = C1 + "x" + C2
+            IsAvailable = !ClosedList[CheckNode, number] & OpenList[CheckNode, number]
+            
+            if (IsAvailable) {
+                GScore = GScoreList[CheckNode, number]
+                LowG:pushNumber(GScore)
+                #hint(CheckNode, 5)
+            }
+        }
+        
+        LowestGScore = LowG:min()
+        #LowestGScore = 1234124
+        CurGScore = GScoreList[CurrentPos, number]
+        
+        if (LowestGScore < CurGScore) {
+            LG = LowG:minIndex()
+            MinNode = GScoreList:keys()[LG, string]
+            
+            
+      
+        }
+        ParentPos = NodePos[MinNode, vector]
+    
+    
+        #Clear
+        #NodePos[MinNode, number] = 0
+        ScoreList[MinNode, number] = 1e100
+        GScoreList[MinNode, number] = 1e100
+        OpenList[MinNode, number] = 1
+        ClosedList[MinNode, number] = 1
+        #ParentNode[MinNode, string] = CurrentPos
+        
+        
+        LowG:clear()
+                
+        Final[1, string] = CurrentPos
+                
+    
+        #print(MinValue)
+        #print(MinNode)
+    }
+    
+    DI = ParentPos:distance(TPos)
+    timer("Tick", Rate)
+    if (!OpenList:values():count()) {stoptimer("Tick")}
+    if (DI < GridSize * 1.11) {
+        stoptimer("Tick")
+        timer("Path", 250)
+        RA = round(ParentNode:keys():count() / 1.8)
+        holoDeleteAll()
+        print("Finished!")
+    }
+}
+ 
+
+if (clk("Path")) {
+    timer("Path", 100)
+    for (I = 1, 32) {
+    RA--
+    RA2++
+    
+    CurPos = ParentNode[Final[RA2, string], string]
+    Final:pushString(CurPos)
+    
+    Final2:pushVector(NodePos[CurPos, vector])
+    #print(CurPos)
+    
+
+    if (RA <= 0 | !CurPos) {
+        Final2:remove(1)
+        Final2:remove(Final2:count())
+        
+
+        stoptimer("Path")
+        timer("Vis", 20)
+
+        #for (K = 1, Final2:count()) {
+           # V = Final2[K, vector]
+            #if (V == vec(0, 0, 0)) {Final2:remove(K)}
+        #}
+        
+        ResOff = Final2:count()
+        while (ResOff >= 1) {
+            ResOff--
+            Result:pushVector(Final2[ResOff, vector])
+        }
+        Result:remove(Result:count())
+        Result:pushVector(TPos)
+        #Result = Final2
+        
+        break
+  }
+
+    }
+
+}
+   
+
+if (clk("Vis")) {
+    timer("Vis", 100)
+    RA3++
+    
+    if (VisType == 1) {
+    holoCreate(RA3, Result[RA3, vector])
+    holoColor(RA3, vec(0, 0, 100))
+    holoAng(RA3, ang(0,0,0))
+}
+
+if (VisType == 2) {
+    ID = randint(1, 48)
+    if (!holoEntity(ID)) {
+    holoCreate(ID, Result[RA3, vector])
+    holoColor(ID, vec(0, 0, 100))
+    holoAng(ID, ang(0,0,0))
+}else{holoPos(ID, Result[RA3, vector])}
+}
+    
+    if (RA3 >= Final2:count()) {
+        stoptimer("Vis")
+    }
+}

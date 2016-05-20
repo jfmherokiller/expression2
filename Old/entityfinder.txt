@@ -1,0 +1,108 @@
+@name EntityFinder
+@inputs
+@outputs
+@persist
+@trigger
+
+runOnChat(1)
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    Index = 1
+    Started = 1
+}
+
+LastSaid = lastSaid():lower()
+
+if (chatClk() & lastSpoke() == owner() & (LastSaid == "find" | LastSaid == "!find")) {
+    hideChat(1)
+    
+    findClearBlackList()
+    findClearWhiteList()
+    findIncludeClass("gmod_wire_hologram")
+    findIncludeClass("gmod_wire_expression2")
+    findIncludeClass("gmod_wire_igniter")
+    findIncludeClass("gmod_wire_detonator")
+    findIncludeClass("gmod_wire_explosive")
+    findIncludeClass("gmod_wire_simple_explosive")
+    FoundCount = findInBox(vec(-16384, -16384, -16384), vec(16384, 16384, 16384))
+    FindArray = findToArray()
+    FoundHolos = array()
+    FoundE2s = array()
+    FoundIgniters = array()
+    FoundExplosives = array()
+    hint("Found " + FoundCount + " entities of interest.", 10)
+    concmd("luahelp_logline Found " + FoundCount + " entities of interest.")
+    for (I = 1, FoundCount) {
+        if (FindArray:entity(I):type() == "gmod_wire_hologram") {
+            FoundHolos:pushEntity(FindArray:entity(I))
+        } elseif (FindArray:entity(I):type() == "gmod_wire_expression2") {
+            FoundE2s:pushEntity(FindArray:entity(I))
+        } elseif (FindArray:entity(I):type() == "gmod_wire_igniter") {
+            FoundIgniters:pushEntity(FindArray:entity(I))
+        } else {
+            FoundExplosives:pushEntity(FindArray:entity(I))
+        }
+    }
+    
+    FoundCount = FoundE2s:count()
+    hint("Found " + FoundCount + " expression 2 chips.", 10)
+    concmd("luahelp_logline Found " + FoundCount + " expression 2 chips.")
+    for(I = 1, FoundCount) {
+        EntHolo = FoundE2s:entity(I)
+        Owner = EntHolo:owner():name()
+        if (!Owner:length()) {
+            Owner = "<unowned>"
+        }
+        hint("" + I + ": (" + EntHolo:id() + ": " + Owner + ") (" + round(EntHolo:pos():x()) + ", " + round(EntHolo:pos():y()) + ", " + round(EntHolo:pos():z()) + ").", 10)
+        concmd("luahelp_logline \"" + I + ": (" + EntHolo:id() + ": " +  Owner + ") (" + round(EntHolo:pos():x()) + ", " + round(EntHolo:pos():y()) + ", " + round(EntHolo:pos():z()) + ").\"")
+    }
+    
+    FoundCount = FoundIgniters:count()
+    hint("Found " + FoundCount + " igniters.", 10)
+    concmd("luahelp_logline Found " + FoundCount + " igniters.")
+    for(I = 1, FoundCount) {
+        EntHolo = FoundIgniters:entity(I)
+        Owner = EntHolo:owner():name()
+        if (!Owner:length()) {
+            Owner = "<unowned>"
+        }
+        hint("" + I + ": (" + EntHolo:id() + ": " + Owner + ") (" + round(EntHolo:pos():x()) + ", " + round(EntHolo:pos():y()) + ", " + round(EntHolo:pos():z()) + ").", 10)
+        concmd("luahelp_logline \"" + I + ": (" + EntHolo:id() + ": " +  Owner + ") (" + round(EntHolo:pos():x()) + ", " + round(EntHolo:pos():y()) + ", " + round(EntHolo:pos():z()) + ").\"")
+    }
+    
+    FoundCount = FoundExplosives:count()
+    hint("Found " + FoundCount + " explosives.", 10)
+    concmd("luahelp_logline Found " + FoundCount + " explosives.")
+    for(I = 1, FoundCount) {
+        EntHolo = FoundExplosives:entity(I)
+        Owner = EntHolo:owner():name()
+        if (!Owner:length()) {
+            Owner = "<unowned>"
+        }
+        hint("" + I + ": (" + EntHolo:id() + ": " + Owner + ") (" + round(EntHolo:pos():x()) + ", " + round(EntHolo:pos():y()) + ", " + round(EntHolo:pos():z()) + ").", 10)
+        concmd("luahelp_logline \"" + I + ": (" + EntHolo:id() + ": " +  Owner + ") (" + round(EntHolo:pos():x()) + ", " + round(EntHolo:pos():y()) + ", " + round(EntHolo:pos():z()) + ").\"")
+    }
+    
+    FoundCount = FoundHolos:count()
+    hint("Found " + FoundCount + " holograms.", 10)
+    concmd("luahelp_logline Found " + FoundCount + " holograms.")
+    for(I = 1, FoundCount) {
+        EntHolo = FoundHolos:entity(I)
+        Owner = ""
+        # Owner = EntHolo:owner():name()
+        if (!Owner:length()) {
+            Owner = "<unowned>"
+        }
+        hint("" + I + ": (" + EntHolo:id() + ": " + Owner + ") \"" + EntHolo:model() + "\" (" + round(EntHolo:pos():x()) + ", " + round(EntHolo:pos():y()) + ", " + round(EntHolo:pos():z()) + ").", 10)
+        concmd("luahelp_logline \"" + I + ": (" + EntHolo:id() + ": " +  Owner + ") \"" + EntHolo:model() + "\" (" + round(EntHolo:pos():x()) + ", " + round(EntHolo:pos():y()) + ", " + round(EntHolo:pos():z()) + ").\"")
+    }
+    
+    hint("You are at (" + round(owner():pos():x()) + ", " + round(owner():pos():y()) + ", " + round(owner():pos():z()) + ").", 10)
+    concmd("luahelp_logline \"You are at (" + round(owner():pos():x()) + ", " + round(owner():pos():y()) + ", " + round(owner():pos():z()) + ").\"")
+    
+    findClearBlackList()
+    findClearWhiteList()
+}
+

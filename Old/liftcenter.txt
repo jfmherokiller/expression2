@@ -1,0 +1,12 @@
+@name LiftCenter
+@inputs LiftId
+@outputs
+@persist
+@trigger
+
+interval(15)
+
+gSetGroup("lift" + toString(LiftId))
+gSetVec("VecLiftCenter", entity():pos())
+gSetVec("AngLiftCenter", entity():angles())
+gResetGroup()

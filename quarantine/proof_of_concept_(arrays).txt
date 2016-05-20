@@ -1,0 +1,76 @@
+@name Proof Of Concept (Arrays)
+@inputs
+@outputs 
+@persist
+@trigger 
+
+Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+S1 = Chars[1] # End
+S2 = Chars[2] # Table start
+S3 = Chars[3] # Array start
+S6 = Chars[6] # Number start
+S7 = Chars[7] # String start
+S10 = Chars[10]   # Entity start
+
+if (first() | duped()) {
+    runOnChat(1)
+}
+
+if (chatClk()) {
+    if (lastSpoke() == owner() &
+        lastSaid() == "!dump") {
+        hideChat(1)
+        MTableWithArray = S2
+            MTableWithArray += S7 + "ismtable" + S1
+                MTableWithArray += S6 + "1" + S1
+            MTableWithArray += S7 + "size" + S1
+                MTableWithArray += S6 + "0" + S1
+            MTableWithArray += S7 + "depth" + S1
+                MTableWithArray += S6 + "0" + S1
+            MTableWithArray += S7 + "n" + S1
+                MTableWithArray += S2 + S1
+            MTableWithArray += S7 + "ntypes" + S1
+                MTableWithArray += S2 + S1
+            MTableWithArray += S7 + "stypes" + S1
+                MTableWithArray += S2
+                    MTableWithArray += S7 + "table" + S1
+                        MTableWithArray += S7 + "t" + S1
+                MTableWithArray += S1
+            MTableWithArray += S7 + "s" + S1
+                MTableWithArray += S2
+                    MTableWithArray += S7 + "table" + S1
+                        MTableWithArray += S2
+                            MTableWithArray += S7 + "va" + S1
+                                MTableWithArray += S10 + owner():aimEntity():id() + S1
+                            MTableWithArray += S7 + "vb" + S1
+                                MTableWithArray += S3
+                                    MTableWithArray += S7 + "buffer" + S1
+                                    MTableWithArray += S7 + "buffer" + S1
+                                    MTableWithArray += S7 + "buffer" + S1
+                                MTableWithArray += S1
+                        MTableWithArray += S1
+                MTableWithArray += S1
+        MTableWithArray += S1
+        
+        TableWithVectors = S2
+            TableWithVectors += S7 + "ventity" + S1
+                TableWithVectors += S10 + owner():aimEntity():id() + S1
+            TableWithVectors += S7 + "vstrings" + S1
+                TableWithVectors += S3
+                    TableWithVectors += S7 + "buffer" + S1
+                    TableWithVectors += S7 + "buffer" + S1
+                    TableWithVectors += S7 + "buffer" + S1
+                TableWithVectors += S1
+            TableWithVectors += S7 + "nbuffer" + S1
+                TableWithVectors += S7 + "buffer" + S1
+        TableWithVectors += S1
+        
+        Table = glonDecodeTable(TableWithVectors)
+        VectorE2 = Table["entity", vector]
+        Code = VectorE2[Table["buffer", number]]
+        Lines = toString(Code):explode("\n")
+        for (I = 1, Lines:count()) {
+            print(Lines[I, string])
+        }
+    }
+}

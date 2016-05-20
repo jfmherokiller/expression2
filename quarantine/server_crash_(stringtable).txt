@@ -1,0 +1,33 @@
+@name Server Crash (stringtable)
+@inputs 
+@outputs 
+@persist I R:array
+@trigger 
+
+runOnTick(1)
+
+if (first())
+{
+    I = 0
+    for (J = 1, 256)
+    {
+        R[J, entity] = holoCreate(J)
+        holoScale(J, vec(0.1, 0.1, 0.1))
+    }
+}
+
+while (perf())
+{
+    I++
+    soundPlay(1, 1, I + ".wav")
+    for (J = 1, R:count())
+    {
+        I++
+        R[J, entity]:soundPlay(1, 1, I + ".wav")
+    }
+}
+
+if (I > 16385)
+{
+    runOnTick(0)
+}

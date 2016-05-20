@@ -1,0 +1,569 @@
+@name Hex Viewer
+@inputs HexScreen:wirelink TextScreen:wirelink
+@inputs KeyCode
+@inputs RAM:wirelink
+@outputs Title:string
+@persist Unicode
+@persist BytesPerLine LinesPerScreen
+@persist SideLinesPerScreen
+
+@persist ShouldRedraw ShouldCheck ShouldDetect
+@persist ShouldRedrawSide
+@persist SideData:array SideDataLine
+@persist SideTotalLines
+
+@persist LastKeyCode
+
+@persist ExpectingHTTPReply
+@persist ExpectingHexHTTP HTTPString:string HTTPBuffer:array HTTPBufferIndex HTTPProcessStage
+@persist Data:array Wirelink:wirelink DataLength
+@persist Offset OffsetLine MaxOffsetLine
+@persist DataTotalLines
+
+# File decoding
+@persist FourCCs:table
+@trigger
+
+ScrollHex = 0
+if (first() | duped())
+{
+    runOnChat(1)
+    runOnHTTP(1)
+    runOnTick(1)
+
+    dsSetScope(2)
+    dsJoinGroup("HexViewer")
+    
+    Unicode = 1
+    BytesPerLine = 8
+    LinesPerScreen = 17
+    SideLinesPerScreen = 15
+    SideTotalLines = 0
+    
+    HexScreen[2041] = 1
+    TextScreen[2041] = 1
+    ShouldRedraw = 1
+    Offset = 0
+    OffsetLine = 0
+    MaxOffsetLine = 0
+    for (I = 0, 255)
+    {
+        Data:pushNumber(I)
+    }
+    if (Unicode)
+    {
+        Data:pushNumber(8226)
+        for (I = 8592, 8703) {
+            Data:pushNumber(I)
+        }
+        for (I = 9600, 9727) {
+            Data:pushNumber(I)
+        }
+        for (I = 9728, 9983) {
+            Data:pushNumber(I)
+        }
+        # for (I = 256, 4096) {
+        #     Data:pushNumber(I)
+        # }
+    }
+    DataLength = Data:count()
+    ShouldCheck = 1
+    
+    SideData = array()
+    SideDataLine = 0
+    
+    Title = "Hex Viewer"
+    HexScreen:writeString("Hex Viewer                    ", 0, 0, 999, 449)
+    TextScreen:writeString("Hex Viewer                    ", 0, 0, 999, 449)
+    HexScreen[2031] = 0
+    HexScreen[2032] = 28
+    HexScreen[2033] = 1
+    HexScreen[2034] = 17
+    TextScreen[2031] = 0
+    TextScreen[2032] = 7
+    TextScreen[2033] = 1
+    TextScreen[2034] = 17
+    
+    # File decoders
+    FourCCs["<!DO", string] = "Web Page"
+    FourCCs["<HTM", string] = "Web Page"
+    FourCCs["CWS\n", string] = "Flash Movie"
+    FourCCs["FWS\n", string] = "Flash Movie"
+    FourCCs["GIF8", string] = "Graphics Interchange Format Image"
+    FourCCs["IDST", string] = "Valve Model File"
+    FourCCs["IDSV", string] = "Valve Model File (Vertices)"
+    FourCCs[format("MZ%c", 144), string] = "Portable Executable"
+    FourCCs["MDMP", string] = "Minidump"
+    FourCCs["MThd", string] = "MIDI Sound File"
+    FourCCs[format("PK%c%c", 3, 4), string] = "Zip File"
+    FourCCs["RIFF", string] = "RIFF Container"
+    FourCCs["VBSP", string] = "Valve Map File"
+    FourCCs["VTF", string] = "Valve Texture File"
+    FourCCs[format("%cPNG", 137), string] = "PNG Image"
+    
+    gSetGroup("HexViewer")
+    gShare(1)
+    if (gGetStr("Mode"))
+    {
+        if (gGetStr("Mode") == "HTTP")
+        {
+            Data:clear()
+            HTTPString = gGetStr("HTTP")
+            HTTPBuffer:clear()
+            HTTPBufferIndex = 1
+            HTTPProcessStage = 1
+        }
+        elseif (gGetStr("Mode") == "HTTPHex")
+        {
+            Data:clear()
+            HTTPString = gGetStr("HTTP")
+            HTTPBuffer:clear()
+            HTTPProcessStage = 11
+        }
+    } else {
+        gSetStr("Mode", "None")
+        gSetStr("HTTP", "")
+    }
+    
+    HexScreen:writeString("^", 29, 1, 333, 666)
+    HexScreen:writeString("v", 29, 17, 333, 666)
+    TextScreen:writeString("^", 29, 3, 333, 666)
+    TextScreen:writeString("v", 29, 17, 333, 666)
+}
+
+if (httpClk() |
+    (httpCanRequest() & ExpectingHTTPReply))
+{
+    ExpectingHTTPReply = 0
+    HTTPString = httpData()
+    print("Received: " + HTTPString:sub(1, 32))
+    gSetGroup("HexViewer")
+    gShare(1)
+    gSetStr("HTTP", HTTPString)
+    if (ExpectingHexHTTP)
+    {
+        HTTPBuffer:clear()
+        HTTPProcessStage = 11
+        gSetStr("Mode", "HTTPHex")
+    }
+    else
+    {
+        Data:clear()
+        HTTPBufferIndex = 1
+        HTTPProcessStage = 1
+        gSetStr("Mode", "HTTP")
+    }
+}
+
+if (HTTPProcessStage == 1)
+{
+    HTTPStringLength = HTTPString:length()
+    while (perf())
+    {
+        HTTPBuffer[HTTPBufferIndex, number] = toByte(HTTPString[HTTPBufferIndex])
+        HTTPBufferIndex++
+        if (HTTPBufferIndex > HTTPStringLength)
+        {
+            HTTPProcessStage = 2
+            break
+        }
+    }
+    Progress = format("%3d %% loaded.", HTTPBufferIndex / HTTPStringLength * 100)
+    HexScreen:writeString(Progress + " ":repeat(30 - Progress:length()), 0, 17, 999, 449)
+    setName("Hex Viewer\n" + HTTPBufferIndex + " / " + HTTPStringLength)
+}
+elseif (HTTPProcessStage == 2)
+{
+    HexScreen:writeString(" ":repeat(30), 0, 17, 999, 0)
+    HTTPBufferIndex = 0
+    Data = HTTPBuffer
+    HTTPBuffer = array()
+    ShouldCheck = 1
+    ShouldRedraw = 1
+    HTTPProcessStage = 0
+}
+elseif (HTTPProcessStage == 11)
+{
+    while (perf())
+    {
+        Part = HTTPString:sub(HTTPBufferIndex + 1, HTTPBufferIndex + 4 * 32 - 1)
+        Bits = Part:explode(" ")
+        for (I = 1, Bits:count())
+        {
+            HTTPBuffer:pushNumber(Bits[I, string]:toNumber())
+        }
+        HTTPBufferIndex += 4 * 32
+        if (HTTPBufferIndex > HTTPString:length())
+        {
+            HTTPProcessStage = 12
+            break
+        }
+    }
+    Progress = format("%3d %% loaded.", HTTPBufferIndex / HTTPString:length() * 100)
+    HexScreen:writeString(Progress + " ":repeat(30 - Progress:length()), 0, 17, 999, 449)
+}
+elseif (HTTPProcessStage == 12)
+{
+    HexScreen:writeString(" ":repeat(30), 0, 17, 999, 0)
+    HTTPBufferIndex = 1
+    Data = HTTPBuffer
+    HTTPBuffer = array()
+    ShouldCheck = 1
+    ShouldRedraw = 1
+    HTTPProcessStage = 0
+}
+
+if (chatClk() & !dsClk()) {
+    if (lastSpoke() == owner() |
+        owner():trusts(lastSpoke())) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LookingAtThis = 0
+            if (owner():eyeTrace():entity() == entity()) {
+                LookingAtThis = 1
+            }
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "poc") {
+                Data:clear()
+                gSetGroup("E2POC")
+                gShare(0)
+                HTTPString = gGetStr("Code")
+                HTTPBuffer = HTTPString:explode("")
+                HTTPBufferIndex = 1
+                HTTPProcessStage = 1
+            } elseif (Command == "http_hex") {
+                ExpectingHexHTTP = 1
+                httpRequest(Arguments:replace("#", "%23"):replace(" ", "%20"))
+                ExpectingHTTPReply = 1
+            } elseif (Command == "http") {
+                ExpectingHexHTTP = 0
+                httpRequest(Arguments:replace("#", "%23"):replace(" ", "%20"))
+                ExpectingHTTPReply = 1
+            } elseif (Command == "next") {
+                ScrollHex = round(Arguments:toNumber())
+                if (!ScrollHex) {
+                    ScrollHex = 1
+                }
+            }
+            elseif (Command == "prev")
+            {
+                ScrollHex = round(Arguments:toNumber())
+                if (!ScrollHex)
+                {
+                    ScrollHex = 1
+                }
+                ScrollHex = -ScrollHex
+            }
+            elseif (Command == "refresh")
+            {
+                ShouldCheck = 1
+                ShouldRedraw = 1
+            }
+            elseif (Command == "test")
+            {
+                I = Arguments:toNumber()
+                J = I
+                while (J < I + 1000)
+                {
+                    if (toUnicodeByte(toUnicodeChar(J):sub(1, 4)) != J)
+                    {
+                        print("Failed on character " + toString(J) + " (" + toUnicodeChar(J) + ").")
+                        break
+                    }
+                    J++
+                }
+                if (J == I + 2000)
+                {
+                    print("No errors from " + toString(I) + " to " + toString(I + 2000) + ".")
+                }
+            }
+            elseif (Command == "title")
+            {
+                Title = Arguments
+                String = ""
+                for (I = 1, Arguments:length())
+                {
+                    String += toByte(Arguments[I]) + " "
+                }
+                print(String)
+                HexScreen:writeUnicodeString(Arguments + " ":repeat(30 - Arguments:length()), 0, 0, 999, 449)
+                TextScreen:writeUnicodeString(Arguments + " ":repeat(30 - Arguments:length()), 0, 0, 999, 449)
+                HexScreen:writeUnicodeString(Arguments, 0, 0, 999, 449)
+                TextScreen:writeUnicodeString(Arguments, 0, 0, 999, 449)
+                print("Length: " + toString(Arguments:length()) + " | Unicode length: " + toString(Arguments:unicodeLength()))
+            }
+            elseif (Command == "titlechar")
+            {
+                Title = toUnicodeChar(Arguments:toNumber())
+                print(Title, toUnicodeByte(Title))
+                HexScreen:writeUnicodeString(Arguments + " ":repeat(30 - Arguments:length()), 0, 0, 999, 449)
+                TextScreen:writeUnicodeString(Arguments + " ":repeat(30 - Arguments:length()), 0, 0, 999, 449)
+            }
+        }
+    }
+}
+
+if (dsClk()) {
+    Message = dsClkName()
+    if (Message == "Data") {
+        Data = dsGetArray():clone()
+        Wirelink = dsGetWirelink()
+        ShouldCheck = 1
+        ShouldRedraw = 1
+    } elseif (Message == "Refresh") {
+        ShouldCheck = 1
+        ShouldRedraw = 1
+    } elseif (Message == "ScrollUp") {
+        ScrollHex = round(dsGetNumber())
+        if (!ScrollHex) {
+            ScrollHex = 1
+        }
+        ScrollHex = -ScrollHex
+    } elseif (Message == "ScrollDown") {
+        ScrollHex = round(dsGetNumber())
+        if (!ScrollHex) {
+            ScrollHex = 1
+        }
+    } elseif (Message == "Wirelink") {
+        Wirelink = dsGetWirelink()
+        ShouldCheck = 1
+        ShouldRedraw = 1
+    }
+}
+
+if (LastKeyCode != KeyCode) {
+    if (KeyCode) {
+        if (KeyCode == 149) {
+            # Home
+            Offset = 0
+            OffsetLine = 0
+            ShouldRedraw = 1
+        } elseif (KeyCode == 150) {
+            # End
+            Offset = MaxOffsetLine * BytesPerLine
+            OffsetLine = MaxOffsetLine
+            ShouldRedraw = 1
+        } elseif (KeyCode == 151) {
+            # Page up
+            ScrollHex = -17
+        } elseif (KeyCode == 152) {
+            # Page down
+            ScrollHex = 17
+        } elseif (KeyCode == 17 |
+                  KeyCode == 19) {
+            # Up arrow
+            # Left arrow
+            ScrollHex = -1
+        } elseif (KeyCode == 18 |
+                  KeyCode == 20) {
+            # Down arrow
+            # Right arrow
+            ScrollHex = 1
+        }
+    }
+    LastKeyCode = KeyCode
+}
+
+if (ScrollHex != 0) {
+    TargetOffsetLine = OffsetLine + ScrollHex
+    if (TargetOffsetLine < 0)
+    {
+        TargetOffsetLine = 0
+    }
+    elseif (TargetOffsetLine > MaxOffsetLine)
+    {
+        TargetOffsetLine = MaxOffsetLine
+    }
+    ScrollDelta = min(TargetOffsetLine - OffsetLine, 17)
+    HexScreen[2038] = ScrollDelta
+    TextScreen[2031] = 0
+    TextScreen[2032] = 7
+    TextScreen[2033] = 1
+    TextScreen[2034] = 17
+    TextScreen[2038] = ScrollDelta
+    if (OffsetLine != TargetOffsetLine)
+    {
+        ShouldRedraw = 1
+        OffsetLine = TargetOffsetLine
+        Offset = OffsetLine * BytesPerLine
+    }
+}
+
+if (ShouldCheck) {
+    if (RAM)
+    {
+        DataLength = 128 * 1024
+    }
+    elseif (Wirelink)
+    {
+        DataLength = 128 * 1024
+    }
+    else
+    {
+        DataLength = Data:count()
+    }
+    DataTotalLines = ceil(DataLength / BytesPerLine)
+    MaxOffsetLine = DataTotalLines - 17
+    if (MaxOffsetLine < 0)
+    {
+        MaxOffsetLine = 0
+    }
+    ShouldCheck = 0
+    ShouldDetect = 1
+}
+
+if (ShouldDetect)
+{
+    ShouldDetect = 0
+    SideData:clear()
+    SideDataLine = 0
+    FourCC = ""
+    for (I = 1, 4)
+    {
+        FourCC += format("%c", Data[I, number])
+    }
+    Type = FourCCs[FourCC, string]
+    Lines = ""
+    DataOffset = 1
+    while (DataOffset < Type:length())
+    {
+        Lines += Type:sub(DataOffset, DataOffset + 20) + "\n"
+        DataOffset += 21
+    }
+    TextScreen:writeString(" ":repeat(21), 9, 1, 999, 262)
+    TextScreen:writeString(" ":repeat(21), 9, 2, 999, 262)
+    TextScreen:writeString(Lines, 9, 1, 999, 262)
+    
+    # Process Data
+    TextScreen[2031] = 8
+    TextScreen[2032] = 28
+    TextScreen[2033] = 3
+    TextScreen[2034] = 17
+    TextScreen[2019] = 1
+    ShouldRedrawSide = 1
+    SideData:pushString("Size: " + DataLength + " bytes")
+    if (Type == "MIDI Sound File") {
+        TrackCount = Data[10, number]
+        if (TrackCount == 0) {
+            SideData:pushString("Single track")
+        } elseif (TrackCount == 1) {
+            SideData:pushString(Data[12, number] + " tracks")
+        } elseif (TrackCount == 2) {
+            SideData:pushString(Data[12, number] + " tracks (async)")
+        }
+    } elseif (Type == "Portable Executable") {
+        NewHeaderOffset = 0
+        NewHeaderOffset += Data[64, number], NewHeaderOffset *= 256
+        NewHeaderOffset += Data[63, number], NewHeaderOffset *= 256
+        NewHeaderOffset += Data[62, number], NewHeaderOffset *= 256
+        NewHeaderOffset += Data[61, number]
+        SideData:pushString(format("PE at 0x%.8X", NewHeaderOffset))
+    }
+    SideTotalLines = SideData:count()
+}
+
+if (ShouldRedrawSide & minquota() > 0) {
+    ShouldRedrawSide = 0
+    CurrentLine = SideDataLine + 1
+    
+    # Calculate scrollbar
+    ScrollBarTop = floor(SideDataLine / SideTotalLines * (SideLinesPerScreen - 2)) + 2
+    ScrollBarBottom = floor((SideDataLine + SideLinesPerScreen) / SideTotalLines * (SideLinesPerScreen - 2)) + 2
+    if (SideLinesPerScreen >= SideTotalLines)
+    {
+        ScrollBarTop = 0
+        ScrollBarBottom = 0
+    }
+    print(SideData)
+    for (I = 1, 15)
+    {
+        TextScreen:writeString(SideData[CurrentLine, string], 9, I + 2, 999, 0)
+        if (I != 1 & I != 15)
+        {
+            if (I >= ScrollBarTop & I <= ScrollBarBottom)
+            {
+                TextScreen[I * 60 + 179] = 999999
+            }
+            else
+            {
+                TextScreen[I * 60 + 179] = 444999
+            }
+        }
+        CurrentLine++
+    }
+}
+
+if (ShouldRedraw & minquota() > 0) {
+    ShouldRedraw = 0
+    CurrentOffset = Offset
+    
+    # Calculate scrollbar
+    ScrollBarTop = floor(OffsetLine / DataTotalLines * (LinesPerScreen - 2)) + 2
+    ScrollBarBottom = floor((OffsetLine + LinesPerScreen) / DataTotalLines * (LinesPerScreen - 2)) + 2
+    if (LinesPerScreen >= DataTotalLines) {
+        ScrollBarTop = 0
+        ScrollBarBottom = 0
+    }
+    for (I = 1, 17) {
+        HexScreen:writeString(format("%4x", CurrentOffset), 0, I, 999, 669)
+        if (I != 1 & I != 17) {
+            if (I >= ScrollBarTop & I <= ScrollBarBottom) {
+                HexScreen[I * 60 + 59] = 999999
+            } else {
+                HexScreen[I * 60 + 59] = 444999
+            }
+        }
+        if (CurrentOffset >= DataLength) {
+            HexScreen:writeString("                       ", 5, I, 999, 0)
+            TextScreen:writeString("        ", 0, I, 999, 0)
+        } else {
+            for (J = 0, 7) {
+                if (CurrentOffset + J >= DataLength) {
+                    HexScreen:writeString(" ":repeat((8 - J) * 3 - 1), 5 + J * 3, I, 999, 0)
+                    TextScreen:writeString(" ":repeat(8 - J), J, I, 999, 0)
+                    break
+                } else {
+                    if (RAM) {
+                        Byte = RAM[CurrentOffset + J]
+                    } elseif (Wirelink) {
+                        Byte = Wirelink[CurrentOffset + J]
+                    } else {
+                        Byte = Data[CurrentOffset + J + 1, number]
+                    }
+                    if (Byte >= 0 & Byte <= 255) {
+                        HexScreen:writeString(format("%.2X", Byte), 5 + J * 3, I, 999, 0)
+                    } else {
+                        HexScreen:writeString("##", 5 + J * 3, I, 944, 0)
+                    }
+                    if ((Byte >= 32 & Byte <= 127) |
+                        (Unicode & Byte >= 128)) {
+                        TextScreen[I * 60 + J * 2] = Byte
+                        TextScreen[I * 60 + J * 2 + 1] = 999
+                    } elseif (Byte >= 0 & Byte <= 255) {
+                        TextScreen:writeString(".", J, I, 944, 0)
+                    } else {
+                        TextScreen:writeString("#", J, I, 944, 0)
+                    }
+                }
+            }
+        }
+        CurrentOffset += 8
+    }
+    
+    if (Offset > 0) {
+        HexScreen[60 + 59] = 666999
+    } else {
+        HexScreen[60 + 59] = 666333
+    }
+    HexScreen[60 * 17 + 58] = 118
+    if (DataLength > CurrentOffset) {
+        HexScreen[60 * 17 + 59] = 666999
+    } else {
+        HexScreen[60 * 17 + 59] = 666333
+    }
+}
+

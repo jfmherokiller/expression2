@@ -1,0 +1,102 @@
+@name Message Proxy
+@inputs
+@outputs
+@persist
+@trigger
+
+runOnChat(1)
+
+ChatActivated = 0
+OwnerActivated = 0
+LastSpoke = lastSpoke()
+if (chatClk()) {
+    LastSaid = lastSaid()
+    ChatActivated = 1
+}
+if (lastSpoke() == owner()) {
+    OwnerActivated = 1
+}
+if (ChatActivated) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    Components = Params:explode(" ")
+    ReducedParams = Params:replace(" ", "")
+    Number = Components:number(1)
+    Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "-") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    Player = findPlayerByName(Components:string(1))
+    Message = Params:sub(Params:find(" ") + 1, Params:length())
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "tick") {
+            EncodedData = ""
+            for (I = 1, convarnum("lmsg_message_proxy_data_count")) {
+                EncodedData = EncodedData + convar("lmsg_message_proxy_data" + I)
+            }
+            hint("" + convar("lmsg_message_proxy_data1"):length() + " " + convar("vgame_message_proxy_data2"):length() + " " + convar("vgame_message_proxy_data3"):length(), 10)
+            print("Received " + EncodedData:length() + " bytes.")
+            Data = glonDecode(EncodedData)
+            for (I = 1, Data:count()) {
+                String = Data:string(I)
+                # for (J = 1, 15) {
+                #     String = String:replace(format("%%%.2X", J), format("%c", J))
+                # }
+                # String = String:replace(format("%%%.2X", toByte("%")), "%")
+                Table = glonDecodeTable(String)
+                Type = Table:string("type")
+                Message = Table:string("msg")
+                Player = entity(Table:number("ply"))
+                if (Type == "chat") {
+                    if (Player == owner()) {
+                        print(Message)
+                    } else {
+                        # Player:print(Message)
+                    }
+                } elseif (Type == "hint") {
+                    if (Player == owner()) {
+                        hint(Message, Table:number("time"))
+                    } else {
+                        # Player:hint(Message, Table:number("time"))
+                    }
+                } elseif (Type == "say") {
+                    concmd("say \"" + Message + "\"")
+                }
+            }
+            print("Received " + Data:count() + " messages.")
+            print(" ")
+        }
+    }
+    Table = table()
+    Table:setNumber("ply", LastSpoke:id())
+    Table:setString("msg", LastSaid)
+    SendString = glonEncode(Table)
+    EscapedString = ""
+    for (I = 1, SendString:length()) {
+        ShouldEscape = 0
+        Char = toByte(SendString, I)
+        CharString = SendString:sub(I, I)
+        if (CharString == "%" |
+            CharString == "#" |
+            CharString == "\"" |
+            CharString == "\'" |
+            CharString == "q" | CharString == "Q") {
+            ShouldEscape = 1
+        }
+        if (ShouldEscape) {
+            EscapedString = EscapedString + format("#%.2x", Char)
+        } else {
+            EscapedString = EscapedString + CharString
+        }
+    }
+    concmd("lmsg_player_spoke \"" + EscapedString + "\"")
+}

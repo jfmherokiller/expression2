@@ -1,0 +1,122 @@
+@name E2 Macros Example
+
+# Import definitions from self, for the lulz.
+#@@import _example
+#@@define init
+#@if(first()) {
+#@    runOnChat(1)
+#@    dsJoinGroup("Skynet")
+#@    dsSetScope(2)
+#@}
+#@@end
+#@@mexpanded init
+    if(first()) {
+        runOnChat(1)
+        dsJoinGroup("Skynet")
+        dsSetScope(2)
+    }
+#@@mendexp
+
+# Completely pointless stuff coming up
+X = 0
+#@@define a
+#@X++
+#@@end
+
+#@@define b
+#@@expand a
+#@@expand a
+#@@end
+
+#@@define c
+#@@expand b
+#@@expand b
+#@@end
+
+#@@define d
+#@@expand c
+#@@expand c
+#@@end
+
+#@@define e
+#@@expand d
+#@@expand d
+#@@end
+
+#@@define f
+#@@expand e
+#@@expand e
+#@@end
+
+#@@define g
+#@@expand f
+#@@expand f
+#@@end
+
+#@@mexpanded g
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+                            X++
+#@@mendexp
+print(X)

@@ -1,0 +1,48 @@
+@name Camera
+@inputs VehicleActive Vehicle:entity AimPos:vector
+@inputs W A S D Shift Space
+@outputs Active CameraPos:vector CameraAng:angle
+@persist CameraVel:vector
+@trigger 
+
+if (VehicleActive) {
+    if (!Active) {
+        # Start camera
+        CameraPos = Vehicle:pos() + vec(0, 0, 72)
+        CameraVel = vec(0, 0, 0)
+    }
+    Active = 1
+    interval(10)
+} else {
+    Active = 0
+    stoptimer("interval")
+}
+
+VelMul = 1
+if (Shift) {
+    VelMul = 10
+}
+
+CameraAng = Vehicle:driver():eyeAngles()
+
+if (W) {
+    CameraVel += CameraAng:forward() * VelMul
+}
+if (S) {
+    CameraVel -= CameraAng:forward() * VelMul
+}
+
+if (A) {
+    CameraVel -= CameraAng:right() * VelMul
+}
+if (D) {
+    CameraVel += CameraAng:right() * VelMul
+}
+
+if (Space) {
+    CameraVel += vec(0, 0, 2) * VelMul
+}
+
+CameraPos += CameraVel
+
+CameraVel *= 0.5

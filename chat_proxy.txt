@@ -1,0 +1,26 @@
+@name Chat Proxy
+@inputs 
+@outputs
+@persist
+@trigger 
+
+runOnChat(1)
+
+if (first() | duped()) {
+}
+
+if (chatClk() & !dsClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+        }
+    }
+}
+
+if (dsClk()) {
+    if (dsClkName() == "Laser") {
+        LastReceived = dsGetNumber()
+        hint("Received " + toString(dsGetNumber()), 10)
+    }
+}

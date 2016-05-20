@@ -1,0 +1,9 @@
+@name suicide
+@inputs Die
+@outputs
+@persist
+@trigger
+
+interval(10)
+owner():killPod()
+concmd("explode")

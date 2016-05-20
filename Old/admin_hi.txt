@@ -1,0 +1,29 @@
+@name Admin Hi
+runOnChat(1)
+
+if (duped() | first()) {
+    print("Commands are: !hi")
+}
+
+if (chatClk() & lastSpoke() == owner() & lastSaid() == "!hi") {
+    hideChat(1)
+    Admins = array()
+    for (I = 1, maxPlayers()) {
+        if (entity(I) & entity(I):isAdmin() & entity(I) != owner()) {
+            Admins:pushEntity(entity(I))
+        }
+    }
+    AdminList = ""
+    for (I = 1, Admins:count()) {
+        if (AdminList:length()) {
+            if (I == Admins:count()) {
+                AdminList += " and " + Admins:entity(I):name()
+            } else {
+                AdminList += ", " + Admins:entity(I):name()
+            }
+        } else {
+            AdminList = Admins:entity(I):name()
+        }
+    }
+    concmd("wait 100; say Hi " + AdminList + "!")
+}

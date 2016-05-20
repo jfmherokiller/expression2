@@ -1,0 +1,161 @@
+@name Network/Client
+@inputs
+@outputs
+@persist DeviceType:string
+@persist IPAddress IPBlockMask
+@persist Network:gtable
+@persist DHCPSentRequest
+@persist Connections:array
+@persist IPTable:array IPTableEntities:array
+@persist
+@trigger
+@model models/props_lab/harddrive02.mdl
+
+DSClk = dsClk() | dsGetArray():count()
+First = !DSClk &(first() | duped())
+Last = !DSClk & last()
+if(First) {
+    runOnChat(1)
+	   runOnLast(1)
+	   dsSetScope(2)
+	   dsJoinGroup("Network")
+	   
+	   DeviceType = "Unknown"
+	   IPAddress = 0
+	   IPBlockMask = 32
+	   Network = gTable("Network", 1)
+}
+interval(1000)
+
+if (First) {
+    DeviceType = "Client"
+    if(IPBlockMask == 32) {
+        setName(DeviceType + "\n" + floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." +(IPAddress % 256))
+    } else {
+        setName(DeviceType + "\n" + floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." +(IPAddress % 256) + "/" + IPBlockMask)
+    }
+    
+        A = floor(27 / 256 / 256 / 256) + "." + floor(27 / 256 / 256 % 256) + "." + floor(27 / 256 % 256) + "." +(27 % 256)
+    print(A)
+} elseif (Last) {
+    for(I = 1, Connections:count()) {
+        dsSendDirect("Network", Connections[I, entity], array(Connections[I, entity], entity(), 0, IPAddress, "DHCPRelease", IPAddress, IPBlockMask))
+    }
+    Connections:clear()
+}
+
+if(!DHCPSentRequest & !IPAddress) {
+    findIncludeClass("gmod_wire_expression2")
+		  findInSphere(entity():pos(), 256)
+		  Routers = findToArray()
+		  Router = noentity()
+		  RouterDistance = 16384
+		  for(I = 1, Routers:count()) {
+			     if(Routers[I, entity]:getColor() != vec(255, 0, 0) &
+            Routers[I, entity]:getColor() != vec(0, 255, 0)) {
+            if(Routers[I, entity]:getName():find("Router")) {
+                if((Routers[I, entity]:pos() - entity():pos()):length() < RouterDistance) {
+                    Router = Routers[I, entity]
+                    RouterDistance =(Routers[I, entity]:pos() - entity():pos()):length()
+                }
+        				}
+        }
+    }
+    if(Router) {
+        Connections:pushEntity(Router)
+			     dsSendDirect("Network", Router, array(Router, entity(), 0, 0, "DHCPRequest"))
+			     DHCPSentRequest = 1
+    }
+}
+
+if(!DSClk & chatClk()) {
+    if(lastSpoke() == owner()) {
+		      LastSaid = lastSaid()
+		      if(LastSaid:sub(1, 1) == "!") {
+			         hideChat(1)
+			         LookingAtThis = 0
+			         if(owner():eyeTrace():entity() == entity()) {
+				            LookingAtThis = 1
+			         }
+			         LastSaid = LastSaid:sub(2)
+			         Parts = LastSaid:explode(" ")
+			         Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+			         Command = Parts[1, string]
+			         if(Command == "") {
+    } elseif(Command == "iptable" |
+        Command == "iptables") {
+    	   print("Routing table for " + floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." +(IPAddress % 256) + ":")
+    	   for(I = 1, IPTable:count()) {
+    		      Address = IPTable[I, vector2]:x()
+    		      print(floor(Address / 256 / 256 / 256) + "." + floor(Address / 256 / 256 % 256) + "." + floor(Address / 256 % 256) + "." +(Address % 256) + "/" +(32 - log(IPTable[I, vector2]:y(), 2)) + " -> " + IPTableEntities[I, entity]:id())
+    	   }
+			         }
+		      }
+	   }
+}
+
+if(DSClk) {
+    Message = dsGetArray()
+	   DestMAC = Message[1, entity]
+	   SrcMAC = Message[2, entity]
+	   DestIP = Message[3, number]
+	   SrcIP = Message[4, number]
+	   Type = Message[5, string]
+	   print("Received message " + Type + " from " + SrcMAC:id())
+	   if(!DestMAC | DestMAC == entity()) {
+		      if(0) {
+    } elseif(Type == "BGPDisconnect") {
+        for(I = 1, Connections:count()) {
+            if(Connections[I, entity] == SrcMAC) {
+                Connections:remove(I)
+                break
+            }
+        }
+        for(I = 1, IPTable:count()) {
+            if(IPTableEntities[I, entity] == SrcMAC) {
+                IPTable:remove(I)
+                IPTableEntities:remove(I)
+                break
+            }
+        }
+    } elseif(Type == "BGPPing") {
+        Range = 2 ^(32 - Message[6, number])
+    		  IPTable:pushVector2(vec2(SrcIP, Range))
+    		  IPTableEntities:pushEntity(SrcMAC)
+    		  Connections:pushEntity(SrcMAC)
+    		  dsSendDirect("Network", SrcMAC, array(SrcMAC, entity(), SrcIP, IPAddress, "BGPPong", IPBlockMask))
+    } elseif(Type == "BGPPong") {
+    		  Range = 2 ^(32 - Message[6, number])
+    		  IPTable:pushVector2(vec2(SrcIP, Range))
+    		  IPTableEntities:pushEntity(SrcMAC)
+    } elseif(Type == "DHCPAllocate") {
+    		  DHCPSentRequest = 0
+    		  IPAddress = Message[6, number]
+    		  IPBlockMask = Message[7, number]
+    		  if(IPBlockMask == 32) {
+    		      setName(DeviceType + "\n" + floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." +(IPAddress % 256))
+    		  } else {
+    		      setName(DeviceType + "\n" + floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." +(IPAddress % 256) + "/" + IPBlockMask)
+    		  }
+    		  
+    		  IPTable:pushVector2(vec2(0, 2 ^ 32))
+    		  IPTableEntities:pushEntity(SrcMAC)
+    		  
+    		  IPString = floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." +(IPAddress % 256)
+    		  print("Received IP block from " + SrcMAC:id() + ": " + IPString + "/" + Message[7, number])
+    		  dsSendDirect("Network", SrcMAC, array(SrcMAC, entity(), SrcIP, IPAddress, "DHCPAccept", Message[6, number], Message[7, number]))
+    } elseif(Type == "DHCPDrop") {
+    		  IPAddress = 0
+    		  IPBlockMask = 32
+    		  if(IPBlockMask == 32) {
+    		      setName(DeviceType + "\n" + floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." +(IPAddress % 256))
+    		  } else {
+    		      setName(DeviceType + "\n" + floor(IPAddress / 256 / 256 / 256) + "." + floor(IPAddress / 256 / 256 % 256) + "." + floor(IPAddress / 256 % 256) + "." +(IPAddress % 256) + "/" + IPBlockMask)
+    		  }
+    		  
+    		  IPTable:clear()
+    		  IPTableEntities:clear()
+    		  Connections:clear()
+        }
+    }
+}

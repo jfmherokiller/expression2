@@ -1,0 +1,45 @@
+@name Quiz Engine
+@inputs 
+@outputs 
+@persist QuizScores:table
+@trigger 
+
+runOnChat(1)
+
+if (first() | duped()) {
+    if (!convarnum("wire_expression2_concmd")) {
+        hint("wire_expression2_concmd is off; please enable it.", 10)
+    }
+}
+
+if (chatClk()) {
+    LastSaid = lastSaid()
+    if (lastSpoke() == owner()) {
+        Authorized = 1
+    }
+    
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "-" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "startquiz") {
+                hint("[QUIZ] Quiz started. First question in 10 seconds.", 10)
+                QuizScores = table()
+            } elseif (Command == "stopquiz") {
+                hint("[QUIZ] Quiz stopped.", 10)
+            }
+        }
+    }
+}

@@ -1,0 +1,36 @@
+@name Simple Scoreboard
+@inputs Reset
+@inputs BotsUp BotsDown HumansUp HumansDown
+@outputs Bots Humans
+@persist BotScore HumanScore
+@persist Started
+@trigger 
+
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    BotScore = 0
+    HumanScore = 0
+    Started = 1
+}
+
+if (BotsUp) {
+    BotScore++
+}
+if (BotsDown) {
+    BotScore--
+}
+if (HumansUp) {
+    HumanScore++
+}
+if (HumansDown) {
+    HumanScore--
+}
+if (Reset) {
+    BotScore = 0
+    HumanScore = 0
+}
+
+Bots = BotScore
+Humans = HumanScore

@@ -1,0 +1,8 @@
+@name EGP Text
+@inputs Text:string EGP:wirelink
+@outputs 
+@persist 
+@trigger StringPos
+
+EGP:egpText(1, "EGP Text", vec2(256, 256), vec4(255, 255, 255, 255))
+EGP:egpDraw()

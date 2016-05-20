@@ -1,0 +1,39 @@
+@name Autoturret
+@inputs 
+@outputs Yaw YawSpeed Pitch PitchSpeed Fire
+@persist 
+@trigger 
+
+interval(100)
+
+EntTarget = owner()
+AngTarget = (owner():pos() - entity():pos()):toAngle()
+AngDelta = AngTarget - entity():angles()
+AngDelta -= entity():angVel()
+if (AngDelta:yaw() < -180) {
+    AngDelta = AngDelta:setYaw(AngDelta:yaw() + 360)
+}
+if (AngDelta:yaw() > 180) {
+    AngDelta = AngDelta:setYaw(AngDelta:yaw() - 360)
+}
+if (AngDelta:yaw() < -180) {
+    AngDelta = AngDelta:setYaw(AngDelta:yaw() + 360)
+}
+if (AngDelta:yaw() > 180) {
+    AngDelta = AngDelta:setYaw(AngDelta:yaw() - 360)
+}
+
+YawSpeed = abs(AngDelta:yaw()) / 10
+
+Fire = 0
+if (abs(AngDelta:yaw()) < 5) {
+    Yaw = 0
+    Fire = 1
+} elseif (AngDelta:yaw() > 0) {
+    Yaw = 1
+} else {
+    Yaw = -1
+}
+if (!EntTarget:isAlive() | (EntTarget:pos() - entity():pos()):length() > 100) {
+    Fire = 0
+}

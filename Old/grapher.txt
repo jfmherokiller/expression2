@@ -1,0 +1,128 @@
+@name Grapher
+@inputs KeyPressed KeyboardInUse EGP:wirelink GPU:wirelink
+@inputs Reset
+@outputs Formula:string Points:array X Y TextScreen:string
+@outputs Kick
+# Keyboard
+@persist PointInterval XRange YRange
+@persist LastKey KeyPressTime
+@persist Points:array PointsIndex
+@persist Code:code
+@persist Formula:string
+
+@persist LastError:string
+@persist ShouldCompileCode ShouldGraph CurrentX
+@trigger 
+
+interval(100)
+
+Kick = 0
+if (first() | duped()) {
+    gSetGroup("Grapher")
+    gShare(1)
+    
+    Formula = gGetStr("Formula")
+    ShouldCompileCode = gGetNum("ShouldCompileCode")
+    if (!gGetNum("WasReset")) {
+        Kick = 1
+    } else {
+        gSetNum("WasReset", 0)
+    }
+    
+    LastKey = 0
+    PointsIndex = 1
+    LastError = "None"
+    
+    PointInterval = 0.5
+    XRange = 10
+    YRange = 3
+}
+
+if (inputClk()) {
+    if (Reset) {
+        reset()
+    }
+    # Process keystrokes
+    LastKey = KeyPressed
+    if (LastKey & KeyboardInUse & (curtime() - KeyPressTime > 1)) {
+        # Tab key
+        if (LastKey == 9) {
+            Formula += " "
+        }
+        # Backspace
+        if (LastKey == 127) {
+            Formula = Formula:sub(0, Formula:length() - 1)
+        }
+        # ASCII
+        if (LastKey >= 32 & LastKey <= 126) {
+            Formula += toChar(LastKey)
+        }
+        # Enter
+        if (LastKey == 13 & Formula:length()) {
+            ShouldCompileCode = 1
+            gSetNum("ShouldCompileCode", 1)
+            Points:clear()
+            if (!virtCanCompile()) {
+                LastError = "Cannot compile at the moment. Try pushing reset."
+                gSetNum("WasReset", 1)
+                reset()
+            } else {
+                LastError = "None"
+            }
+        }
+        gSetStr("Formula", Formula)
+    }
+}
+
+if (ShouldCompileCode & virtCanCompile()) {
+    ProcessedFormula = Formula
+    ProcessedFormula = ProcessedFormula:replace("x", "X")
+    ProcessedFormula = ProcessedFormula:replace("y", "Y")
+    ProcessedFormula = ProcessedFormula:replace("\t", " ")
+    ProcessedFormula = ProcessedFormula:replace("  ", " ")
+    ProcessedFormula = ProcessedFormula:replace(" (", "(")
+    Valid = 1
+    if (ProcessedFormula:find("concmd")) {
+        Valid = 0
+        LastError = format("%c%c%c_%c%c%c", 224, 178, 160, 224, 178, 160)
+        Kick = 1
+    }
+    ShouldCompileCode = 0
+    if (Valid) {   
+        CodeString = "@inputs X\n@outputs Y\nY = " + ProcessedFormula
+        Code = virtCompile(CodeString)
+        gSetNum("ShouldCompileCode", 0)
+        if (virtLastError() != "") {
+            LastError = virtLastError()
+        } else {
+            ShouldGraph = 1
+        }
+    }
+}
+
+if (ShouldGraph) {
+    Table = table()
+    I = 0
+    for (X = -XRange, XRange, PointInterval) {
+        Table["X", number] = X
+        Code:exec(Table)
+        Y = Code:getOutputs()["Y", number]
+        Points:pushNumber(Y)
+        GPU[2048 + I] = Y
+        I++
+    }
+    ShouldGraph = 0
+}
+
+if (Points:count()) {
+    if (clk("interval")) {
+        PointsIndex++
+        if (PointsIndex > Points:count()) {
+            PointsIndex = 1
+        }
+        X = ((PointsIndex - 1) * PointInterval - XRange) / XRange
+        Y = Points[PointsIndex, number] / YRange
+    }
+}
+
+TextScreen = "y = " + Formula + "<br>Last error: " + LastError

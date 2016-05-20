@@ -1,0 +1,21 @@
+@name DateTime
+@inputs 
+@outputs Hours Minutes Seconds Milliseconds Year Month Day
+@persist
+@trigger
+
+interval(50)
+
+Hours = time("hour") + 1 - time("isdst")
+Minutes = time("min")
+Seconds = time("sec")
+
+Year = time("year")
+Month = time("month")
+Day = time("day")
+
+if (Hours > 23) {
+    Hours = Hours % 24
+    Day += 1
+}
+

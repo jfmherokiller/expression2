@@ -1,0 +1,34 @@
+@name Holo Text
+@inputs
+@outputs
+@persist Messages:array Player:entity
+@trigger
+@model
+
+interval(100)
+
+if (first() | duped()) {
+    Messages:pushString("teh awesome")
+    Messages:pushString(toUnicodeChar(8595))
+    Player = entity()
+    # Player = findPlayerByName("Catnip")
+    # Player = findPlayerByName("!cake")
+    Player = findPlayerByName("flash")
+    for (I = 1, Messages:count()) {
+        holoTextCreate(I * 2)
+        holoTextCreate(I * 2 + 1)
+        holoText(I * 2, Messages[I, string])
+        holoText(I * 2 + 1, Messages[I, string])
+        holoTextParent(I * 2, Player)
+        holoTextParent(I * 2 + 1, Player)
+        holoTextPos(I * 2, Player:pos() + vec(0, 0, Player:boxMax():z() + (Messages:count() - I) * 24 + 32))
+        holoTextPos(I * 2 + 1, Player:pos() + vec(0, 0, Player:boxMax():z() + (Messages:count() - I) * 24 + 32))
+        holoTextAng(I * 2, ang(0, 0, 90))
+        holoTextAng(I * 2 + 1, ang(0, 0, 90))
+    }
+}
+
+for (I = 1, Messages:count()) {
+    holoTextAng(I * 2, ang(0, (curtime() * 2) % 360, 90))
+    holoTextAng(I * 2 + 1, ang(0, (curtime() * 2) % 360 + 180, 90))
+}

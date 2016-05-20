@@ -1,0 +1,24 @@
+@name Lift Data
+@inputs
+@outputs FloorHeights:array FloorNames:array
+@persist
+@trigger
+
+# Edit the following lines to add / remove floors
+# FloorHeights = array()
+# for(I = 1, 50) {
+#    FloorHeights:setNumber(I, (I - 1) * 128)
+# }
+# End of config
+
+FloorHeights = array()
+FloorHeights:setNumber(0, 0)
+FloorHeights:setNumber(1, 1000)
+FloorHeights:setNumber(2, 1400)
+FloorHeights:setNumber(3, 1800)
+
+FloorNames = array()
+FloorNames:setString(0, "0")
+FloorNames:setString(1, "EZ")
+FloorNames:setString(2, "2")
+FloorNames:setString(3, "3")

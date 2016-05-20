@@ -1,0 +1,132 @@
+@name Nukular fusion
+@inputs
+@outputs
+@outputs
+@persist SpawnPosition:vector Medic
+@persist UnparentNextTick
+@trigger
+
+runOnChat(1)
+runOnTick(1)
+
+if (first() | duped()) {
+    SpawnPosition = entity():pos()
+    Medic = 0
+    
+#ifdef entitySpawn(string, vector, number)
+    entitySpawn("weapon_357", owner():pos(), 0)
+    entitySpawn("weapon_ar2", owner():pos(), 0)
+    entitySpawn("weapon_crossbow", owner():pos(), 0)
+    entitySpawn("weapon_crowbar", owner():pos(), 0)
+    entitySpawn("weapon_rpg", owner():pos(), 0)
+    entitySpawn("weapon_slam", owner():pos(), 0)
+#endif
+}
+
+# selfDestruct()
+
+if (Medic) {
+    if (owner():isAlive()) {
+        if (owner():health() < 100) {
+#ifdef entitySpawn(string, vector, number)
+            entitySpawn("item_healthkit", owner():pos(), 0)
+#endif
+        }
+        if (owner():armor() < 100) {
+#ifdef entitySpawn(string, vector, number)
+            entitySpawn("item_battery", owner():pos(), 0)
+#endif
+        }
+    }
+}
+
+if (UnparentNextTick == 1) {
+    # owner():deparent()
+    UnparentNextTick = 2
+} elseif (UnparentNextTick == 2) {
+    # entity():setPos(SpawnPosition)
+    UnparentNextTick = 0
+}
+
+if (chatClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LookingAtThis = 0
+            if (owner():eyeTrace():entity() == entity()) {
+                LookingAtThis = 1
+            }
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2):trim()
+            Command = Parts[1, string]
+            if (Command == "bolt" |
+                Command == "crossbow") {
+                Player = findPlayerByName(Arguments)
+                if (!Player) {
+                    print("No player with the name \"" + Arguments + "\" found.")
+                } else {
+#ifdef entitySpawn(string, vector, number)
+                    entitySpawn("crossbow_bolt", Player:pos() + vec(0, 0, 32), 0)
+#endif
+                }
+            } elseif (Command == "crate") {
+#ifdef entitySpawn(string, vector, number)
+                entitySpawn("item_item_crate", owner():pos() + vec(0, 0, 64) + owner():toWorldAxis(vec(32, 0, 0)), 0)
+#endif
+            } elseif (Command == "hurt") {
+                Target = findPlayerByName(Arguments)
+                if (!Target) {
+                    print("No target found.")
+                } else {
+#ifdef entitySpawn(string, vector, number)
+                    entitySpawn("point_hurt", Target:pos(), 0)
+#endif
+                }
+            } elseif (Command == "gravity") {
+#ifdef entity:setGravity(number)
+                owner():setGravity(Arguments:toNumber())
+#endif
+                owner():propGravity(Arguments:toNumber())
+                if (Arguments:toNumber()) {
+                    printColor(vec(0, 128, 0), "Gravity enabled.")
+                } else {
+                    printColor(vec(0, 128, 0), "Gravity disabled.")
+                }
+            } elseif (Command == "medic") {
+                Medic = Arguments:toNumber()
+                if (Medic) {
+                    printColor(vec(0, 128, 0), "Medic mode enabled.")
+                } else {
+                    printColor(vec(0, 128, 0), "Medic mode disabled.")
+                }
+            } elseif (Command == "rpg") {
+                Player = findPlayerByName(Arguments)
+                if (!Player) {
+                    print("No player with the name \"" + Arguments + "\" found.")
+                } else {
+#ifdef entitySpawn(string, vector, number)
+                    entitySpawn("rpg_missile", Player:pos() + vec(0, 0, 32), 0)
+#endif
+                }
+            } elseif (Command == "solid") {
+                owner():propNotSolid(1 - Arguments:toNumber())
+                if (Arguments:toNumber()) {
+                    printColor(vec(0, 128, 0), "You are now solid.")
+                } else {
+                    printColor(vec(0, 128, 0), "You are now not solid.")
+                }
+            } elseif (Command == "suitcharger") {
+#ifdef entitySpawn(string, vector, number)
+                entitySpawn("item_suitcharger", owner():pos() + vec(0, 0, 64) + owner():toWorldAxis(vec(32, 0, 0)), 0)
+#endif
+            } elseif (Command == "zoom") {
+                entity():setPos(owner():pos())
+                owner():parentTo(entity())
+                entity():setPos(owner():pos() + owner():eye() * 64)
+                UnparentNextTick = 1
+            }
+        }
+    }
+}

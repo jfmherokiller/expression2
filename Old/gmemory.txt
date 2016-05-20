@@ -1,0 +1,98 @@
+@name gMemory
+@inputs 
+@outputs 
+@persist StringSize String:string Running
+@trigger 
+
+runOnChat(1)
+interval(1)
+
+if (!StringSize) {
+    Power = 24
+    String = "01"
+    for (I = 1, Power - 1) {
+        String = String + String
+    }
+    StringSize = 2 ^ Power
+}
+
+Run = 0
+
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "length") {
+            hint("Buffer is " + String:length() + " bytes long.", 10)
+        } elseif (Command == "fill") {
+            Run = 1
+        } elseif (Command == "on") {
+            Running = 1
+            hint("Filling memory...", 10)
+        } elseif (Command == "off") {
+            Running = 0
+            hint("Stopped filling memory.", 10)
+        } elseif (Command == "toggle") {
+            Running = 1 - Running
+            if (Running) {
+                hint("Filling memory...", 10)
+            } else {
+                hint("Stopped filling memory.", 10)
+            }
+        } elseif (Command == "reset") {
+            gSetNum("gMemoryCount", 0)
+            gSetNum("gMemoryFilled", 0)
+            hint("Reset memory count.", 10)
+        } elseif (Command == "double") {
+            StringSize *= 2
+            String = String + String
+            hint("Buffer is now " + String:length() + " bytes long.", 10)
+        } elseif (Command == "status") {
+            BytesFilled = gGetNum("gMemoryFilled")
+            MemoryCount = gGetNum("gMemoryCount")
+            MB = floor(BytesFilled / 1024 / 1024)
+            KB = BytesFilled / 1024 % 1024
+            B = BytesFilled % 1024
+            hint("Filled " + MB + " megabytes, " + KB + " kilobytes and " + B + " bytes.", 10)
+            hint("Filled " + MemoryCount + " variables.", 10)
+        } elseif (Command == "read") {
+            Stuff = gGetStr("gMemory" + Params:toNumber())
+            hint(Stuff:sub(0, 128), 10)
+            hint("String is " + Stuff:length() + " bytes long.", 10)
+        }
+    }
+}
+
+if (Running) {
+    Run = 1
+}
+
+if (Run) {
+    String = String + String
+    StringSize *= 2
+    gSetStr("gMemory" + gGetNum("gMemoryCount"), String)
+    gSetNum("gMemoryCount", gGetNum("gMemoryCount") + 1)
+    BytesFilled = gGetNum("gMemoryFilled") + StringSize
+    gSetNum("gMemoryFilled", BytesFilled)
+    
+    if (BytesFilled % (1024 * 1024) == 0) {
+        hint("Filled " + gGetNum("gMemoryFilled") / 1024 / 1024 + " megabytes.", 10)
+    }
+}

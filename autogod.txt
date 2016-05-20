@@ -1,0 +1,21 @@
+@name autogod
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+if (first() | duped())
+{
+    runOnChat(1)
+}
+
+if (chatClk())
+{
+    if (lastSpoke() != owner())
+    {
+        if (lastSaid():lower():find("!ungod"))
+        {
+            concmd("ulx god ^")
+        }
+    }
+}

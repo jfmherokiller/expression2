@@ -1,0 +1,28 @@
+@name targeter
+@inputs EntFoundTarget:entity
+@outputs EntTarget:entity TargetName:string
+@persist TargetName:string
+@trigger
+
+runOnChat(1)
+
+Authorized = 0
+
+if (chatClk()) {
+    if (lastSpoke() == owner()) {
+        Authorized = 1
+    }
+    if (lastSaid():find("!target", 1) == 1) {
+        hideChat(1)
+        TargetName = lastSaid():replace("!target", ""):trimLeft():trimRight()
+    } elseif (lastSaid():find("!notarget", 1) == 1) {
+        hideChat(1)
+        TargetName = ""
+    }
+}
+EntPlayer = findPlayerByName(TargetName)
+if (TargetName:length() & EntPlayer) {
+    EntTarget = EntPlayer
+} else {
+    EntTarget = EntFoundTarget
+}

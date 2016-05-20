@@ -1,0 +1,45 @@
+@name Admin Doors
+@inputs Button EntPlayer:entity InsideButton
+@outputs Hydraulics LastTeam:string
+@persist Started OpenTime
+@trigger
+
+interval(1000)
+
+if (duped()) {
+    Started = 0
+}
+
+if (!Started) {
+    OpenTime = curtime() - 6
+    Hydraulics = 0
+    Started = 1
+}
+
+Authorized = 0
+if (Button) {
+    if (EntPlayer) {
+        if (EntPlayer:owner()) {
+            EntPlayer = EntPlayer:owner()
+        }
+        Team = EntPlayer:team():teamName():lower()
+        LastTeam = EntPlayer:team():teamName()
+        if (Team == "super administrator" | Team == "administrator" | Team == "unassigned" | Team == "v.i.p") {
+            Authorized = 1
+        }
+        if (EntPlayer:isAdmin()) {
+            Authorized = 1
+        }
+    }
+}
+if (InsideButton) {
+    Authorized = 1
+}
+if (Authorized) {
+    Hydraulics = 0
+    OpenTime = curtime()
+}
+
+if (!Hydraulics & curtime() - OpenTime > 5) {
+    Hydraulics = 92
+}

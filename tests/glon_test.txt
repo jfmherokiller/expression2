@@ -1,0 +1,97 @@
+@persist TeleLoc:table LastSaid:array
+
+    Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+    S1 = Chars[1] # End
+    S2 = Chars[2] # Table start
+    S3 = Chars[3] # Array start
+    S4 = Chars[4] # False
+    S5 = Chars[5] # True
+    S6 = Chars[6] # Number start
+    S7 = Chars[7] # String start
+    S10 = Chars[10]   # Entity start
+    S255 = format("%c", 255)
+    
+if(first())
+{
+runOnChat(1)
+runOnFile(1)
+fileLoad("teleport_locs.txt")
+function void saveTeleLocs()
+    {
+        local TeleFile = glonEncode(TeleLoc)
+        local C = TeleFile
+        C = C:replace(S1, "[01]")
+        C = C:replace(S2, "[02]")
+        C = C:replace(S3, "[03]")
+        C = C:replace(S4, "[04]")
+        C = C:replace(S5, "[05]")
+        C = C:replace(S6, "[06]")
+        C = C:replace(S7, "[07]")
+        C = C:replace(S10, "[0A]")
+        for (I = 1, C:length(), 100)
+        {
+            print("\"" + C:sub(I, I + 99) + "\"")
+        }
+        if(fileCanWrite())
+        {
+            fileWrite("teleport_locs.txt", TeleFile)
+        }
+        else
+        {
+            hint("Cannot write to file right now, try again in a few seconds...",7)
+        }
+    }
+}
+if(fileClk() & fileLoaded())
+{
+    local TeleFile = fileRead()
+        local C = TeleFile
+        C = C:replace(S1, "[01]")
+        C = C:replace(S2, "[02]")
+        C = C:replace(S3, "[03]")
+        C = C:replace(S4, "[04]")
+        C = C:replace(S5, "[05]")
+        C = C:replace(S6, "[06]")
+        C = C:replace(S7, "[07]")
+        C = C:replace(S10, "[0A]")
+        for (I = 1, C:length(), 100)
+        {
+            print("\"" + C:sub(I, I + 99) + "\"")
+        }
+    TeleLoc = glonDecodeTable(TeleFile)
+    print("Error: " + glonError())
+        local C = glonEncode(TeleLoc)
+        C = C:replace(S1, "[01]")
+        C = C:replace(S2, "[02]")
+        C = C:replace(S3, "[03]")
+        C = C:replace(S4, "[04]")
+        C = C:replace(S5, "[05]")
+        C = C:replace(S6, "[06]")
+        C = C:replace(S7, "[07]")
+        C = C:replace(S10, "[0A]")
+        for (I = 1, C:length(), 100)
+        {
+            print("\"" + C:sub(I, I + 99) + "\"")
+        }
+    hint("Teleport locations successfully loaded.",7)
+}
+
+LastSaid = owner():lastSaid():explode(" ")
+
+if(chatClk(owner()) & LastSaid[1,string] == "!setpos")
+{
+            if(!TeleLoc[map(),table])
+            {
+                TeleLoc[map(),table] = table()
+            }
+            TeleLoc[map(),table][LastSaid[2,string],vector] = owner():pos()
+            saveTeleLocs()
+            hint("Transporter position '"+LastSaid[2,string]+"' set to your location.",7)
+}
+if(chatClk(owner()) & LastSaid[1,string] == "!tplocs")
+{
+        foreach(K,V:vector=TeleLoc[map(),table])
+        {
+            print(_HUD_PRINTCONSOLE,K+": "+toString(V))
+        }
+}

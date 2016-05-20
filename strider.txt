@@ -1,0 +1,17 @@
+@name Strider
+@inputs
+@outputs
+@persist
+@trigger
+@model
+
+interval(200)
+
+if (first() | duped()) {
+    holoCreate(1)
+    holoEntity(1):setModel("models/combine_strider.mdl")
+    holoPos(1, entity():pos() + vec(0, 0, holoEntity(1):boxSize():z()))
+    holoAnim(1, 9)
+}
+
+# holoColor(1, vec(random(0, 255), random(0, 255), random(0, 255)))

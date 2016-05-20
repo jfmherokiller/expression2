@@ -1,0 +1,68 @@
+@name Proof Of Concept (Generics)
+@inputs
+@outputs 
+@persist
+@trigger 
+
+runOnChat(1)
+
+Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+S1 = Chars[1]
+S2 = Chars[2]
+S3 = Chars[3]
+S6 = Chars[6]
+S7 = Chars[7]
+S10 = Chars[10]
+S11 = Chars[11]
+EmptyTable = S2 + S1
+
+if (first() | duped()) {
+    setName("E2 Router")
+    
+    EntityGeneric = S2
+        EntityGeneric += S7 + "nbuffer" + S1
+            EntityGeneric += S7 + "buffer" + S1
+        EntityGeneric += S7 + "n_buffer" + S1
+            EntityGeneric += S7 + "_buffer" + S1
+        EntityGeneric += S7 + "noriginal" + S1
+            EntityGeneric += S7 + "original" + S1
+        EntityGeneric += S7 + "n_original" + S1
+            EntityGeneric += S7 + "_original" + S1
+        EntityGeneric += S7 + "ggeneric" + S1
+            EntityGeneric += S2
+                EntityGeneric += S7 + "realType" + S1
+                    EntityGeneric += S7 + "t" + S1
+                EntityGeneric += S7 + "data" + S1
+                    EntityGeneric += S10
+                        EntityGeneric += entity():id()
+                    EntityGeneric += S1
+            EntityGeneric += S1
+        EntityGeneric += S7 + "ggtable" + S1
+            EntityGeneric += S2
+                EntityGeneric += S7 + "realType" + S1
+                    EntityGeneric += S7 + "t" + S1
+                EntityGeneric += S7 + "data" + S1
+                    EntityGeneric += S10
+                        EntityGeneric += entity():id()
+                    EntityGeneric += S1
+            EntityGeneric += S1
+        EntityGeneric += S7 + "ggarray" + S1
+            EntityGeneric += S2
+                EntityGeneric += S7 + "realType" + S1
+                    EntityGeneric += S7 + "r" + S1
+                EntityGeneric += S7 + "data" + S1
+                    EntityGeneric += S10
+                        EntityGeneric += entity():id()
+                    EntityGeneric += S1
+            EntityGeneric += S1
+    EntityGeneric += S1
+    
+    Table = glonDecodeTable(EntityGeneric)
+    ETable = Table:generic("gtable")[table]
+    EArray = Table:generic("garray")[array]
+    EArray[Table["buffer", number], string] = "Problem?"
+    EArray[Table["_buffer", number], string] = "Problem?"
+    EArray[Table["original", number], string] = "Problem?"
+    EArray[Table["_original", number], string] = "Problem?"
+    mtable()+mtable()
+}

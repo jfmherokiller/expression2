@@ -1,0 +1,41 @@
+@name Holoemitter Mesh
+@inputs XWL:wirelink
+@outputs
+@persist Points:array PointIndex
+@trigger
+@model
+
+runOnTick(1)
+if (first() | duped()) {
+    PointIndex = 1
+    Points:pushVector(vec(-1, -1, -1))
+    Points:pushVector(vec(-1, -1, 1))
+    Points:pushVector(vec(-1, 1, 1))
+    Points:pushVector(vec(-1, 1, -1))
+    Points:pushVector(vec(1, 1, -1))
+    Points:pushVector(vec(1, -1, -1))
+    Points:pushVector(vec(1, -1, 1))
+    Points:pushVector(vec(-1, -1, 1))
+    
+    XWL[4] = 1
+    XWL[5] = 255
+    XWL[6] = 255
+    XWL[7] = 255
+    XWL[8] = 5
+    XWL[9] = 1
+    XWL[10] = 0
+    XWL[11] = 10
+    XWL[13] = 1
+}
+
+    XWL[1] = Points[PointIndex, vector]:x() * 100
+    XWL[2] = Points[PointIndex, vector]:y() * 100
+    XWL[3] = Points[PointIndex, vector]:z() * 100
+    XWL[1] = 0
+    XWL[2] = (curtime() % 10 - 5) * 100
+    XWL[3] = tan((curtime() % 10 - 5) * 180 / _PI) * 100
+    XWL[0] = random()
+    PointIndex++
+    if (PointIndex > Points:count()) {
+        PointIndex = 1
+    }

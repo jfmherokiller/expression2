@@ -1,0 +1,222 @@
+@name parabolae (mass)
+@inputs 
+@outputs 
+@persist Shooter:entity DamageOn
+@persist LastReload
+@persist Projectiles:array
+@persist MaxProjectiles Segments
+@trigger 
+
+interval(100)
+
+if (first() | duped())
+{
+    runOnChat(1)
+    
+    Shooter = owner()
+    MaxProjectiles = 10
+    Segments = 50
+    Segments = 5
+    DamageOn = 0
+    
+    for (I = 1, Segments * 10)
+    {
+        E = holoCreate(I)
+        holoModel(I, "hqcylinder")
+        holoColor(I, vec4(255, 0, 0, 128))
+    }
+    
+    function holoLine(N, V1:vector, V2:vector, T)
+    {
+        holoPos(N, (V1 + V2) / 2)
+        holoAng(N, (V2 - V1):toAngle() + ang(90, 0, 0))
+        holoScale(N, vec(0.1, 0.1, (V2 - V1):length() / 12))
+        holoEntity(N):setText("t = " + format("%.2f", T) + " s")
+    }
+    
+    function vector getShootPos()
+    {
+        Base = Shooter:shootPos()
+        Direction = Shooter:eyeAngles():forward():setZ(0):normalized() + vec(0, 0, 1)
+        Direction = Direction:normalized()
+        return Base + Direction * 32
+    }
+    
+    function plotTrajectory(N, P:vector, V:vector)
+    {
+        Direction = V:setZ(0):normalized()
+        P_base = P
+        X_0 = 0
+        Y_0 = 0
+        V_X = V:setZ(0):length()
+        V_Y = V:z()
+        
+        # x'' = 0
+        # y'' = -g
+        # x' = v_x
+        # y' = v_y - gt
+        # x = x_0 + v_x t
+        # y = y_0 + v_y t - 0.5gt2
+        
+        I = 1
+        T_Last = 0
+        for (T = 0, 2, 2 / Segments)
+        {
+            P_next = P_base + Direction * (X_0 + V_X * T) + vec(0, 0, 1) * (Y_0 + V_Y * T - 0.5 * 600 * T^2)
+            holoLine(N + I, P, P_next, (T + T_Last) / 2)
+            P = P_next
+            T_Last = T
+            I++
+        }
+    }
+    
+    function vector solveTrajectory(S:vector, E:vector)
+    {
+        Rel = E - S
+        E_X = Rel:setZ(0):length()
+        E_Y = Rel:z()
+        # v_x = v_y
+        # x = k t
+        # y = k t - 0.5gt2
+        # y = x - 0.5g x2 / k2
+        # k2 y = k2 x - 0.5g x2
+        # k2 (y - x) = -0.5gx2
+        # k2 = -0.5gx^2 / (y - x)
+        # k = sqrt (-0.5gx2 / (y - x))
+        K = sqrt(-0.5 * 600 * E_X * E_X / (E_Y - E_X))
+        return K * vec(0, 0, 1) + K * Rel:setZ(0):normalized()
+    }
+    
+    function fire()
+    {
+        # Vel = solveTrajectory(getShootPos(), Shooter:eyeTrace():pos())
+        R = players()
+        for (I = 1, R:count())
+        {
+            if (R[I, entity] == owner()) { continue }
+            Vel = solveTrajectory(getShootPos(), R[I, entity]:pos())
+            if (Projectiles:count() >= MaxProjectiles)
+            {
+                Projectiles:removeEntity(1):propDelete()
+            }
+            
+    #ifdef propSpawn(sv)
+            Prop = propSpawn("models/combine_helicopter/helicopter_bomb01.mdl", getShootPos())
+    #else
+            Prop = propSpawn("models/combine_helicopter/helicopter_bomb01.mdl", getShootPos(), 0)
+    #endif
+            Prop:setMass(5000)
+            Prop:applyForce(Prop:mass() * Vel)
+            
+            Projectiles:pushEntity(Prop)
+        }
+    }
+}
+
+if (clk("interval"))
+{
+    R = players()
+    HoloI = 1
+    for (I = 1, R:count())
+    {
+        if (R[I, entity] == owner()) { continue }
+        Vel = solveTrajectory(getShootPos(), R[I, entity]:pos())
+        plotTrajectory(HoloI * Segments, getShootPos(), Vel)
+        HoloI++
+    }
+    # Vel = solveTrajectory(getShootPos(), Shooter:eyeTrace():pos())
+    # plotTrajectory(I, getShootPos(), Vel)
+
+    for (I = 1, MaxProjectiles)
+    {
+        Projectile = Projectiles[I, entity]
+        if (Projectile)
+        {
+            Pos = Projectile:pos()
+            if (Projectile:vel():length() < 10)
+            {
+                if (DamageOn)
+                {
+                    Projectile:explode(Projectile:pos(), 256)
+                }
+                else
+                {
+                    Projectile:explode(Projectile:pos(), 0)
+                }
+                Projectile:propDelete()
+                findInSphere(Pos, 1000)
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                    Ent = R[I, entity]
+                    if (Ent:owner():isPlayer())
+                    {
+                        EntPos = Ent:pos()
+                        Dist = (EntPos - Pos):length()
+#ifdef entity:setDamage(number)
+                        Ent:setDamage(100 / Dist / Dist * 100000) # 100 damage at 100 units away
+#endif
+                    }
+                }
+            }
+        }
+    }
+    
+    if (Shooter:keyReload() != LastReload)
+    {
+        LastReload = Shooter:keyReload()
+        if (LastReload)
+        {
+            fire()
+        }
+    }
+}
+
+if (chatClk())
+{
+    LastSpoke = lastSpoke()
+    LastSaid = lastSaid()
+    if (LastSpoke == owner())
+    {
+        if (LastSaid[1] == "!")
+        {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Command = LastSaid
+            Arguments = ""
+            if (LastSaid:find(" "))
+            {
+                Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+                Arguments = LastSaid:sub(LastSaid:find(" ") + 1)
+            }
+            if (Command == "dmg")
+            {
+                DamageOn = !DamageOn
+                if (DamageOn) { print("Damage turned on.") }
+                else { print("Damage turned off.") }
+            }
+            elseif (Command == "f")
+            {
+                fire()
+            }
+            elseif (Command == "o")
+            {
+                NewOwner = owner():eyeTrace():entity()
+                if (Arguments)
+                {
+                    Ply = findPlayerByName(Arguments)
+                    if (Ply) { NewOwner = Ply }
+                    else
+                    {
+                        print("Couldn't find \"" + Arguments + "\"")
+                    }
+                }
+                if (NewOwner:isPlayer())
+                {
+                    Shooter = NewOwner
+                    print(Shooter:name() + " is now the shooter")
+                }
+            }
+        }
+    }
+}

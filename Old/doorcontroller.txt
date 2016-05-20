@@ -1,0 +1,118 @@
+@name DoorController
+@inputs LiftId
+@inputs EntDoorA:entity EntDoorB:entity
+@inputs EntLiftFloor:entity
+@inputs TargetHeight
+
+@outputs DbgMsg1:string
+@outputs DbgMsg2:string
+@outputs DbgMsg3:string
+@outputs HoverTargetHeight
+@outputs DeltaTargetHeight
+@outputs DoorALocked DoorBLocked
+
+@persist EntChip:entity EntitiesFound
+
+@persist VecDeltaDoorA:vector VecDeltaDoorB:vector
+@persist VecDoorA:vector VecDoorB:vector
+
+@persist AngDeltaDoorA:angle AngDeltaDoorB:angle
+@persist AngDoorA:angle AngDoorB:angle
+
+# Door states
+@persist DoorAOpening DoorBOpening
+@persist DoorAClosing DoorACLosing
+@persist DoorAExpanding DoorBExpanding
+
+@trigger
+
+interval(10)
+TargetHeight = 200
+EntitiesFound = 0
+if (!EntitiesFound) {
+    EntChip = entity()
+    if (EntChip) {
+        EntitiesFound = 1   
+    }
+}
+
+# Make the doors follow the lift
+
+VecDoorA = EntDoorA:pos()
+VecDoorB = EntDoorB:pos()
+AngDoorA = EntDoorA:angles()
+AngDoorB = EntDoorB:angles()
+
+VecDeltaDoorA = EntLiftFloor:toWorld(vec(33.5, 31, -0.25))
+VecDeltaDoorB = EntLiftFloor:toWorld(vec(-34, -32, -0.25))
+AngDeltaDoorA = EntLiftFloor:toWorld(ang(0, -90, 0))
+AngDeltaDoorB = EntLiftFloor:toWorld(ang(0, 90, 0))
+DbgMsg1 = toString(AngDeltaDoorA:pitch())
+DbgMsg2 = toString(AngDeltaDoorA:yaw())
+DbgMsg3 = toString(AngDeltaDoorA:roll())
+VecDeltaDoorA = VecDeltaDoorA - VecDoorA
+VecDeltaDoorB = VecDeltaDoorB - VecDoorB
+AngDeltaDoorA = AngDeltaDoorA - AngDoorA
+AngDeltaDoorB = AngDeltaDoorB - AngDoorB
+
+# Vectors are now direction vectors
+# Offset by current speed
+VecDeltaDoorA -= EntDoorA:vel()
+VecDeltaDoorB -= EntDoorB:vel()
+AngDeltaDoorA -= EntDoorA:angVel()
+AngDeltaDoorB -= EntDoorB:angVel()
+DistDeltaDoorA = VecDeltaDoorA:length()
+DistDeltaDoorB = VecDeltaDoorB:length()
+VecDeltaDoorA = VecDeltaDoorA:normalized()
+VecDeltaDoorB = VecDeltaDoorB:normalized()
+DistDeltaDoorA = sqrt(DistDeltaDoorA)
+DistDeltaDoorB = sqrt(DistDeltaDoorB)
+if (DistDeltaDoorA < 0.3) {
+    DistDeltaDoorA = 0
+}
+if (DistDeltaDoorB < 0.3) {
+    DistDeltaDoorB = 0   
+}
+VecDeltaDoorA *= DistDeltaDoorA
+VecDeltaDoorB *= DistDeltaDoorB
+# Only bother with door rotation in one axis
+AngDeltaDoorA = ang(0, AngDeltaDoorA:yaw(), 0)
+AngDeltaDoorB = ang(0, AngDeltaDoorB:yaw(), 0)
+AngDeltaDoorA = mod(AngDeltaDoorA + ang(360, 360, 360), 360)
+AngDeltaDoorB = mod(AngDeltaDoorB + ang(360, 360, 360), 360)
+if (AngDeltaDoorA:yaw() > 180) {
+    AngDeltaDoorA = AngDeltaDoorA:setYaw(AngDeltaDoorA:yaw() - 360)   
+}
+if (AngDeltaDoorB:yaw() > 180) {
+    AngDeltaDoorB = AngDeltaDoorB:setYaw(AngDeltaDoorB:yaw() - 360)   
+}
+# Convert vectors to force vectors
+
+DeltaTargetHeight = TargetHeight - EntLiftFloor:pos():z()
+DeltaTargetHeight += 3
+if (DeltaTargetHeight > 10) {
+    DeltaTargetHeight = 10   
+}
+if (DeltaTargetHeight < -10) {
+    DeltaTargetHeight = -10   
+}
+#hint(toString(DeltaTargetHeight),1)
+VecDeltaLift = vec(0, 0, DeltaTargetHeight)
+#VecDeltaDoorA += VecDeltaLift
+#VecDeltaDoorB += VecDeltaLift
+
+# F = ma
+# a = F / m
+LiftMass = EntLiftFloor:mass()
+#VecDeltaLift *= LiftMass
+VecDeltaDoorA *= EntDoorA:mass()
+VecDeltaDoorB *= EntDoorB:mass()
+AngDeltaDoorA *= EntDoorA:mass()
+AngDeltaDoorB *= EntDoorB:mass()
+#gravity()*Entity:mass()*0.0150225 or 0.02805
+EntDoorA:applyForce(VecDeltaDoorA)
+EntDoorB:applyForce(VecDeltaDoorB)
+EntDoorA:applyAngForce(AngDeltaDoorA)
+EntDoorB:applyAngForce(AngDeltaDoorB)
+
+HoverTargetHeight = TargetHeight

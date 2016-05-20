@@ -1,0 +1,75 @@
+@name Best E2 Evar
+@inputs
+@outputs
+@persist E:table C:table Ops Centre:vector LastUpdate
+@trigger
+@model models/props_interiors/vendingmachinesoda01a.mdl
+
+@import hax
+runOnTick(1)
+
+if (first() | duped())
+{
+    @expand set_code "@name Best E2 Evar\n@inputs \n@outputs \n@persist \n@trigger \n@model models/props_interiors/vendingmachinesoda01a.mdl\n\nmagic()"
+
+    @expand define_glon_chars
+    @expand create_exploitable_table G
+    E = glonDecodeTable(G)
+    E["context", array] = array()
+    E["s", entity] = entity()
+    
+    C = glonDecodeTable(G)
+    C["prf", number] = 0
+    C["prfbench", number] = 0
+    C["prfcount", number] = 0
+    C["s", array] = E["context", array]
+    
+    Ops = -1e100
+    
+    Centre = entity():pos()
+}
+
+if (curtime() - LastUpdate > 0.1)
+{
+    R = array()
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n140 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n141 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n142 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n143 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n144 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n145 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n146 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n147 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n148 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n149 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n150 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n151 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n152 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n153 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n154 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n155 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n156 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n157 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n158 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n159 fps")
+    R:pushString("Running Crysis at 1080p, 16xMSAA\n160 fps")
+    
+    OPR = array()
+    OPR:pushNumber(-0.9e100)
+    OPR:pushNumber(-1.0e100)
+    OPR:pushNumber(-1.1e100)
+    OPR:pushNumber(-1.2e100)
+    OPR:pushNumber(-1.3e100)
+    
+    Ops = OPR[floor(random(1, OPR:count())), number]
+    
+    setName(R[floor(random(1, R:count())), string])
+    
+    Offset = randvec()
+    Offset = Offset:setZ(0)
+    Offset *= 1
+    entity():setPos(Centre + Offset)
+}
+
+C["prfbench", number] = Ops
+C["prf", number] = Ops

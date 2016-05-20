@@ -1,0 +1,10 @@
+@name Simple hologram
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+interval(100)
+holoCreate(1)
+holoModel(1,"hqsphere")
+holoPos(1, owner():pos() + vec(0, 0, 100))

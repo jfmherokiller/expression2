@@ -1,0 +1,46 @@
+@name Epic RPG
+@inputs
+@outputs
+@persist ExperienceLevels:array Level TotalExperience
+@persist HasTargetPosition ImmediateTargetPosition:vector
+@trigger
+interval(100)
+
+if (first() | duped()) {
+    HasTargetPosition = 1
+    
+    Level = 1
+    ExperienceLevels:pushNumber(0)
+    ExperienceLevels:pushNumber(10)
+    ExperienceLevels:pushNumber(20)
+    
+    holoCreate(1)
+    holoModel(1, "hqcylinder")
+    holoColor(1, vec(0, 0, 255))
+    holoScale(1, vec(0.3, 0.3, 0.8))
+    
+    holoCreate(2)
+    holoModel(2, "hqcone")
+    holoColor(2, vec(0, 0, 255))
+    holoPos(2, holoEntity(1):toWorld(vec(0, 0, 7)))
+    holoAng(2, holoEntity(1):toWorld(ang(0, 90, 0)))
+    holoScale(2, vec(0.5, 0.5, 0.5))
+    holoParent(2, holoEntity(1))
+    
+    holoParent(1, owner())
+    holoPos(1, owner():attachmentPos("eyes") + owner():toWorldAxis(vec(32, 4.5, 8)))
+    
+    printColor(vec(0, 255, 0), "You are a level 1 human.")
+}
+
+if (HasTargetPosition) {
+    holoAng(1, ang(90, 0, 0) + (entity():pos() - owner():pos()):toAngle():setPitch(0):setRoll(0))
+    Distance = (entity():pos() - owner():pos()):length()
+    if (Distance < 100) {
+        holoAlpha(1, (Distance * 0.01) ^ 2 * 255)
+        holoAlpha(2, (Distance * 0.01) ^ 2 * 255)
+    } else {
+        holoAlpha(1, 255)
+        holoAlpha(2, 255)
+    }
+}

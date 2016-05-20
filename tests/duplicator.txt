@@ -1,0 +1,9 @@
+@name tests/Duplicator
+@inputs 
+@outputs 
+@persist A:string
+@trigger 
+
+for (I = 1, 255) {
+    A = A + format("%c", I)
+}

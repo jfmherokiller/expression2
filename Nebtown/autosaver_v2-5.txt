@@ -1,0 +1,208 @@
+@name Nebcorp's Awesome Automatic Autosaver!
+@inputs Pos:vector
+@outputs SecondsSinceLastDupe
+@persist Modes:array Mode Width Height Away:vector2 Overhead Prepared 
+@persist [Folder Name LocalName]:string AfterDupe FarBack Interval PasteAtOrigLocation HeightOffset Tab:table
+if(!Prepared) {
+    
+    #Defaults
+    # Feel free to change these for your personal Duper E2 :D
+    DefaultFolder = owner():name()    #<---- CHANGE THIS IF YOU CHANGE NAMES OFTEN (KATRANGERPERISHTON)
+    DefaultState = 1                  #1: Paste 2: Save etc
+    
+    
+    
+    
+    
+    
+    #GUI Display
+    if(first()) {
+        Height = 720
+        Width = 300
+        Away = vec2(2000,0)
+        Modes = array("Paste", "Save", "Delete", "Transfer file to Autopaste", "Save directly to Autopaste")
+        
+        dPanel("Main", vec2(scrW()-Width-45,25), vec2(Width+20,Height))
+        enableMouse(1)
+    
+        #Mutual
+        dListBox("Modes", "Main", vec2(10,30), vec2(Width, 105))
+            dArray("Modes", Modes)
+            dSetSval("Modes", Modes[DefaultState,string])
+            dRunOnChange("Modes", 1)
+        
+        dLabel("Folder: ", "Main", vec2(10, 140))
+        dButton("Personal", "Main", vec2(52, 138), vec2(65, 19))
+        dButton("Public", "Main", vec2(119, 138), vec2(57, 19))
+        dButton("Nebtown", "Main", vec2(178, 138), vec2(65, 19))
+        dButton("AutoSaves", "Main", vec2(245, 138), vec2(65, 19))
+        
+        dTextBox("Folder", "Main", vec2(10, 160), Width)
+            dSetSval("Folder", DefaultFolder)
+            dRunOnChange("Folder", 1)
+        dListBox("Name", "Main", vec2(10, 180), vec2(Width, 125))
+            dRunOnChange("Name", 1)
+        Overhead = 310
+        
+        
+        
+        #Pasting
+        dSlider("Farback", "Main", Away, Width, 0, 60)
+            dRunOnChange("Farback", 1)
+        dSlider("Height Offset", "Main", Away, Width, -300, 500)
+        dSlider("Additional Yaw", "Main", Away, Width, 0, 360)
+        dCheckBox("Paste to Original Location?", "Main", Away)
+        
+        #Saving
+        dLabel("New Name:", "Main", Away)
+        dTextBox("New Name", "Main", Away, Width)
+            dRunOnChange("New Name", 1)
+        dSlider("Interval", "Main", Away, Width, 30, 300), dSetNval("Interval", 60)
+        dCheckBox("Persist After Dupe?", "Main", Away)
+        
+        #Bottom
+        dImage("Seagull", "Main", "VGUI/entities/npc_seagull", vec2(10, Height - 265), vec2(Width, 205))
+        dButton("FIAH!!", "Main", vec2(10, Height - 50), vec2(Width, 40))
+    }
+    Temp = dSval("Modes")
+    if(changed(Temp)) {
+        for(K=1, Modes:count()) {
+            if(Temp == Modes[K,string]) {Mode = K, break}
+        }
+        NewHeight = Height - ((Mode==2)*45+(Mode==3 | Mode==4)*140+(Mode==5)*45)
+        dSize("Main", vec2(Width+20,NewHeight))
+        
+        dPos("Farback",                     (Mode==1 ? vec2(10,Overhead) : Away))
+        dPos("Height Offset",               (Mode==1 ? vec2(10,Overhead+40) : Away))
+        dPos("Additional Yaw",              (Mode==1 ? vec2(10,Overhead+80) : Away))
+        dPos("Paste to Original Location?", (Mode==1 ? vec2(10,Overhead+120) : Away))
+        
+        dPos("New Name:",           (Mode==2 | Mode==5 ? vec2(10,Overhead) : Away))
+        dPos("New Name",            (Mode==2 | Mode==5 ? vec2(10,Overhead+20) : Away))
+        
+        dPos("Interval",            (Mode==2 | Mode==5 ? vec2(10,Overhead+40) : Away))
+        dPos("Persist After Dupe?", (Mode==2 | Mode==5 ? vec2(10,Overhead+80) : Away))
+        
+        dPos("Seagull", vec2(10, NewHeight - 265))
+        dPos("FIAH!!", vec2(10, NewHeight - 50))
+    
+    }
+    Folder = dSval("Folder")
+    FarBack = dNval("Farback")
+    if(dClk("Personal")) {
+        dSetSval("Folder", DefaultFolder)
+        Folder = DefaultFolder
+    }
+    elseif(dClk("Nebtown")) {
+        dSetSval("Folder", "Nebtown")
+        dSetNval("Paste to Original Location?", 1)
+        Folder = "Nebtown"
+    }
+    elseif(dClk("Public")) {
+        dSetSval("Folder", "Public")
+        Folder = "Public"
+    }
+    elseif(dClk("AutoSaves")) {
+        dSetSval("Folder", "AutoSaves")
+        dSetNval("Paste to Original Location?", 1)
+        dSetNval("Farback", 0)
+        Folder = "AutoSaves"
+    }
+    if(changed(Folder)) {dArray("Name", fileListDir("advdupes/"+Folder))}
+    if(Folder == "AutoSaves") {FarBack = 0 dArray("Name", fileList("advdupes/AutoSaves/"):sortReverse())}
+    if(dClk("Name") | (dClk("Farback") & changed(FarBack))) {
+        Name = dSval("Name")
+        if(Folder == "AutoSaves") {Tab = fileReadTable("advdupes/AutoSaves/"+Name)}
+        else{
+            List = fileList("advdupes/"+Folder+"/"+Name+"/")
+            LocalName = fileListSort(List, FarBack+1)
+            Tab = fileReadTable("advdupes/"+Folder+"/"+Name+"/"+LocalName)
+        }
+        print(Name+"["+FarBack+"] has "+Tab:getNumber("ECount")+" ents, and "+Tab:getNumber("CCount")+" constraints.")
+    }
+    if(dClk("New Name")) {Name = dSval("New Name")}
+    
+    AfterDupe = dNval("Persist After Dupe?")
+    Interval = dNval("Interval")
+    
+    
+    PasteAtOrigLocation = dNval("Paste to Original Location?")
+    HeightOffset = dNval("Height Offset")
+    
+    if(dClk("FIAH!!")) {
+        if(Name) {
+            Prepared = 1
+            dArray("Name", array())
+            dShow("Main", 0)
+            enableMouse(0)
+            if(Mode == 1) {
+                if(PasteAtOrigLocation) {
+                    interval(50)
+                    print("Now pastaing /" + Folder + "/" + Name + " at original location.")
+                }
+                else{
+                    runOnKeys(owner())
+                    print("Now pastaing /" + Folder + "/" + Name + ". Press R, Mouse1, or Mouse2 to pasta where you want pasta.")
+                }
+                
+            } elseif(Mode == 2 | Mode == 5) {
+                timer("Dupe", 50), timer("Second", 1000)
+                print("Now autosaving to the file of /" + (Mode==2 ? Folder : "maps/"+map())+"/"+Name + " every " + Interval + " seconds" + (AfterDupe ? ", continuing to save with each paste." : "."))
+            } else{interval(50)}
+        }
+        else{print("You didn't choose a name! >:~O")}
+    }
+}
+else{
+    #BRAINZ MmmMMMM BRAINZZZZZ
+    if(Mode == 1) {
+        if(keyClk() & (owner():keyMouse1() | owner():keyMouse2() | owner():keyR())) {
+            Prepared = 2
+            Pos = owner():aimPos() + vec(0,0,HeightOffset)
+        }
+        if(Prepared == 2 | PasteAtOrigLocation) {
+            if(PasteAtOrigLocation) {
+                dupePaste(Tab)
+            }
+            else{
+                if(!Pos) {Pos = entity():pos() + vec(0,0,HeightOffset)}
+                dupePaste(Tab, Pos, ang(0, dNval("Additional Yaw"), 0))
+            }
+            print("Pasting: " + LocalName)
+            selfDestruct()
+        }
+    }
+    elseif(Mode == 2) {
+        if(!AfterDupe & (duped() | !welded())) {selfDestruct(), exit()}
+        elseif(duped()) {timer("Dupe", 60000)}
+        elseif(clk("Second")) {timer("Second", 1000), SecondsSinceLastDupe++}
+        elseif(clk("Dupe")) {
+            timer("Dupe", clamp(Interval, 30, 900)*1000)
+            SecondsSinceLastDupe = 0
+            for(K=1,10) {timer("Colourfix"+K, 2000 + 100*K)}, setColor(0,0,255), entity():setMaterial("models/shiny")
+            fileWriteTable("advdupes/"+Folder+"/"+Name+"/"+Name+ dupeTime(), dupeCopy(welded(), AfterDupe))
+        }
+        else{setColor(entity():getColor():x()+26,255,255), entity():setMaterial("")}
+    }
+    elseif(Mode == 3) {
+		      if(Folder & Name) {fileWriteString("advdupes/delrequest.txt", Folder+"/"+Name)}
+        print("Deleted /"+Folder+"/"+Name+".")
+        selfDestruct()
+    }
+    elseif(Mode == 4) {
+        List = fileList("advdupes/"+Folder+"/"+Name+"/")
+        LocalName = fileListSort(List, FarBack+1)
+        fileWriteTable("advdupes/maps/"+map()+"/"+Name, fileReadTable("advdupes/"+Folder+"/"+Name+"/"+LocalName))
+        print(LocalName + " Has been copied to " + map() + "'s autopaste folder!")
+        selfDestruct()
+    }
+    elseif(Mode == 5) {
+        if((duped() & !AfterDupe) | !welded()) {selfDestruct(), exit()}
+        elseif(clk("Colourfix")) {setColor(255,255,255), entity():setMaterial("")}
+        elseif(clk("Dupe")) {
+            timer("Dupe", clamp(Interval, 30, 900)*1000)
+            timer("Colourfix", 2000), setColor(0,0,255), entity():setMaterial("models/shiny")
+            fileWriteTable("advdupes/maps/"+map()+"/"+Name, dupeCopy(entity():isWeldedTo(), AfterDupe))
+        }
+    }
+}

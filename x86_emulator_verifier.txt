@@ -1,0 +1,304 @@
+@name x86 Emulator Verifier
+@outputs 
+@persist Globals:gtable
+@persist HexDigits:string Hex8:table Hex16:table Parity:table
+
+# State 3
+@persist EIP
+@persist EAX EBX ECX EDX
+@persist ESP EBP ESI EDI
+@persist ES CS SS DS FS GS
+
+@persist CF PF AF ZF SF TF IF DF OF IOPL NT
+@persist RF VM AC VIF VIP ID
+@persist SegmentPrefix
+
+if (first() | duped())
+{
+	Globals = gTable("x86", 1)
+	Hex8 = Globals["Hex8", table]
+	Hex16 = Globals["Hex16", table]
+	Parity = Globals["Parity", table]
+	
+	function string toHex8 (Dec) { return format ("0x%02x", Dec) }
+	function string toHex16 (Dec) { return format ("0x%04x", Dec) }
+	function string toHex32 (Dec) { return "0x" + Hex16[Dec >> 16, string] + Hex16[Dec && 0xFFFF, string] }
+	function string toHex1616 (Seg, Addr) { return "0x" + Hex16[Seg, string] + ":" + Hex16[Addr, string] }
+	function number toBCD4 (Dec) { return Dec }
+	function number toBCD8 (Dec) { return floor(Dec / 10) * 0x10 + (Dec % 10) }
+	function number toBCD16 (Dec) { return floor(Dec / 1000) * 0x1000 + (floor(Dec / 100) % 10) * 0x0100 + (floor(Dec / 10) % 10) * 0x0010 + (Dec % 10) }
+	function number toBCD88 (Dec1, Dec2) { return floor(Dec1 / 10) * 0x1000 + (Dec1 % 10) * 0x0100 + floor(Dec2 / 10) * 0x0010 + (Dec2 % 10) }
+	
+	function updateIncDecFlags8 (Op1, Op2, Value)
+	{
+		ZF = Value == 0
+		SF = (Value && 0x80) != 0
+		OF = ((Op1 && 0x80) == (Op2 && 0x80)) & ((Op1 && 0x80) != (Value && 0x80))
+		PF = Parity[Value, number]
+	}
+	
+	function updateIncDecFlags16 (Op1, Op2, Value)
+	{
+		ZF = Value == 0
+		SF = (Value && 0x8000) != 0
+		OF = ((Op1 && 0x8000) == (Op2 && 0x8000)) & ((Op1 && 0x8000) != (Value && 0x8000))
+		PF = Parity[Value && 0xFF, number]
+	}
+	
+	function updateAddFlags8(Op1, Op2, Value)
+	{
+		CF = (Value && 0x0100) != 0
+		ZF = (Value && 0xFF) == 0
+		SF = (Value && 0x80) != 0
+		OF = (Op1 && 0x80) == (Op2 && 0x80) & (Op1 && 0x80) != (Value && 0x80)
+		PF = Parity[Value && 0xFF, number]
+	}
+	
+	function updateAddFlags16(Op1, Op2, Value)
+	{
+		CF = (Value && 0x00010000) != 0
+		ZF = (Value && 0xFFFF) == 0
+		SF = (Value && 0x8000) != 0
+		OF = (Op1 && 0x8000) == (Op2 && 0x8000) & (Op1 && 0x8000) != (Value && 0x8000)
+		PF = Parity[Value && 0xFF, number]
+	}
+	
+	function updateSubFlags8 (Op1, Op2, Value)
+	{
+		CF = Op2 > Op1
+		ZF = Value == 0
+		SF = (Value && 0x80) != 0
+		OF = (Op1 && 0x80) != (Op2 && 0x80) & (Op1 && 0x80) != (Value && 0x80)
+		PF = Parity[Value, number]
+	}
+	
+	function updateSubFlags16 (Op1, Op2, Value)
+	{
+		CF = Op2 > Op1
+		ZF = Value == 0
+		SF = (Value && 0x8000) != 0
+		OF = (Op1 && 0x8000) != (Op2 && 0x8000) & (Op1 && 0x8000) != (Value && 0x8000)
+		PF = Parity[Value && 0xFFFF, number]
+	}
+	
+	function updateBinOpFlags8 (PostOp)
+	{
+		CF = 0
+		ZF = PostOp == 0
+		SF = (PostOp && 0x80) != 0
+		OF = 0
+	}
+	
+	function updateBinOpFlags16 (PostOp)
+	{
+		CF = 0
+		ZF = PostOp == 0
+		SF = (PostOp && 0x8000) != 0
+		OF = 0
+	}
+	
+	function number inc8 (Op1) { if (Op1 == 0xFF) { Value = 0x00 } else { Value = Op1 + 1 }, updateIncDecFlags8(Op1, 0x01, Value), return Value }
+	function number inc16 (Op1) { if (Op1 == 0xFFFF) { Value = 0x0000 } else { Value = Op1 + 1 }, updateIncDecFlags16(Op1, 0x0001, Value), return Value }
+	function number dec8 (Op1) { if (Op1 == 0x00) { Value = 0xFF } else { Value = Op1 - 1 }, updateIncDecFlags8(Op1, 0xFF, Value), return Value }
+	function number dec16 (Op1) { if (Op1 == 0x0000) { Value = 0xFFFF } else { Value = Op1 - 1 }, updateIncDecFlags16(Op1, 0xFFFF, Value), return Value }
+	
+	function number add8 (Op1, Op2) { Value = Op1 + Op2, updateAddFlags8(Op1, Op2, Value), return Value && 0xFF}
+	function number add16 (Op1, Op2) { Value = Op1 + Op2, updateAddFlags16(Op1, Op2, Value), return Value && 0xFFFF}
+	function number adc8 (Op1, Op2) { Value = Op1 + Op2 + CF, updateAddFlags8(Op1, Op2, Value), return Value && 0xFF}
+	function number adc16 (Op1, Op2) { Value = Op1 + Op2 + CF, updateAddFlags16(Op1, Op2, Value), return Value && 0xFFFF}
+	function number sub8 (Op1, Op2) { Value = (Op1 + 0x0100 - Op2) && 0xFF, updateSubFlags8(Op1, Op2, Value), return Value }
+	function number sub16 (Op1, Op2) { Value = (Op1 + 0x00010000 - Op2) && 0xFFFF, updateSubFlags16(Op1, Op2, Value), return Value }
+	function number sbb8 (Op1, Op2) { Value = (Op1 + 0x0100 - Op2 - CF) && 0xFF, updateSubFlags8(Op1, Op2, Value), return Value }
+	function number sbb16 (Op1, Op2) { Value = (Op1 + 0x00010000 - Op2 - CF) && 0xFFFF, updateSubFlags16(Op1, Op2, Value), return Value }
+	
+	function number and8 (Op1, Op2) { Value = Op1 && Op2, updateBinOpFlags8(Value), return Value }
+	function number and16 (Op1, Op2) { Value = Op1 && Op2, updateBinOpFlags16(Value), return Value }
+	function number or8 (Op1, Op2) { Value = Op1 || Op2, updateBinOpFlags8(Value), return Value }
+	function number or16 (Op1, Op2) { Value = Op1 || Op2, updateBinOpFlags16(Value), return Value }
+	function number xor8 (Op1, Op2) { Value = bXor(Op1, Op2), updateBinOpFlags8(Value), return Value }
+	function number xor16 (Op1, Op2) { Value = bXor(Op1, Op2), updateBinOpFlags16(Value), return Value }
+	
+	function number shl8 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Value = Op1 << Op2
+		CF = (Value && 0x0100) != 0
+		ZF = (Value && 0xFF) == 0
+		SF = (Value && 0x80) != 0
+		OF = (Op1 && 0x80 != Value && 0x80)
+		return Value && 0xFF
+	}
+	
+	function number shl16 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Value = Op1 << Op2
+		CF = (Value && 0x00010000) != 0
+		ZF = (Value && 0xFFFF) == 0
+		SF = (Value && 0x8000) != 0
+		OF = (Op1 && 0x8000 != Value && 0x8000)
+		return Value && 0xFFFF
+	}
+	
+	function number shr8 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Value = Op1 >> Op2
+		CF = (Op1 >> (Op2 - 1)) && 0x01
+		ZF = Value == 0
+		SF = 0
+		OF = Op1 && 0x80 != 0
+		return Value
+	}
+	
+	function number shr16 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Value = Op1 >> Op2
+		CF = (Op1 >> (Op2 - 1)) && 0x0001
+		ZF = Value == 0
+		SF = 0
+		OF = Op1 && 0x8000 != 0
+		return Value
+	}
+
+    function number sar8 (Op1, Op2)
+    {
+    Op2 = Op2 && 0x1F
+    if (!Op2) { return Op1 }
+    Value = Op1
+    for (I = 1, Op2) { CF = Value && 0x01, Value = (Value >> 1) + (Op1 && 0x80) }
+    ZF = Value == 0
+    SF = (Value && 0x80) != 0
+    OF = 0
+    PF = Parity[Value, number]
+    return Value
+    }
+    
+    function number sar16 (Op1, Op2)
+    {
+    Op2 = Op2 && 0x1F
+    if (!Op2) { return Op1 }
+    Value = Op1
+    for (I = 1, Op2) { CF = Value && 0x0001, Value = (Value >> 1) + (Op1 && 0x8000) }
+    ZF = Value == 0
+    SF = (Value && 0x8000) != 0
+    OF = 0
+    PF = Parity[Value, number]
+    return Value
+    }
+	
+	function number rol8 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Op2 = Op2 % 8
+		Value = ((Op1 << Op2) && 0xFF) + (Op1 >> (8 - Op2))
+		CF = Value && 0x01
+		OF = (Op1 && 0x80 != Value && 0x80)
+		return Value
+	}
+	
+	function number rol16 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Op2 = Op2 % 16
+		Value = ((Op1 << Op2) && 0xFFFF) + (Op1 >> (16 - Op2))
+		CF = Value && 0x0001
+		OF = (Op1 && 0x8000 != Value && 0x8000)
+		return Value
+	}
+	
+	function number ror8 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Op2 = Op2 % 8
+		Value = (Op1 >> Op2) + ((Op1 << (8 - Op2)) && 0xFF)
+		CF = Value && 0x80
+		OF = (Op1 && 0x80 != Value && 0x80)
+		return Value
+	}
+	
+	function number ror16 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Op2 = Op2 % 16
+		Value = (Op1 >> Op2) + ((Op1 << (16 - Op2)) && 0xFFFF)
+		CF = Value && 0x8000
+		OF = (Op1 && 0x8000 != Value && 0x8000)
+		return Value
+	}
+	
+	function number rcl8 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Op2 = Op2 % 9
+		Value = ((Op1 << Op2) && 0xFF) + (Op1 >> (9 - Op2))
+		if (Op2)
+		{
+			Value += CF << (Op2 - 1)
+			CF = (Op1 >> (8 - Op2)) && 0x01
+		}
+		OF = (Op1 && 0x80 != Value && 0x80)
+		return Value
+	}
+	
+	function number rcl16 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Op2 = Op2 % 17
+		Value = ((Op1 << Op2) && 0xFFFF) + (Op1 >> (17 - Op2))
+		if (Op2)
+		{
+			Value += CF << (Op2 - 1)
+			CF = (Op1 >> (16 - Op2)) && 0x0001
+		}
+		OF = (Op1 && 0x8000 != Value && 0x8000)
+		return Value
+	}
+	
+	function number rcr8 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Op2 = Op2 % 9
+		Value = (Op1 >> Op2) + ((Op1 << 9 - Op2) && 0xFF)
+		if (Op2)
+		{
+			Value += CF << (8 - Op2)
+			CF = (Op1 >> (Op2 - 1)) && 0x01
+		}
+		OF = (Op1 && 0x80 != Value && 0x80)
+		return Value
+	}
+	
+	function number rcr16 (Op1, Op2)
+	{
+		if (!Op2) { return Op1 }
+		Op2 = Op2 % 17
+		Value = (Op1 >> Op2) + ((Op1 << 17 - Op2) && 0xFFFF)
+		if (Op2)
+		{
+			Value += CF << (16 - Op2)
+			CF = (Op1 >> (Op2 - 1)) && 0x0001
+		}
+		OF = (Op1 && 0x8000 != Value && 0x8000)
+		return Value
+	}
+
+	function string toBin16(Val)
+	{
+		BinStr = ""
+		for (I = 1, 16)
+		{
+			BinStr = (Val && 1) + BinStr
+			Val = Val >> 1
+		}
+		return "0b" + BinStr
+	}
+}
+
+CF = 1
+A = 0x8000
+B = 12
+C = sar16(A, B)
+print("sar " + toHex16(A) + ", " + toHex16(B) + "=" + toHex16(C))
+print("CF" + CF, "OF" + OF, "ZF" + ZF, "SF" + SF, "PF" + PF)

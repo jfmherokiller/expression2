@@ -1,0 +1,32 @@
+@define bgp_disconnect_all
+for (I = 1, Connections:count ()) {
+    dsSendDirect ("Network", Connections [I, entity], array (Connections [I, entity], entity (), 0, IPAddress, "BGPDisconnect"))
+}
+@end
+
+@define bgp_ds_handlers
+} elseif (Type == "BGPDisconnect") {
+    for (I = 1, Connections:count ()) {
+        if (Connections [I, entity] == SrcMAC) {
+            Connections:remove (I)
+            break
+        }
+    }
+    for (I = 1, IPTable:count ()) {
+        if (IPTableEntities [I, entity] == SrcMAC) {
+            IPTable:remove (I)
+            IPTableEntities:remove (I)
+            break
+        }
+    }
+} elseif (Type == "BGPPing") {
+    Range = 2 ^ (32 - Message[6, number])
+		  IPTable:pushVector2(vec2(SrcIP, Range))
+		  IPTableEntities:pushEntity(SrcMAC)
+		  Connections:pushEntity (SrcMAC)
+		  dsSendDirect("Network", SrcMAC, array(SrcMAC, entity(), SrcIP, IPAddress, "BGPPong", IPBlockMask))
+} elseif (Type == "BGPPong") {
+		  Range = 2 ^ (32 - Message[6, number])
+		  IPTable:pushVector2(vec2(SrcIP, Range))
+		  IPTableEntities:pushEntity(SrcMAC)
+@end

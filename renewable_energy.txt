@@ -1,0 +1,133 @@
+@name Renewable Energy
+@inputs 
+@outputs 
+@persist Models:table CurrentModel:string LastMouse1State
+@persist LastEntity:entity
+@persist Front:entity Back:entity Left:entity Right:entity Top:entity Bottom:entity
+@persist Dumpster:entity Dumpster2:entity
+@trigger 
+
+runOnTick(1)
+runOnChat(1)
+
+if (first() | duped()) {
+    LastMouse1State = owner():keyAttack1()
+    
+    Models["amraam", string] = "models/props_phx/amraam.mdl"
+    Models["ball", string] = "models/props_phx/ball.mdl"
+    Models["barrel", string] = "models/props_borealis/bluebarrel001.mdl"
+    Models["bin", string] = "models/props_junk/trashdumpster01a.mdl"
+    Models["bomb", string] = "models/props_phx/ww2bomb.mdl"
+    Models["box", string] = "models/props_junk/cardboard_box001b.mdl"
+    Models["can", string] = "models/props_junk/popcan01a.mdl"
+    Models["cannonball", string] = "models/props_phx/cannonball.mdl"
+    Models["dumpster", string] = "models/props_junk/trashdumpster02.mdl"
+    Models["gas", string] = "models/props_junk/gascan001a.mdl"
+    Models["gnome", string] = "models/props_junk/gnome.mdl"
+    Models["mk", string] = "models/props_phx/mk-82.mdl"
+    Models["nuke", string] = "models/props_phx/misc/flakshell_big.mdl"
+    Models["oildrum", string] = "models/props_c17/oildrum001_explosive.mdl"
+    Models["oildrum2", string] = "models/props_phx/oildrum001_explosive.mdl"
+    Models["propane", string] = "models/props_junk/propane_tank001a.mdl"
+    Models["torpedo", string] = "models/props_phx/torpedo.mdl"
+    Models["washing", string] = "models/props_c17/furniturewashingmachine001a.mdl"
+    Models["window", string] = "models/props_phx/construct/windows/window4x4.mdl"
+    CurrentModel = "models/props_junk/cardboard_box001b.mdl"
+}
+
+if (owner():weapon():type() == "weapon_crowbar" |
+    owner():weapon():type() == "weapon_physcannon" |
+    owner():weapon():type() == "weapon_physgun") {
+    owner():weapon():setAlpha(0)
+    if (LastMouse1State != owner():keyAttack1() & owner():keyAttack1()) {
+        if (LastEntity) {
+#ifdef e:explode()
+            # LastEntity:explode()
+#endif
+            LastEntity:propDelete()
+        }
+#ifdef propSpawn(string, vector)
+        LastEntity = propSpawn(CurrentModel, owner():shootPos() + owner():eyeAngles():forward() * 50)
+#else
+        LastEntity = propSpawn(CurrentModel, owner():shootPos() + owner():eyeAngles():forward() * 50, 0)
+#endif
+#ifdef e:setVelocity()
+        LastEntity:setVelocity(LastEntity:mass() * owner():eyeAngles():forward() * 1024 * 1024)
+#endif
+        LastEntity:applyForce(LastEntity:mass() * owner():eyeAngles():forward() * 1024 * 1024 * 1024)
+#ifdef entity:noCollide(entity)
+        LastEntity:noCollide(Dumpster)
+        LastEntity:noCollide(Dumpster2)
+#endif
+    }
+} else {
+    owner():weapon():setAlpha(255)
+}
+LastMouse1State = owner():keyAttack1()
+
+if (chatClk()) {
+    if (lastSpoke() == owner() &
+        lastSaid():sub(1, 1) == "!") {
+        hideChat(1)
+        Model = lastSaid():sub(2)
+        if (Models[Model, string]) {
+            CurrentModel = Models[Model, string]
+            hint("Model changed to " + CurrentModel + ".", 10)
+        } elseif (Model == "shield") {
+            if (Dumpster | Dumpster2 | Front | Back | Left | Right | Top) {
+                Dumpster:propDelete()
+                Dumpster2:propDelete()
+                Front:propDelete()
+                Back:propDelete()
+                Left:propDelete()
+                Right:propDelete()
+                Top:propDelete()
+                Bottom:propDelete()
+            } else {
+#ifdef propSpawn(string, number)
+                Dumpster = propSpawn(Models["dumpster", string], 1)
+                Dumpster2 = propSpawn(Models["dumpster", string], 1)
+                # Front = propSpawn(Models["window", string], 1)
+                # Back = propSpawn(Models["window", string], 1)
+                # Left = propSpawn(Models["window", string], 1)
+                # Right = propSpawn(Models["window", string], 1)
+                # Top = propSpawn(Models["window", string], 1)
+                # Bottom = propSpawn(Models["window", string], 1)
+#endif
+                Dumpster:setAlpha(0)
+                Dumpster2:setAlpha(0)
+                # Front:setAlpha(0)
+                # Back:setAlpha(0)
+                # Left:setAlpha(0)
+                # Right:setAlpha(0)
+                # Top:setAlpha(0)
+                # Bottom:setAlpha(0)
+            }
+        }
+    }
+}
+
+if (Dumpster) {
+    Dumpster:setPos(owner():pos() + vec(0, 0, 32))
+    Dumpster:setAng(owner():angles():setRoll(0))
+    Dumpster:propFreeze(1)
+    Dumpster2:setPos(owner():pos() + vec(0, 0, 128))
+    Dumpster2:setAng(owner():angles():setRoll(180))
+    Dumpster2:propFreeze(1)
+    
+    Front:setPos(owner():pos() + vec(256, 0, 0))
+}
+
+if (LastEntity:vel():length() < 1) {
+    findInSphere(LastEntity:pos(), 50)
+    Props = findToArray()
+    for (I = 1, Props:count()) {
+#ifdef e:ignite()
+        # Props[I, entity]:ignite()
+#endif
+    }
+#ifdef e:explode()
+    # LastEntity:explode()
+#endif
+    LastEntity:propDelete()
+}

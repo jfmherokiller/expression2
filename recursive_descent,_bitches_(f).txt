@@ -1,0 +1,424 @@
+@name Recursive descent, bitches (f)
+@inputs Screen:wirelink Keyboard
+@outputs 
+@persist Functions:table Stack:array
+@persist Tokens:array TokenTypes:array CurrentTokenIndex
+@persist ParseTree:table NextParseTreeItemIndex Root
+
+@persist HeaderLines FooterLines ScreenTreeLine
+@persist KeyboardInput:string LastKeyboard
+
+@persist Multiply:string Divide:string Pi:string Phi:string
+@trigger 
+
+runOnChat(1)
+
+if (first() | duped()) {
+    setName("Recursive descent parser")
+    
+    Screen[2041] = 1
+    HeaderLines = 2
+    FooterLines = 2
+    Screen:writeString("Recursive descent parser      ", 0, 0, 999, 9)
+    Screen:writeString("Input:                        ", 0, 1, 999, 6)
+    Screen:writeString("Value:                        ", 0, 16, 999, 6)
+#ifdef toUnicodeChar(number)
+    Screen:writeUnicodeString(toUnicodeChar(9658) + "                             ", 0, 17, 999, 9)
+#else
+    Screen:writeString(">                             ", 0, 17, 999, 9)
+#endif
+
+    Multiply = toUnicodeChar(215)
+    Divide = toUnicodeChar(247)
+    Pi = toUnicodeChar(960)
+    Phi = toUnicodeChar(981)
+    
+    NextParseTreeItemIndex = 1
+    
+    function compile (Code:string) {
+        Input = "Input: " + Code
+        if (Input:length() < 30) {
+            Input = Input + " ":repeat(30 - Input:length())
+        }
+        
+        NiceInput = Input:replace("*", Multiply):replace("/", Divide)
+        NiceInput = Input:replace("pi", Pi):replace("phi", Phi)
+        Screen:writeUnicodeString(NiceInput, 0, 1, 999, 6)
+        
+        tokenize(Code)
+        Root = parse()
+        Result = evaluate(Root)
+        Output = "Value: " + Result
+
+        Output += " ":repeat(30 - Output:unicodeLength())
+
+        Screen:writeUnicodeString(Output, 0, 16, 999, 6)
+        
+        ScreenTreeLine = 0
+        for (I = HeaderLines, 17 - FooterLines) {
+            Screen[2039] = I
+        }
+        display_tree(0, Root)
+    }
+    
+    function add_node (Parent, Child) {
+        ChildCount = ParseTree["Node" + Parent + "ChildCount", number]
+        ChildCount++
+        ParseTree["Node" + Parent + "Child" + ChildCount, number] = Child
+        ParseTree["Node" + Parent + "ChildCount", number] = ChildCount
+        return Child
+    }
+    
+    function add_value (Parent, Value:string) {
+        Child = create_tree(Value)
+        add_node(Parent, Child)
+        return Child
+    }
+    
+    function create_tree (Value:string) {
+        ParseTree["Node" + NextParseTreeItemIndex + "Value", string] = Value
+        ParseTree["Node" + NextParseTreeItemIndex + "ChildCount", number] = 0
+        NextParseTreeItemIndex++
+        return NextParseTreeItemIndex - 1
+    }
+    
+    function get_child (Parent, ChildIndex) {
+        return ParseTree["Node" + Parent + "Child" + ChildIndex, number]
+    }
+    
+    function get_child_count (Parent) {
+        return ParseTree["Node" + Parent + "ChildCount", number]
+    }
+    
+    function get_name (Parent) {
+        return ParseTree["Node" + Parent + "Value", string]
+    }
+    
+    function display_tree (Indent, Node) {
+        if (ScreenTreeLine > 17 - HeaderLines - FooterLines) {
+            return 0
+        }
+        String = " ":repeat(Indent)
+        String += toUnicodeChar(9658) + ParseTree["Node" + Node + "Value", string]:replace("*", Multiply):replace("/", Divide):replace("pi", Pi):replace("phi", Phi)        
+        String += " ":repeat(30 - String:unicodeLength())
+        Screen:writeUnicodeString(String, 0, HeaderLines + ScreenTreeLine, 999, 0)
+        ScreenTreeLine++
+        ChildCount = ParseTree["Node" + Node + "ChildCount", number]
+        Indent++
+        for (I = 1, ChildCount) {
+            display_tree(Indent, ParseTree["Node" + Node + "Child" + I, number])
+        }
+    }
+    
+    function print_tree (Indent, Node) {
+        String = " ":repeat(Indent)
+        String += "+" + ParseTree["Node" + Node + "Value", string]
+        print(String)
+        ChildCount = ParseTree["Node" + Node + "ChildCount", number]
+        Indent++
+        for (I = 1, ChildCount) {
+            print_tree(Indent, ParseTree["Node" + Node + "Child" + I, number])
+        }
+    }
+    
+    function tokenize (Code:string) {
+        Tokens:clear()
+        TokenTypes:clear()
+        LastType = ""
+        Buffer = ""
+        I = 1
+        while (I <= Code:length()) {
+            TokenType = ""
+            Match = Code:sub(I):matchFirst("^[a-zA-Z_][a-zA-Z0-9_]*")
+            if (Match) {
+                TokenType = "id"
+            }
+            if (!TokenType) {
+                Match = Code:sub(I):matchFirst("^[0-9]+%.[0-9]*")
+                if (!Match) {
+                    Match = Code:sub(I):matchFirst("^[0-9]+")
+                }
+                if (Match) {
+                    TokenType = "num"
+                }
+            }
+            if (!TokenType) {
+                Char = Code[I]
+                Operators = "+-*/()^=<>!"
+                if (Operators:find(Char)) {
+                    Match = Char
+                    TokenType = "op"
+                }
+            }
+            if (TokenType) {
+                Tokens:pushString(Match)
+                TokenTypes:pushString(TokenType)
+                I += Match:length()
+            } else {
+                I++
+            }
+        }
+    }
+    
+    function parse () {
+        CurrentTokenIndex = 1
+        return p_root()
+    }
+    
+    function p_recurse_left (SubParser:string, Match:string) {
+        Stack:pushNumber(Functions[SubParser, function]())
+        Stack:pushNumber(1)
+        while (Stack[Stack:count(), number]) {
+            Stack[Stack:count(), number] = 0
+            if (Tokens[CurrentTokenIndex, string] == Match) {
+                Stack[Stack:count(), number] = 1
+                Stack:pushNumber(create_tree(Match))
+                CurrentTokenIndex++
+                add_node(Stack[Stack:count(), number], Stack[Stack:count() - 2, number])
+                add_node(Stack[Stack:count(), number], Functions[SubParser, function]()[number])
+                Stack[Stack:count() - 2, number] = Stack:popNumber()
+            }
+        }
+        Stack:popNumber()
+        
+        return Stack:popNumber()
+    }
+    
+    function p_recurse_right (SubParser:string, Match:string) {
+        Stack:pushNumber(Functions[SubParser, function]())
+        if (Tokens[CurrentTokenIndex, string] == Match) {
+            Stack:pushNumber(create_tree(Match))
+            CurrentTokenIndex++
+            add_node(Stack[Stack:count(), number], Stack[Stack:count() - 1, number])
+            add_node(Stack[Stack:count(), number], p_recurse_right(SubParser, Match))
+            Return = Stack:popNumber()
+            Stack:popNumber()
+            return Return
+        }
+        return Stack:popNumber()
+    }
+    
+    # Warning : Treats match as an array of possible operators.
+    # Operators are limited to length 1.
+    function p_recurse_right_unary (SubParser:string, Match:string) {
+        if (!Tokens[CurrentTokenIndex, string]) {
+            return 0
+        }
+        if (Match:find(Tokens[CurrentTokenIndex, string])) {
+            Stack:pushNumber(create_tree(Tokens[CurrentTokenIndex, string]))
+            CurrentTokenIndex++
+            add_node(Stack[Stack:count(), number], p_recurse_right_unary(SubParser, Match))
+            return Stack:popNumber()
+        }
+        return Functions[SubParser, function]()
+    }
+    
+    function p_root () {
+        return p_expression()
+    }
+    
+    function p_expression () {
+        return p_expression_relation()
+    }
+    
+    function p_expression_relation () {
+        return p_recurse_left("p_expression_addition", "=")
+    }
+    
+    function p_expresion_addition () {
+        return p_recurse_left("p_expression_subtraction", "+")
+    }
+    
+    function p_expression_subtraction () {
+        return p_recurse_left("p_expression_multiplication", "-")
+    }
+    
+    function p_expression_multiplication () {
+        return p_recurse_left("p_expression_division", "*")
+    }
+    
+    function p_expression_division () {
+        return p_recurse_left("p_expression_exponentiation", "/")
+    }
+    
+    function p_expression_exponentiation () {
+        return p_recurse_right("p_expression_unary", "^")
+    }
+    
+    function p_expression_unary () {
+        return p_recurse_right_unary("p_expression_parentheses", "+-")
+    }
+    
+    function p_expression_parentheses () {
+        if (Tokens[CurrentTokenIndex, string] != "(") {
+            return p_expression_function()
+        }
+        CurrentTokenIndex++
+        Expression = p_expression()
+        if (Tokens[CurrentTokenIndex, string] == ")") {
+            CurrentTokenIndex++
+        }
+        return Expression
+    }
+    
+    function p_expression_function () {
+        if (TokenTypes[CurrentTokenIndex, string] == "id") {
+            Current = Tokens[CurrentTokenIndex, string]
+            if (Current == "ln" |
+                Current == "log" |
+                Current == "root" |
+                Current == "sqrt" |
+                Current == "sin" |
+                Current == "cos" |
+                Current == "tan" |
+                Current == "asin" |
+                Current == "acos" |
+                Current == "atan") {
+                CurrentTokenIndex++
+                Stack:pushNumber(create_tree(Current))
+                add_node(Stack[Stack:count(), number], p_expression_function())
+                return Stack:popNumber()
+            }
+        }
+        return p_expression_variable()
+    }
+    
+    function p_expression_variable () {
+        if (TokenTypes[CurrentTokenIndex, string] == "id") {
+            Expression = create_tree("var")
+            CurrentToken = Tokens[CurrentTokenIndex, string]
+            
+            if (CurrentToken == "pi") {
+                CurrentToken = Pi
+            } elseif (CurrentToken == "phi") {
+                CurrentToken = Phi
+            }
+            
+            add_value(Expression, CurrentToken)
+            CurrentTokenIndex++
+            return Expression
+        }
+        return p_expression_number()
+    }
+    
+    function p_expression_number () {
+        Expression = create_tree("num")
+        add_value(Expression, Tokens[CurrentTokenIndex, string])
+        CurrentTokenIndex++
+        return Expression
+    }
+    
+    function p_expression_evaluate (Node) {
+        Name = get_name(Node)
+        if (Name == "num") {
+            return get_name(get_child(Node, 1)):toNumber()
+        } elseif (Name == "var") {
+            Child = get_name(get_child(Node, 1))
+
+            if (Child:lower() == "pi" | Child == Pi) {
+                return pi()
+            } elseif (Child:lower() == "phi" | Child == Phi) {
+                return _PHI
+            } elseif (Child:lower() == "e") {
+                return e()
+            }
+            return 0
+        }
+        if (Name == "=") {
+            return evaluate(get_child(Node, 1)) == evaluate(get_child(Node, 2))
+        } elseif (Name == "+") {
+            return evaluate(get_child(Node, 1)) + evaluate(get_child(Node, 2))
+        } elseif (Name == "-") {
+            if (Functions["get_child_count", function](Node) == 1) {
+                return -evaluate(get_child(Node, 1))
+            } else {
+                return evaluate(get_child(Node, 1)) - evaluate(get_child(Node, 2))
+            }
+        } elseif (Name == "*") {
+            return evaluate(get_child(Node, 1)) * evaluate(get_child(Node, 2))
+        } elseif (Name == "/") {
+            return evaluate(get_child(Node, 1)) / evaluate(get_child(Node, 2))
+        } elseif (Name == "^") {
+            return evaluate(get_child(Node, 1)) ^ evaluate(get_child(Node, 2))
+        } elseif (Name == "ln") {
+            return ln(evaluate(get_child(Node, 1)))
+        } elseif (Name == "log") {
+            return log(evaluate(get_child(Node, 1)), 10)
+        } elseif (Name == "sqrt" | Name == "root") {
+            return sqrt(evaluate(get_child(Node, 1)))
+        } elseif (Name == "sin") {
+            return sin(evaluate(get_child(Node, 1)))
+        } elseif (Name == "cos") {
+            return cos(evaluate(get_child(Node, 1)))
+        } elseif (Name == "tan") {
+            return tan(evaluate(get_child(Node, 1)))
+        } elseif (Name == "sec") {
+            return sec(evaluate(get_child(Node, 1)))
+        } elseif (Name == "cosec") {
+            return 1 / sin(evaluate(get_child(Node, 1)))
+        } elseif (Name == "cot") {
+            return cot(evaluate(get_child(Node, 1)))
+        } elseif (Name == "asin") {
+            return asin(evaluate(get_child(Node, 1)))
+        } elseif (Name == "acos") {
+            return acos(evaluate(get_child(Node, 1)))
+        } elseif (Name == "atan") {
+            return atan(evaluate(get_child(Node, 1)))
+        } elseif (Name == "asec") {
+            return acos(1 / evaluate(get_child(Node, 1)))
+        } elseif (Name == "acosec") {
+            return asin(1 / evaluate(get_child(Node, 1)))
+        } elseif (Name == "acot") {
+            return atan(1 / evaluate(get_child(Node, 1)))
+        }
+        return 0
+    }
+}
+
+if (Keyboard != LastKeyboard) {
+    if (Keyboard) {
+        if (Keyboard >= 32 & Keyboard < 127) {
+            KeyboardInput += toChar(Keyboard)
+        } elseif (Keyboard == 127) {
+            if (KeyboardInput:length()) {
+                KeyboardInput = KeyboardInput:sub(1, KeyboardInput:length() - 1)
+            }
+        }
+        if (Keyboard == 13) {
+            KeyboardInput = ""
+        } else {
+            compile(KeyboardInput)
+        }
+        
+        Input = toUnicodeChar(9658) + " " + KeyboardInput:replace("*", Multiply):replace("/", Divide):replace("pi", Pi):replace("phi", Phi)
+        if (Input:unicodeLength() < 30) {
+            Input += " ":repeat(30 - Input:unicodeLength())
+        }
+
+        Screen:writeUnicodeString(Input, 0, 17, 999, 9)
+    }
+}
+
+if (chatClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "parse") {
+                compile(Arguments)
+            } elseif (Command == "tokens") {
+                TokenString = Tokens:concat(", ")
+                hint("Tokens are " + TokenString + ".", 10)
+                TokenString = TokenTypes:concat(", ")
+                hint("Types are " + TokenString + ".", 10)
+            } elseif (Command == "tree") {
+                print_tree(0, Root)
+            }
+        }
+    }
+}
+

@@ -1,0 +1,34 @@
+@name PlayerStats
+@inputs Start Stop
+@outputs Speed Distance MaxSpeed EntPlayer:entity VecLastPos:vector
+@persist Distance VecLastPos:vector Started MaxSpeed
+@trigger
+
+interval(10)
+
+EntPlayer = owner()
+
+if (Start) {
+    Distance = 0
+    Started = 1
+    VecLastPos = EntPlayer:pos()
+    MaxSpeed = 0
+    #EntRocket:unFreeze()
+}
+
+if (Stop) {
+    Started = 0
+}
+
+if (Started) {
+    Distance += (EntPlayer:pos() - VecLastPos):length() / 10
+}
+VecLastPos = EntPlayer:pos()
+Speed = EntPlayer:vel():length() / 10
+if (Speed > MaxSpeed & Started) {
+    MaxSpeed = Speed
+}
+
+if (!Started) {
+    #stoptimer("interval")
+}

@@ -1,0 +1,21 @@
+@name Look of Disapproval
+@inputs 
+@outputs String:string
+@persist StringBytes:array
+@trigger 
+
+if (first() | duped()) {
+    StringBytes = array()
+    StringBytes:pushNumber(224)
+    StringBytes:pushNumber(178)
+    StringBytes:pushNumber(160)
+    StringBytes:pushNumber(95)
+    StringBytes:pushNumber(224)
+    StringBytes:pushNumber(178)
+    StringBytes:pushNumber(160)
+    
+    String = ""
+    for (I = 1, StringBytes:count()) {
+        String += format("%c", StringBytes:number(I))
+    }
+}

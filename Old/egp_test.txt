@@ -1,0 +1,44 @@
+@name EGP Unicode Test
+@inputs EGP:wirelink
+@outputs
+@persist ShouldRenderChars
+@persist BaseCharacter
+@trigger 
+
+interval(1000)
+
+ShouldRenderChars = 0
+if (duped() | first()) {
+    EGP:egpColor(1, vec4(128, 128, 128, 255))
+    EGP:egpBox(1, vec2(0, 0), vec2(1024, 48))
+    
+    EGP:egpFont(2, "Arial", 24)
+    EGP:egpText(2, "EGP Unicode Test", vec2(0, 0))
+    
+    EGP:egpColor(3, vec4(128, 128, 255, 255))
+    EGP:egpBox(3, vec2(0, 32), vec2(1024, 16))
+    
+    EGP:egpFont(4, "Arial", 16)
+    EGP:egpText(4, "Starting at 0x" + format("%.4X", BaseCharacter), vec2(0, 24))
+    
+    ShouldRenderChars = 1
+}
+
+if (ShouldRenderChars) {
+    CharsPerLine = 16
+    EGP:egpFont(10, "Courier New")
+    for (Y = 0, 15) {
+        Line = ""
+        for (X = 0, CharsPerLine - 1) {
+            Char = BaseCharacter + Y * CharsPerLine + X
+            if (Char < 128) {
+                UTF8 = format("%c", Char)
+            } elseif (Char < 2048) {
+                UTF8 = format("%c%c", 192 + bShr(bAnd(Char, 1792), 6) + bShr(bAnd(Char, 192), 6), 128 + bAnd(Char, 63))
+            }
+            Line = Line + UTF8 + " "
+        }
+        EGP:egpText(10 + Y, Line, vec2(100, 48 + Y * 24))
+    }
+    ShouldRenderChars = 0
+}

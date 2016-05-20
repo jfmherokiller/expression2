@@ -1,0 +1,173 @@
+@import chat
+@import keyboard
+@name Regular Expressions
+@inputs Screen:wirelink
+@outputs 
+@persist Regex:string Input:string
+@persist SelectedField
+@persist ShouldGenerateNFA GenerateNFA ShouldMatch NFA:table States:table NextStateID
+@trigger 
+
+@expand keyboard_preinit
+@expand chat_init
+
+if (first() | duped()) {
+    Regex = ""
+    Regex = "ab?cd?"
+    SelectedField = 1
+    GenerateNFA = 1
+    
+    Screen[2041] = 1
+    Screen:writeString("Regular Expressions           ", 0, 0, 999, 449)
+    Screen:writeString("Pattern:                      ", 0, 1, 999, 559)
+    Screen:writeString(Regex, 0, 2, 999, 0)
+    Screen:writeString("Input:                        ", 0, 7, 999, 559)
+    Screen:writeString(Input, 0, 2, 999, 0)
+    Screen:writeString("Match:                        ", 0, 13, 999, 559)
+    
+    Screen[2046] = 1
+    Screen[2045] = 120 + SelectedField * 360
+    
+    ShouldGenerateNFA = 1
+}
+
+@expand keyboard_handler
+if (KeyboardInputReceived) {
+    if (KeyboardCommand == "up" |
+        KeyboardCommand == "down") {
+        SelectedField = 1 - SelectedField
+        if (SelectedField == 0) {
+            KeyboardString = Regex
+        } else {
+            KeyboardString = Input
+        }
+        KeyboardStringOffset = KeyboardString:length()
+    }
+    if (SelectedField == 0) {
+        Regex = KeyboardString
+        ShouldGenerateNFA = 1
+    } else {
+        Input = KeyboardString
+    }
+    Screen:writeString(KeyboardString + " ":repeat(150 - KeyboardString:length()), 0, 2 + SelectedField * 6)
+    Screen[2045] = 120 + SelectedField * 360 + KeyboardStringOffset * 2
+    
+    if (SelectedField == 1 &
+        !ShouldGenerateNFA) {
+        ShouldMatch = 1
+    }
+}
+
+@expand chat_begin_handler
+@expand chat_end_handler
+
+if (ShouldGenerateNFA) {
+    if (SelectedField == 1) {
+        GenerateNFA = 1
+    }
+    if (GenerateNFA) {
+        GenerateNFA = 0
+        ShouldGenerateNFA = 0
+        ShouldMatch = 1
+        
+        States = table()
+        NextStateID = 1
+        LastState = table()
+        
+        CurrentState = table()
+        CurrentState["id", number] = NextStateID
+        States[NextStateID, table] = CurrentState
+        NextStateID++
+        
+        NFA = CurrentState
+        StateStack = table()
+        I = 1
+        while (I <= Regex:length()) {
+            Character = Regex[I]
+            if (Character == "?") {
+                NextState = table()
+                NextState["id", number] = NextStateID
+                States[NextStateID, table] = NextState
+                CurrentState:pushNumber(NextStateID)
+                LastState:pushNumber(NextStateID)
+                NextStateID++
+                
+                LastState = CurrentState
+                CurrentState = NextState
+            } elseif (Character == "+") {
+                CurrentState:pushNumber(LastState["id", number])
+            } else {
+                NextState = table()
+                NextState["char", string] = Character
+                NextState["id", number] = NextStateID
+                States[NextStateID, table] = NextState
+                CurrentState:pushNumber(NextStateID)
+                NextStateID++
+        
+                LastState = CurrentState
+                CurrentState = NextState
+            }
+            I++
+        }
+        NextState = table()
+        NextState["id", number] = NextStateID
+        NextState["terminal", number] = 1
+        States[NextStateID, table] = NextState
+        CurrentState:pushNumber(NextStateID)
+        NextStateID++
+        
+    }
+}
+
+if (ShouldMatch) {
+    ShouldMatch = 0
+    CurrentStates = table()
+    CurrentStates:pushNumber(NFA["id", number])
+    CurrentStateCount = 1
+    I = 1
+    
+    while (I <= Input:length() + 1) {
+        Character = Input[I]
+        NextStates = table()
+        NextStateCount = 0
+        J = 1
+        while (J <= CurrentStateCount) {
+            CurrentMatch = CurrentStates[toString(J), string]
+            StateNode = States[CurrentStates[J, number], table]
+            if (StateNode["terminal", number]) {
+                NextStateCount++
+                NextStates[toString(NextStateCount), string] = CurrentMatch
+                NextStates:pushNumber(StateNode["id", number])
+            } else {
+                for (K = 1, StateNode:typeidsArray():count()) {
+                    NextNode = States[StateNode[K, number], table]
+                    Match = NextNode["char", string]
+                    if (Input:sub(I, I + Match:length() - 1) == Match) {
+                        NextMatch = CurrentMatch + Character
+                        if (NextNode["char", string]) {
+                            NextStateCount++
+                            NextStates[toString(NextStateCount), string] = NextMatch
+                            NextStates:pushNumber(NextNode["id", number])
+                        } else {
+                            CurrentStateCount++
+                            CurrentStates[toString(CurrentStateCount), string] = CurrentMatch
+                            CurrentStates:pushNumber(NextNode["id", number])
+                        }
+                    }
+                }
+            }
+            J++
+        }
+        CurrentStates = NextStates
+        CurrentStateCount = NextStateCount
+        I++
+    }
+    Screen:writeString(" ":repeat(30), 0, 14, 999, 0)
+    for (J = 1, CurrentStates:typeidsArray():count()) {
+        StateNode = States[CurrentStates[J, number], table]
+        if (StateNode["terminal", number]) {
+            Match = CurrentStates[toString(J), string]
+            Screen:writeString(Match + " ":repeat(30 - Match:length()), 0, 14, 999, 0)
+        }
+    }
+}

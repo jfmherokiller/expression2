@@ -1,0 +1,498 @@
+@name wav player
+@inputs 
+@outputs 
+@persist G:gtable
+@persist File:string
+@persist DataIndex
+@persist FormatCode ChannelCount SampleRate DataRate BitsPerSample
+@persist Length SecondsPerSample
+
+@persist State SubState
+# States
+# 0 - Waiting for http
+# 1 - Processing header
+# 2 - Doing a billion fourier transforms
+#  0 - Producing array of samples
+#  1 - Doing fourier transforms
+#  2 - Finding most significant frequencies
+# 3 - Playing
+@persist FTInterval FTTestFrequencies:array
+@persist FTStartTime FTFrequency FTFrequencyI
+@persist FTStartIndex FTI FTSampleCount FTAccumulator:complex
+@persist FTSamples:array FTFrequencies:array
+@persist FTF1 FTA1
+@persist FTF2 FTA2
+@persist FTF3 FTA3
+@persist FTF4 FTA4
+@persist FTF5 FTA5
+@persist FTF6 FTA6
+@persist FTF7 FTA7
+@persist FTF8 FTA8
+@persist FTLastTotal:complex
+
+@persist PlayStartTime PlayLastCheckTime MaxChannels
+@persist CI:array CT:table CF:table CA:table
+
+@trigger 
+
+TickStartTime = systime()
+if (first() | duped())
+{
+    runOnTick(1)
+    
+    URL = "http://dl.dropbox.com/u/7290193/PositiveForce16000.wav"
+    #URL = "http://dl.dropbox.com/u/7290193/portal_still_alive16000.wav"
+    #URL = "http://dl.dropbox.com/u/7290193/portal2_want_you_gone16000.wav"
+    #URL = "http://dl.dropbox.com/u/7290193/PotentialForAnything16000.wav"
+    #URL = "http://dl.dropbox.com/u/7290193/AFleetingDream16000.wav"
+    # URL = "http://dl.dropbox.com/u/7290193/surface_of_the_sun16000.wav"
+    G = gTable("wav " + URL, 1)
+    
+    FTInterval = 0.05
+    MaxChannels = 8
+    
+    FTTestFrequencies = array()
+    FTF = 220
+    FTTestFrequencies:pushNumber(FTF)
+    while (FTF < 8000)
+    {
+        FTF *= 2 ^ (1 / 12)
+        FTTestFrequencies:pushNumber(FTF)
+    }
+    
+    for (I = 1, MaxChannels)
+    {
+        CT[I, array] = array()
+        CF[I, array] = array()
+        CA[I, array] = array()
+    }
+    
+    local LoadStage = G["LoadStage", number]
+    if (LoadStage == 0)
+    {
+        if (URL == "") { print("[wav] You didn't provide a url for the wav file!") }
+        else
+        {
+            runOnHTTP(1)
+            httpRequest(URL)
+            setName("wav player\nDownloading " + URL)
+        }
+    }
+    if (LoadStage >= 1)
+    {
+        File = G["File", string]
+        State = 1
+    }
+    if (LoadStage >= 2)
+    {
+        DataIndex = G["DataIndex", number]
+        FormatCode = G["FormatCode", number]
+        ChannelCount = G["ChannelCount", number]
+        SampleRate = G["SampleRate", number]
+        DataRate = G["DataRate", number]
+        BitsPerSample = G["BitsPerSample", number]
+        Length = G["Length", number]
+        SecondsPerSample = 1 / SampleRate
+        
+        State = 2
+    }
+    if (LoadStage >= 4)
+    {
+        CI = G["CI", array]:clone()
+        CT = G["CT", table]
+        CF = G["CF", table]
+        CA = G["CA", table]
+        PlayStartTime = systime()
+        State = 4
+    }
+    
+    function string formatTime (Time)
+    {
+        local Seconds = Time % 60
+        if (Seconds < 10) { return format("%02d:0%.2f", Time / 60, Seconds) }
+        else { return format("%02d:%.2f", Time / 60, Seconds) }
+    }
+    
+    function number readUInt16 (Index, Data:string)
+    {
+        return toByte(Data[Index]) + (toByte(Data[Index + 1]) << 8)
+    }
+    
+    function number readUInt32 (Index, Data:string)
+    {
+        return toByte(Data[Index]) + (toByte(Data[Index + 1]) << 8) + (toByte(Data[Index + 2]) << 16) + (toByte(Data[Index + 3]) << 24)
+    }
+    
+    function number parseFmt (Index, Data:string)
+    {
+        if (Data:sub(Index, Index + 3) != "fmt ") { print("[wav] fmt header not found.") return Index }
+        Index += 4
+        local ChunkSize = readUInt32(Index, Data), Index += 4
+        print("[wav] fmt chunk is " + ChunkSize + " bytes.")
+        FormatCode = readUInt16(Index, Data), Index += 2
+        ChannelCount = readUInt16(Index, Data), Index += 2
+        SampleRate = readUInt32(Index, Data), Index += 4
+        DataRate = readUInt32(Index, Data), Index += 4
+        local BlockAlignment = readUInt16(Index, Data), Index += 2
+        BitsPerSample = readUInt16(Index, Data), Index += 2
+        
+        G["FormatCode", number] = FormatCode
+        G["ChannelCount", number] = ChannelCount
+        G["SampleRate", number] = SampleRate
+        G["DataRate", number] = DataRate
+        G["BitsPerSample", number] = BitsPerSample
+        SecondsPerSample = 1 / SampleRate
+        print("[wav] " + BitsPerSample + " bits per sample.")
+        
+        Index += ChunkSize - 16
+        return Index
+    }
+    
+    function number parseData (Index, Data:string)
+    {
+        if (Data:sub(Index, Index + 3) != "data") { print("[wav] data header not found, found " + Data:sub(Index, Index + 3) + " instead") return Index }
+        Index += 4
+        local ChunkSize = readUInt32(Index, Data), Index += 4
+        print("[wav] data chunk is " + ChunkSize + " bytes.")
+        DataIndex = Index
+        Length = ChunkSize * SecondsPerSample
+        
+        G["DataIndex", number] = DataIndex
+        G["Length", number] = Length
+        print(format("[wav] %02d:%02d long", Length / 60, Length % 60))
+        
+        Index += ChunkSize
+        return Index
+    }
+    
+    function number parseList (Index, Data:string)
+    {
+        if (Data:sub(Index, Index + 3) != "LIST") { print("[wav] LIST header not found, found " + Data:sub(Index, Index + 3) + " instead") return Index }
+        Index += 4
+        local ChunkSize = readUInt32(Index, Data), Index += 4
+        print("[wav] LIST chunk is " + ChunkSize + " bytes.")
+        
+        Index += ChunkSize
+        return Index
+    }
+    
+    function number parseWave (Index, Data:string)
+    {
+        if (Data:sub(Index, Index + 3) != "WAVE") { print("[wav] WAVE header not found.") return Index }
+        Index += 4
+        local DataFound = 0
+        for (I = 1, 5)
+        {
+            local ChunkName = Data:sub(Index, Index + 3)
+            if (ChunkName == "fmt ") { Index = parseFmt(Index, Data) }
+            elseif (ChunkName == "data") { Index = parseData(Index, Data), DataFound = 1 }
+            elseif (ChunkName == "LIST") { Index = parseList(Index, Data) }
+            else { Index += 4, print("[wav] Unknown chunk " + ChunkName + ".") }
+            if (DataFound) { break }
+        }
+        if (!DataFound) { print("[wav] Did not found data chunk.") }
+        return Index
+    }
+    
+    function number parseRiff (Index, Data:string)
+    {
+        if (Data:sub(Index, Index + 3) != "RIFF") { print("[wav] RIFF header not found.") return Index }
+        Index += 4
+        local RiffChunkSize = readUInt32(Index, Data), Index += 4
+        print(format("[wav] RIFF Chunk Size: %d (0x%08x)", RiffChunkSize, RiffChunkSize))
+        Index = parseWave(Index, Data)
+        return Index
+    }
+}
+
+if (httpClk())
+{
+    runOnHTTP(0)
+    File = httpData()
+    print("[wav] Downloaded " + File:length() + " bytes")
+    
+    G["LoadStage", number] = 1
+    G["File", string] = File
+    
+    State = 1
+}
+
+if (State == 0)
+{
+}
+elseif (State == 1)
+{
+    # Processing header
+    parseRiff(1, File)
+    if (Length) 
+    {
+        G["LoadStage", number] = 2
+        State = 2
+    }
+    
+    State = 2
+}
+elseif (State == 2)
+{
+    # FFT setup
+    FTStartTime = 0
+    FTFrequencyI = 1
+    FTFrequency = FTTestFrequencies[FTFrequencyI, number]
+    W = 2 * _PI * FTFrequency
+    FTI = 0
+    State = 3
+    SubState = 0
+}
+elseif (State == 3)
+{
+    # Fourier transforms
+    while (perf() & (systime() - TickStartTime) < 0.002)
+    {
+        FTSampleCount = FTInterval * SampleRate
+        if (SubState == 0)
+        {
+            # Create array of sample amplitudes
+            FTStartIndex = DataIndex + FTStartTime * SampleRate
+            while (perf() & (systime() - TickStartTime) < 0.002 & FTI < FTSampleCount)
+            {
+                FTSamples[FTI, number] = toByte(File[FTStartIndex + FTI])
+                FTI++
+            }
+            if (FTI >= FTSampleCount)
+            {
+                FTI = 0
+                FTAccumulator = 0 + 0i
+                FTFrequencies:clear()
+                FTFrequencyI = 1
+                FTFrequency = FTTestFrequencies[FTFrequencyI, number]
+                W = 2 * _PI * FTFrequency
+                SubState = 1
+            }
+        }
+        elseif (SubState == 1)
+        {
+#ifdef dtft(array, number, number, number, array)
+            FTFrequencies = dtft(FTSamples, 0, FTSampleCount, FTInterval, FTTestFrequencies)
+            FTFrequency = 16000
+#else
+            W = 2 * _PI * FTFrequency
+            while (perf() & (systime() - TickStartTime) < 0.002 & FTI < FTSampleCount)
+            {
+                FTAccumulator += FTSamples[FTI, number] * exp(i * W * FTI * SecondsPerSample)
+                FTI++
+            }
+            if (FTI >= FTSampleCount)
+            {
+                FTLastTotal = FTAccumulator / FTSampleCount
+                FTFrequencies[FTFrequency, number] = abs(FTLastTotal)
+                
+                FTI = 0
+                FTAccumulator = 0 + 0i
+                FTFrequencyI++
+                FTFrequency = FTTestFrequencies[FTFrequencyI, number]
+                W = 2 * _PI * FTFrequency
+            }
+#endif
+            if (FTFrequency > 4000)
+            {
+                FTI = 0
+                FTFrequencyI = 1
+                FTFrequency = FTTestFrequencies[FTFrequencyI, number]
+                W = 2 * _PI * FTFrequency
+                FTF1 = 0, FTA1 = 0
+                FTF2 = 0, FTA2 = 0
+                FTF3 = 0, FTA3 = 0
+                FTF4 = 0, FTA4 = 0
+                FTF5 = 0, FTA5 = 0
+                FTF6 = 0, FTA6 = 0
+                FTF7 = 0, FTA7 = 0
+                FTF8 = 0, FTA8 = 0
+                
+                SubState = 2
+            }
+        }
+        elseif (SubState == 2)
+        {
+#ifdef dftSort(array)
+            FTSF = dftSort(FTFrequencies)
+            
+            for (I = 1, MaxChannels)
+            {
+                CT[I, array]:pushNumber(FTStartTime)
+                CF[I, array]:pushNumber(FTSF[I, vector2][1])
+                CA[I, array]:pushNumber(FTSF[I, vector2][2])
+            }
+
+            # FTF1 = FTSF[1, vector2][1], FTA1 = FTSF[1, vector2][2]
+            # FTF2 = FTSF[2, vector2][1], FTA2 = FTSF[2, vector2][2]
+            # FTF3 = FTSF[3, vector2][1], FTA3 = FTSF[3, vector2][2]
+            # FTF4 = FTSF[4, vector2][1], FTA4 = FTSF[4, vector2][2]
+            # FTF5 = FTSF[5, vector2][1], FTA5 = FTSF[5, vector2][2]
+            # FTF6 = FTSF[6, vector2][1], FTA6 = FTSF[6, vector2][2]
+            # FTF7 = FTSF[7, vector2][1], FTA7 = FTSF[7, vector2][2]
+            # FTF8 = FTSF[8, vector2][1], FTA8 = FTSF[8, vector2][2]
+            # print(format("[wav] F: %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d", FTF1, FTF2, FTF3, FTF4, FTF5, FTF6, FTF7, FTF8))
+            # print(format("[wav] A: %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f", FTA1, FTA2, FTA3, FTA4, FTA5, FTA6, FTA7, FTA8))
+            
+            FTI = 0
+            FTStartTime += FTInterval
+            SubState = 0
+#else
+            while (perf() & (systime() - TickStartTime) < 0.002 & FTFrequency <= 8000)
+            {
+                FTFrequency = FTTestFrequencies[FTFrequencyI, number]
+                FTF = FTFrequency
+                FTA = FTFrequencies[FTF, number]
+                if (FTA > FTA1)
+                {
+                    FTF8 = FTF7, FTA8 = FTA7
+                    FTF7 = FTF6, FTA7 = FTA6
+                    FTF6 = FTF5, FTA6 = FTA5
+                    FTF5 = FTF4, FTA5 = FTA4
+                    FTF4 = FTF3, FTA4 = FTA3
+                    FTF3 = FTF2, FTA3 = FTA2
+                    FTF2 = FTF1, FTA2 = FTA1
+                    FTF1 = FTF,  FTA1 = FTA
+                }
+                elseif (FTA > FTA2)
+                {
+                    FTF8 = FTF7, FTA8 = FTA7
+                    FTF7 = FTF6, FTA7 = FTA6
+                    FTF6 = FTF5, FTA6 = FTA5
+                    FTF5 = FTF4, FTA5 = FTA4
+                    FTF4 = FTF3, FTA4 = FTA3
+                    FTF3 = FTF2, FTA3 = FTA2
+                    FTF2 = FTF,  FTA2 = FTA
+                }
+                elseif (FTA > FTA3)
+                {
+                    FTF8 = FTF7, FTA8 = FTA7
+                    FTF7 = FTF6, FTA7 = FTA6
+                    FTF6 = FTF5, FTA6 = FTA5
+                    FTF5 = FTF4, FTA5 = FTA4
+                    FTF4 = FTF3, FTA4 = FTA3
+                    FTF3 = FTF,  FTA3 = FTA
+                }
+                elseif (FTA > FTA4)
+                {
+                    FTF8 = FTF7, FTA8 = FTA7
+                    FTF7 = FTF6, FTA7 = FTA6
+                    FTF6 = FTF5, FTA6 = FTA5
+                    FTF5 = FTF4, FTA5 = FTA4
+                    FTF4 = FTF,  FTA4 = FTA
+                }
+                elseif (FTA > FTA5)
+                {
+                    FTF8 = FTF7, FTA8 = FTA7
+                    FTF7 = FTF6, FTA7 = FTA6
+                    FTF6 = FTF5, FTA6 = FTA5
+                    FTF5 = FTF,  FTA5 = FTA
+                }
+                elseif (FTA > FTA6)
+                {
+                    FTF8 = FTF7, FTA8 = FTA7
+                    FTF7 = FTF6, FTA7 = FTA6
+                    FTF6 = FTF,  FTA6 = FTA
+                }
+                elseif (FTA > FTA7)
+                {
+                    FTF8 = FTF7, FTA8 = FTA7
+                    FTF7 = FTF,  FTA7 = FTA
+                }
+                elseif (FTA > FTA8)
+                {
+                    FTF8 = FTF,  FTA8 = FTA
+                }
+                FTFrequencyI++
+            }
+            if (FTFrequency > 8000)
+            {
+                # print(format("[wav] F: %2d, %2d, %2d, %2d, %2d, %2d, %2d, %2d", FTF1, FTF2, FTF3, FTF4, FTF5, FTF6, FTF7, FTF8))
+                # print(format("[wav] A: %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f, %.4f", FTA1, FTA2, FTA3, FTA4, FTA5, FTA6, FTA7, FTA8))
+                CT[1, array]:pushNumber(FTStartTime), CF[1, array]:pushNumber(FTF1), CA[1, array]:pushNumber(FTA1)
+                CT[2, array]:pushNumber(FTStartTime), CF[2, array]:pushNumber(FTF2), CA[2, array]:pushNumber(FTA2)
+                CT[3, array]:pushNumber(FTStartTime), CF[3, array]:pushNumber(FTF3), CA[3, array]:pushNumber(FTA3)
+                CT[4, array]:pushNumber(FTStartTime), CF[4, array]:pushNumber(FTF4), CA[4, array]:pushNumber(FTA4)
+                CT[5, array]:pushNumber(FTStartTime), CF[5, array]:pushNumber(FTF5), CA[5, array]:pushNumber(FTA5)
+                CT[6, array]:pushNumber(FTStartTime), CF[6, array]:pushNumber(FTF6), CA[6, array]:pushNumber(FTA6)
+                CT[7, array]:pushNumber(FTStartTime), CF[7, array]:pushNumber(FTF7), CA[7, array]:pushNumber(FTA7)
+                CT[8, array]:pushNumber(FTStartTime), CF[8, array]:pushNumber(FTF8), CA[8, array]:pushNumber(FTA8)
+                FTI = 0
+                FTStartTime += FTInterval
+                SubState = 0
+            }
+#endif
+            if (FTStartTime > Length)
+            {
+            
+                State = 4
+                SubState = 0
+                for (I = 1, MaxChannels)
+                {
+                    CI[I, number] = 1
+                }
+                G["CI", array] = CI:clone()
+                G["CT", table] = CT
+                G["CF", table] = CF
+                G["CA", table] = CA
+                G["LoadStage", number] = 4
+                PlayStartTime = systime()
+                break
+            }
+        }
+    }
+#ifdef dtft(array, number, number, number, array)
+    setName("wav player\nDoing fourier transforms...\n" + formatTime(FTStartTime) + " / " + formatTime(Length))
+#else
+    setName("wav player\nDoing fourier transforms...\n" + formatTime(FTStartTime + FTI * SecondsPerSample) + " / " + formatTime(Length) + "\n" + FTFrequency + " Hz\n" + abs(FTLastTotal))
+#endif
+}
+elseif (State == 4)
+{
+    T = systime() - PlayStartTime
+    if (T > Length)
+    {
+        State = 5
+    }
+    for (I = 1, MaxChannels)
+    {
+        if (T >= CT[I, array][CI[I, number], number])
+        {
+            local F = CF[I, array][CI[I, number], number]
+            local FRel = 440
+            local A = CA[I, array][CI[I, number], number]
+            if (F < 880)
+            {
+                FRel = 440
+                soundPlay("C" + I, FTInterval, "synth/sine_440.wav")
+            }
+            elseif (F < 1760)
+            {
+                FRel = 880
+                soundPlay("C" + I, FTInterval, "synth/sine_880.wav")
+            }
+            else
+            {
+                FRel = 1760
+                soundPlay("C" + I, FTInterval, "synth/sine_1760.wav")
+            }
+            soundPitch("C" + I, F / FRel * 100)
+            soundVolume("C" + I, A / 10)
+            CI[I, number] = CI[I, number] + 1
+        }
+    }
+    Frequencies = ""
+    for (I = 1, MaxChannels)
+    {
+        if ((I - 1) % 3 == 0)
+        {
+            Frequencies += "\n"
+        }
+        else
+        {
+            Frequencies += ", "
+        }
+        Frequencies += floor(CF[I, array][CI[I, number], number]) + " Hz"
+    }
+    setName("wav player\nPlaying...\n" + formatTime(T) + " / " + formatTime(Length) + Frequencies)
+}

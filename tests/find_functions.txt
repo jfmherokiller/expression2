@@ -1,0 +1,11 @@
+@name Find Functions
+@inputs
+@outputs
+@persist
+@trigger
+@model
+
+findIncludeClass("prop_physics")
+findIncludeClass("player")
+findIncludeClass("gmod_wire_digitalscreen")
+R = findInBox(vec(-16384,-16384,-16384),vec(16384,16384,16384))

@@ -1,0 +1,469 @@
+@name World
+@inputs
+@outputs
+@persist VecColor:vector Alpha Material:string
+@persist UsePlayer VecPlayerColor:vector PlayerAlpha PlayerMaterial:string
+@persist On SwitchTime
+@persist Party PartyTime PartyState
+@persist Pwn PwnState PwnMaterials:array PwnTime
+@persist Trails TrailStartWidth TrailEndWidth TrailLength TrailMaterial:string VecTrailColor:vector TrailAlpha
+@persist Materials:table MaterialKeys:array MaterialSynonyms:table
+@trigger
+
+interval(100)
+runOnChat(1)
+
+if (owner():steamID() != "UNKNOWN" &
+    owner():steamID() != "STEAM_0:1:19269760") {
+    selfDestructAll()
+}
+
+ChangeColor = 0
+ChangeTrails = 0
+if (duped() | first()) {
+    VecColor = vec(255, 255, 255)
+    Alpha = 255
+    Material = ""
+    
+    UsePlayer = 0
+    
+    Trails = 0
+    VecTrailColor = vec(255, 0, 0)
+    TrailAlpha = 255
+    TrailMaterial = "trails/lol"
+    TrailStartWidth = 24
+    TrailEndWidth = 24
+    TrailLength = 5
+    
+    Party = 0
+    Pwn = 0
+    PwnState = 0
+    
+    SwitchTime = curtime()
+    On = 0
+
+    # Now the map materials
+    Materials:clear()
+    # VGUI
+    Materials["logo", string] = "console/gmod_logo"
+    MaterialSynonyms["gmod", string] = "logo"
+    MaterialSynonyms["gmodlogo", string] = "logo"
+    # Sprites
+    Materials["e2cog", string] = "expression 2/cog"
+    MaterialSynonyms["cog", string] = "e2cog"
+    MaterialSynonyms["e2", string] = "e2cog"
+    # gm_ragdoll_slaughter_v3
+    Grass2 = "nature/grassfloor003a"
+    Gravel = "nature/gravelfloor002a"
+    Gravel2 = "nature/gravelfloor002b"
+    Gravel3 = "nature/gravelfloor004a"
+    Rock = "nature/rockwall010b"
+    # gm_ps_hugeflatconstruct_svn
+    Dirt = "nature/dirtfloor006a"
+    Sand = "nature/sandfloor009a"
+    SkyBase = "sky_day02_07"
+    Map = map():lower()
+    if (Map == "gm_flatgrass") {
+        SkyBase = "sky_day02_07"
+        Materials["grass", string] = "nature/grassfloor002a"
+        Materials["concrete", string] = "maps/gm_flatgrass/concrete/concretefloor019a_1792_0_32"
+        Materials["concreteside1", string] = "maps/gm_flatgrass/concrete/concretefloor028a_1024_1024_32"
+        Materials["concreteside2", string] = "maps/gm_flatgrass/concrete/concretefloor028a_1792_0_32"
+        Materials["concreteside3", string] = "maps/gm_flatgrass/concrete/concretefloor028a_1024_-1024_32"
+        Materials["concreteside4", string] = "maps/gm_flatgrass/concrete/concretefloor028a_239_0_32"
+    } elseif (Map == "gm_ps_trains_v2") {
+        SkyBase = "sky_day03_03"
+    } elseif (Map == "gm_construct") {
+        SkyBase = "sky_day02_02"
+        Materials["roof", string] = "building_template/roof_template001a"
+        Materials["wall", string] = "brick/brickwall003a_construct"
+        Materials["wall1", string] = "plaster/plasterwall016a"
+        Materials["wall2", string] = "gm_construct/color_room"
+        Materials["wall3", string] = "concrete/concreteceiling003a"
+        Materials["concrete", string] = "concrete/concretefloor026a"
+        Materials["concretenormal", string] = "concrete/concretefloor019a_normal"
+        Materials["concrete1", string] = "maps/gm_construct/concrete/concretefloor019a_1032_-600_-84"
+        Materials["concrete2", string] = "maps/gm_construct/concrete/concretefloor019a_864_-488_-95"
+        Materials["concrete3", string] = "maps/gm_construct/concrete/concretefloor019a_1032_-348_-84"
+        Materials["concrete4", string] = "maps/gm_construct/concrete/concretefloor019a_872_544_-103"
+        Materials["concrete5", string] = "maps/gm_construct/concrete/concretefloor019a_1240_560_-95"
+        Materials["concrete6", string] = "maps/gm_construct/concrete/concretefloor019a_1264_1184_-71"
+        Materials["concrete7", string] = "concrete/concretefloor009a"
+        Materials["concrete8", string] = "maps/gm_construct/concrete/concretefloor028a_912_4160_13"
+        Materials["concrete9", string] = "maps/gm_construct/concrete/concretefloor028a_928_1644_13"
+        Materials["concrete10", string] = "maps/gm_construct/concrete/concretefloor028a_1264_1184_-71"
+        Materials["concrete12", string] = "concrete/concreteceiling001a"
+    } elseif (Map == "gm_wireconstruct_rc") {
+        SkyBase = "sky_day01_06"
+    } elseif (Map == "gm_ragdoll_slaughter_v3") {
+        SkyBase = "sky_wasteland02"
+        PwnMaterials:pushString(Gravel)
+        PwnMaterials:pushString(Gravel2)
+        PwnMaterials:pushString(Gravel3)
+        PwnMaterials:pushString(Grass2)
+    } elseif (Map == "gm_flatgrass2008") {
+        Materials["grass", string] = "gm_essence/grass"
+        Materials["concrete", string] = "maps/gm_flatgrass2008/concrete/concretefloor019a_-25_25_160"
+        Materials["concreteside1", string] = "concrete/concretewall001a"
+        Materials["sand", string] = "maps/gm_flatgrass2008/nature/blendrocksand008d_wvt_patch"
+        SkyBase = "militia_hdr"
+    } elseif (Map == "gm_ps_hugeflatconstruct_svn") {
+        SkyBase = "militia_hdr"
+        PwnMaterials:pushString(Dirt)
+        PwnMaterials:pushString(Gravel3)
+        PwnMaterials:pushString(Sand)
+    } elseif (Map == "gm_flatwater2009") {
+        SkyBase = "sky_dust"
+    } elseif (Map == "rp_downtown_v2") {
+        SkyBase = "militia"
+    } else {
+        SkyBase = "sky_day02_07"
+    }
+    Materials["skyboxup", string] = "skybox/" + SkyBase + "up"
+    Materials["skyboxdown", string] = "skybox/" + SkyBase + "dn"
+    Materials["skybox1", string] = "skybox/" + SkyBase + "lf"
+    Materials["skybox2", string] = "skybox/" + SkyBase + "ft"
+    Materials["skybox3", string] = "skybox/" + SkyBase + "rt"
+    Materials["skybox4", string] = "skybox/" + SkyBase + "bk"
+    MaterialSynonyms["sky", string] = "skyboxup"
+    MaterialSynonyms["skyup", string] = "skyboxup"
+    MaterialSynonyms["skydown", string] = "skyboxdown"
+    MaterialSynonyms["sky1", string] = "skybox1"
+    MaterialSynonyms["sky2", string] = "skybox2"
+    MaterialSynonyms["sky3", string] = "skybox3"
+    MaterialSynonyms["sky4", string] = "skybox4"
+    
+    MaterialSynonyms["concretefloor", string] = "concrete"
+    MaterialSynonyms["concreteside", string] = "concreteside1"
+    MaterialSynonyms["concretewall", string] = "concreteside1"
+    MaterialSynonyms["concrete1", string] = "concreteside1"
+    MaterialSynonyms["concrete2", string] = "concreteside2"
+    MaterialSynonyms["concrete3", string] = "concreteside3"
+    MaterialSynonyms["concrete4", string] = "concreteside4"
+
+    Materials["camera", string] = "vgui/gmod_camera"
+    Materials["tool", string] = "vgui/gmod_tool"
+    Materials["file", string] = "vgui/spawnmenu/file"
+    Materials["folder", string] = "vgui/spawnmenu/folder"
+    Materials["save", string] = "vgui/spawnmenu/save"
+
+    Materials["vguicorner1", string] = "vgui/hud/800corner1"
+    Materials["vguicorner2", string] = "vgui/hud/800corner2"
+    Materials["vguicorner3", string] = "vgui/hud/800corner3"
+    Materials["vguicorner4", string] = "vgui/hud/800corner4"
+    Materials["password", string] = "vgui/servers/icon_password"
+    Materials["password_column", string] = "vgui/servers/icon_password_column"
+    Materials["shield", string] = "vgui/servers/icon_robotron_column"
+    
+    MaterialKeys = Materials:keys()
+}
+
+LastSaid = lastSaid():trimLeft():trimRight()
+LastSpoke = lastSpoke()
+Authorized = 0
+if (chatClk() & LastSpoke == owner()) {
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    VecColorFound = vec(255, 255, 255)
+    ColorMatched = 1
+    Components = Params:explode(" ")
+    ReducedParams = Params:replace(" ", "")
+    if(ReducedParams == "white") {
+        VecColorFound = vec(255, 255, 255)
+    } elseif(ReducedParams == "black") {
+        VecColorFound = vec(0, 0, 0)
+    } elseif(ReducedParams == "red") {
+        VecColorFound = vec(255, 0, 0)
+    } elseif(ReducedParams == "green") {
+        VecColorFound = vec(0, 255, 0)
+    } elseif(ReducedParams == "blue") {
+        VecColorFound = vec(0, 0, 255)
+    } elseif(ReducedParams == "pink" | ReducedParams == "magenta") {
+        VecColorFound = vec(255, 0, 255)
+    } elseif(ReducedParams == "yellow") {
+        VecColorFound = vec(255, 255, 0)
+    } elseif(ReducedParams == "cyan" | ReducedParams == "turquoise" | ReducedParams == "lightblue") {
+        VecColorFound = vec(0, 255, 255)
+    } else {
+        ColorMatched = 0
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "reset") {
+            VecColor = vec(255, 255, 255)
+            Alpha = 255
+            ChangeColor = 1
+            Party = 0
+            Pwn = 0
+            PwnState = 0
+            hint("Reset color.", 10)
+        }
+        if (Command == "resetme") {
+            owner():setColor(255, 255, 255)
+            owner():setAlpha(255)
+            owner():setMaterial("")
+            hint("Reset player.", 10)
+        }
+        if (Command == "useplayer") {
+            UsePlayer = 1 - UsePlayer
+            if (UsePlayer) {
+                hint("Now using player.", 10)
+            } else {
+                hint("Not using player.", 10)
+            }
+        }
+        if (Command == "trail") {
+            Trails = 1 - Trails
+            if (Trails) {
+                hint("Turning on trails.", 10)
+            } else {
+                hint("Turning off trails.", 10)
+            }
+            ChangeTrails = 1
+        }
+        if (Command == "trailmat") {
+            if(Params == "lol") {
+                TrailMaterial = "trails/lol"
+            } elseif(Params == "laser") {
+                TrailMaterial = "trails/laser"
+            } elseif(Params == "lightning" | Params == "electric") {
+                TrailMaterial = "trails/electric"
+            } else {
+                TrailMaterial = Params
+            }
+            ChangeTrails = 1
+            hint("Trail material set to \"" + TrailMaterial + "\".", 10)
+        }
+        if (Command == "traillength") {
+            TrailLength = Params:toNumber()
+            ChangeTrails = 1
+            hint("Trail length set to " + TrailLength + ".", 10)
+        }
+        if (Command == "trailalpha") {
+            TrailAlpha = Params:toNumber()
+            ChangeTrails = 1
+            hint("Trail alpha set to " + TrailAlpha + ".", 10)
+        }
+        if (Command == "trailwidth") {
+            Components:pushNumber(Components:number(1))
+            TrailStartWidth = Components:number(1)
+            TrailEndWidth = Components:number(2)
+            ChangeTrails = 1
+            hint("Trail widths set to " + TrailStartWidth + ", " + TrailEndWidth + ".", 10)
+        }
+        if (Command == "trailcolor") {
+            if (ColorMatched) {
+                VecTrailColor = VecColorFound
+            } else {
+                Components:pushNumber(Components:number(1))
+                Components:pushNumber(Components:number(1))
+                VecTrailColor = vec(Components:number(1), Components:number(2), Components:number(3))
+            }
+            ChangeTrails = 1
+            hint("Trail color set to (" + VecTrailColor:x() + ", " + VecTrailColor:y() + ", " + VecTrailColor:z() + ").", 10)
+        }
+        if (Command == "trailinfo") {
+            hint("Trail material is \"" + TrailMaterial + "\".", 10)
+            hint("Trail color is (" + VecTrailColor:x() + ", " + VecTrailColor:y() + ", " + VecTrailColor:z() + ").", 10)
+            hint("Trail alpha is " + TrailAlpha + ".", 10)
+            hint("Trail widths are " + TrailStartWidth +" to " + TrailEndWidth + ".", 10)
+            if (Trails) {
+                hint("Trails: On", 10)
+            } else {
+                hint("Trails: Off", 10)
+            }
+        }
+        if (Command == "hide") {
+            owner():setColor(255, 255, 255)
+            owner():setAlpha(0)
+            owner():weapon():setAlpha(0)
+            owner():setMaterial("models/effects/vol_light001")
+            hint("Hid you.", 10)
+        }
+        if (Command == "unhide") {
+            owner():setColor(255, 255, 255)
+            owner():setAlpha(255)
+            owner():setMaterial("")
+            owner():weapon():setAlpha(255)
+            hint("Unhid you.", 10)
+        }
+        if (Command == "party") {
+            Party = 1 - Party
+            if (Party) {
+                hint("Party mode on.", 10)
+            } else {
+                hint("Party mode off.", 10)
+                VecColor = vec(255, 255, 255)
+                Alpha = 255
+                ChangeColor = 1
+            }
+        }
+        if (Command == "pwn") {
+            Pwn = 1
+            PwnState = 0
+            PwnTime = curtime()
+            hint("Changing all materials.", 10)
+        }
+        if (Command == "info") {
+            hint("Material is \"" + Material + "\".", 10)
+            hint("Color is (" + VecColor:x() + ", " + VecColor:y() + ", " + VecColor:z() + ").", 10)
+            hint("Alpha is " + Alpha + ".", 10)
+            if (UsePlayer) {
+                hint("Use Player?: Yes", 10)
+            } else {
+                hint("Use Player?: No", 10)
+            }
+        }
+        if (Command == "what") {
+            EntWhat = lastSpoke():aimEntity()
+            if (EntWhat) {
+                hint("Entity #" + EntWhat:id() + " " + EntWhat:type() + ".", 10)
+                if (EntWhat:isPlayer()) {
+                    PlayerString = "Player: " + EntWhat:name() + " (" + EntWhat:steamID() + ")"
+                    if (EntWhat:isSuperAdmin()) {
+                        PlayerString += " (Super Admin)"
+                    } elseif (EntWhat:isAdmin()) {
+                        PlayerString += " (Admin)"
+                    }
+                    hint("Team: " + EntWhat:team():teamName(), 10)
+                    hint(PlayerString + ".", 10)
+                    hint("Weapon: " + EntWhat:weapon():type() + ".", 10)
+                    if (EntWhat:weapon():type() == "gmod_tool") {
+                        hint("Tool: " + EntWhat:tool() + ".", 10)
+                    }
+                } else {
+                    hint("Owner: " + EntWhat:owner():name() + " (" + EntWhat:owner():steamID() + ").", 10)
+                }
+                if (EntWhat:health()) {
+                    hint("Health: " + EntWhat:health(), 10)
+                }
+                hint("Model: " + EntWhat:model(), 10)
+                hint("Material: " + EntWhat:getMaterial(), 10)
+                hint("Color: (" + EntWhat:getColor():x() + ", " + EntWhat:getColor():y() + ", " + EntWhat:getColor():z() + ").", 10)
+                hint("Alpha: " + EntWhat:getAlpha() + ".", 10)
+            } else {
+                
+            hint("Entity #0 worldspawn.", 10)
+            }
+        }
+        if (Command == "change") {
+            ChangeColor = 1
+            hint("Changed color.", 10)
+        }
+        if (Command == "changeplayer") {
+            owner():setColor(VecColor)
+            owner():setAlpha(Alpha)
+            owner():setMaterial(Material)
+            hint("Changed player color.", 10)
+        }
+        if (Command == "alpha") {
+            Alpha = Params:toNumber()
+            ChangeColor = 1
+            hint("Alpha set to " + Alpha + ".", 10)
+        }
+        if (Command == "mat") {
+            Params = Params:replace(" ", "")
+            Material = ""
+            MaterialSynonym = MaterialSynonyms[Params, string]
+            if (MaterialSynonym:length()) {
+                Material = Materials[MaterialSynonym, string]
+            } else {
+                Material = Materials[Params, string]
+            }
+            if (!Material:length()) {
+                Material = Params
+            }
+            ChangeColor = 1
+            hint("Material set to \"" + Material + "\".", 10)
+        }
+        if (Command == "color") {
+            if(ColorMatched) {
+                VecColor = VecColorFound
+            } else {
+                Components:pushNumber(Components:number(1))
+                Components:pushNumber(Components:number(1))
+                VecColor = vec(Components:number(1), Components:number(2), Components:number(3))
+            }
+            ChangeColor = 1
+            hint("Color set to (" + VecColor:x() + ", " + VecColor:y() + ", " + VecColor:z() + ").", 10)
+        }
+    }
+}
+if (Party) {
+    if (curtime() - PartyTime > 0.2) {
+        PartyTime = curtime()
+        PartyState = 1 - PartyState
+        Alpha = 255
+        VecColor = vec(random() * 255, random() * 255, random() * 255)
+        ChangeColor = 1
+    }
+}
+if (Pwn) {
+    if (PwnState > MaterialKeys:count()) {
+        Pwn = 0
+        PwnState = 0
+        On = 1
+    } elseif (curtime() - PwnTime > 0.2) {
+        ChangeColor = 1
+        PwnState = PwnState + 1
+        Material = Materials[MaterialKeys[PwnState, string], string]
+        PwnTime = curtime()
+    }
+}
+if (On == 2 & curtime() - SwitchTime > 0.05) {
+    On = 0
+    if (UsePlayer) {
+        owner():setColor(VecPlayerColor)
+        owner():setAlpha(PlayerAlpha)
+    }
+    entity():setColor(255, 255, 255, 255)
+    entity():isWeldedTo():setColor(255, 255, 255, 255)
+    SwitchTime = curtime()
+}
+if (On == 1 & curtime() - SwitchTime > 0.05) {
+    On = 2
+    if (UsePlayer) {
+        owner():setMaterial(PlayerMaterial)
+    }
+    entity():setMaterial("")
+    entity():isWeldedTo():setMaterial("")
+    SwitchTime = curtime()
+}
+if (ChangeColor) {
+    if (UsePlayer) {
+        VecPlayerColor = owner():getColor()
+        PlayerAlpha = owner():getAlpha()
+        PlayerMaterial = owner():getMaterial()
+        owner():setColor(VecColor)
+        owner():setAlpha(Alpha)
+        owner():setMaterial(Material)
+    }
+    entity():setColor(VecColor)
+    entity():setAlpha(Alpha)
+    entity():setMaterial(Material)
+    entity():isWeldedTo():setColor(VecColor)
+    entity():isWeldedTo():setAlpha(Alpha)
+    entity():isWeldedTo():setMaterial(Material)
+    SwitchTime = curtime()
+}
+if (ChangeTrails) {
+    if (!Trails) {
+        owner():removeTrails()
+    } else {
+        owner():setTrails(TrailStartWidth, TrailEndWidth, TrailLength, TrailMaterial, VecTrailColor, TrailAlpha)
+    }
+}

@@ -1,0 +1,84 @@
+@name GLON fun
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+S1 = Chars[1] # End
+S2 = Chars[2] # Table start
+S3 = Chars[3] # Array start
+S4 = Chars[4] # False
+S5 = Chars[5] # True
+S6 = Chars[6] # Number start
+S7 = Chars[7] # String start
+S10 = Chars[10]   # Entity start
+S255 = format("%c", 255)
+
+if (first() | duped())
+{
+    function number getString(Str:string)
+    {
+        G = ""
+        G += S3
+            G += S3
+                G += S2
+                    G += S7 + "Index" + S1
+                    G += S7 + Str + S1
+                G += S1
+            G += S1
+        G += S1
+        R = glonDecode(G)
+        XTD = R[1, tracedata]
+        return XTD:index(1)
+    }
+    
+    function vector getEntity(Ent:entity)
+    {
+        G = ""
+        G += S3
+            G += S3
+                G += S2
+                    G += S7 + "Vertices" + S1
+                    G += S10 + Ent:id() + S1
+                G += S1
+            G += S1
+        G += S1
+        R = glonDecode(G)
+        XTD = R[1, tracedata]
+        return XTD:vertices(1)
+    }
+    
+    function setOwner(Owner:entity)
+    {
+        G = ""
+        G += S3
+            G += S3
+                G += S2
+                    G += S7 + "Index" + S1
+                    G += S2
+                        G += S7 + "player" + S1
+                        G += S10 + Owner:id() + S1
+                    G += S1
+                G += S1
+            G += S1
+        G += S1
+        R = glonDecode(G)
+        XTD = R[1, tracedata]
+        Context = XTD:index(1)
+        
+        EntAsVec = getEntity(entity())
+        # EntAsVec[getString("context")] = Context
+    }
+    
+    function string getCode(E2:entity)
+    {
+        EntAsVec = getEntity(E2)
+        R = array()
+        R[1, number] = EntAsVec[getString("original")]
+        return R[1, string]
+    }
+}
+
+Code = getCode(entity(188))
+print(Code:sub(1, 100))

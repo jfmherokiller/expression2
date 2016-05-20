@@ -1,0 +1,199 @@
+@name Holo Planets
+@inputs 
+@outputs 
+@persist Started
+@persist PlanetCount Scale Trails
+@persist EntBase:entity
+@persist HoloSizes:array HoloColors:array
+@persist HoloPos:array HoloVel:array HoloAlpha:array
+@persist FailMode
+@trigger 
+
+interval(50)
+runOnChat(1)
+# Made by !cake
+# e807fdbf103543f25d62487731f64814
+# f29f4b906364158eabd3a8eb1902808c13f65bc3
+
+if (first() | duped()) {
+    PlanetCount = 5
+    Scale = 1
+    Trails = 1
+}
+
+if (chatClk()) {
+    Authorized = 0
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        Authorized = 1
+    }
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" |
+            Command:index(1) == "/" |
+            Command:index(1) == "-" |
+            Command:index(1) == "." |
+            Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            LowerParams = Params:lower()
+            if (LowerParams == "me") {
+                EntPlayer = owner()
+            } elseif (LowerParams == "none") {
+                EntPlayer = noentity()
+            } elseif (Params:length()) {
+                EntPlayer = findPlayerByName(Params)
+            }
+            if (Command == "follow") {
+                EntBase = EntPlayer
+            } elseif (Command == "fail") {
+                FailMode = 1 - FailMode
+                if (FailMode) {
+                    hint("Turned on fail mode.", 10)
+                } else {
+                    hint("Turned off fail mode.", 10)
+                }
+            } elseif (Command == "scale") {
+                Scale = Params:toNumber()
+                for (I = 1, PlanetCount) {
+                    CorrectedSize = HoloSizes:number(I) / 8
+                    holoScale(I, vec(CorrectedSize * Scale, CorrectedSize * Scale, CorrectedSize * Scale))
+                    if (Trails) {
+                        holoEntity(I):setTrails(HoloSizes:number(I) * Scale, 0.1, 10, "trails/laser", HoloColors:vector(I), 255)
+                    }
+                }
+            } elseif (Command == "sunsize") {
+                HoloSizes:setNumber(1, Params:toNumber())
+                CorrectedSize = HoloSizes:number(1) / 8
+                holoScale(1, vec(CorrectedSize * Scale, CorrectedSize * Scale, CorrectedSize * Scale))
+            } elseif (Command == "trails") {
+                Trails = 1 - Trails
+                if (Trails) {
+                    hint("Turned on trails.", 10)
+                    for (I = 1, PlanetCount) {
+                        holoEntity(I):setTrails(HoloSizes:number(I) * Scale, 0.1, 10, "trails/laser", HoloColors:vector(I), 255)
+                    }
+                } else {
+                    hint("Turned off trails.", 10)
+                    for (I = 1, PlanetCount) {
+                        holoEntity(I):removeTrails()
+                    }
+                }
+            }
+        }
+    }
+} else {
+    if (EntBase) {
+        VecBasePos = EntBase:pos()
+    } else {
+        VecBasePos = entity():pos()
+    }
+    VecBasePos += vec(0, 0, 180)
+    
+    if (duped()) {
+        Started = 0
+    }
+    if (!Started) {
+        Stolen = 1
+        Creator = 0
+        if (owner():steamID() == "STEAM_0:1:19269760") {
+            Creator = 1
+            Stolen = 0
+        }
+        if (owner():steamID() == "STEAM_0:0:22304985") {
+            Stolen = 0
+        }
+        if (Stolen) {
+            hint("Not yours.", 10)
+            selfDestructAll()
+        }
+        if (!Creator) {
+            hint("Holographic Planets - made by !cake", 10)
+            hint("Commands are !sunsize <number>, !fail and !follow <player>.", 10)
+        }
+    
+        for (I = 1, PlanetCount) {
+            HoloSizes:setNumber(I, random(8, 24))
+            HoloColors:setVector(I, randvec(0, 255))
+            HoloAlpha:setNumber(I, 255)
+        }
+        HoloSizes:setNumber(1, 32)
+        HoloColors:setVector(1, vec(255, 192, 0))
+        for (I = 1, PlanetCount) {
+            holoCreate(I)
+            holoModel(I, "hqsphere")
+            holoColor(I, HoloColors:vector(I))
+            if (Trails) {
+                holoEntity(I):setTrails(HoloSizes:number(I) * Scale, 0.1, 10, "trails/laser", HoloColors:vector(I), 255)
+            }
+            # Diameter of sphere is 16
+            # Radius is 8
+            # HoloSizes:number(I) is the target radius
+            CorrectedSize = HoloSizes:number(I) / 8
+            holoScale(I, vec(CorrectedSize * Scale, CorrectedSize * Scale, CorrectedSize * Scale))
+            Distance = random(64, 180)
+            Distance = random(64, 512)
+            Angle = random(0, 360)
+            VecPosition = vec(1, 0, 0):rotate(ang(0, Angle, 0)) * Distance
+            Velocity = random(4, 16)
+            if (random(0, 1) < 0.5) {
+                Velocity *= -1
+            }
+            HoloVel:setVector(I, vec(1, 0, 0):rotate(ang(random(-30, 30), Angle + 90 + random(-5, 5), 0)) * Velocity)
+            HoloPos:setVector(I, VecPosition)
+            holoPos(I, VecPosition * Scale + VecBasePos)
+        }
+        HoloPos:setVector(1, VecBasePos + vec(0, 0, 180))
+        holoPos(1, VecBasePos + vec(0, 0, 180))
+        Started = 1
+    }
+    
+    HoloPos:setVector(1, VecBasePos)
+    holoPos(1, VecBasePos)
+        
+    for (I = 2, PlanetCount) {
+        VecDirection = HoloPos:vector(I)
+        Distance = VecDirection:length()
+        if (HoloAlpha:number(I) == 255 & Distance > HoloSizes:number(1) + HoloSizes:number(I)) {
+            R = HoloSizes:number(1)
+            Mass1 = 1 * 4 / 3 * 3.1415926 * R * R * R
+            R = HoloSizes:number(I)
+            Mass2 = 1 * 4 / 3 * 3.1415926 * R * R * R
+            VecAcceleration = VecDirection:normalized() * 6.6730 * 10 ^ -4 * Mass1 * Mass2
+            VecAcceleration /= Distance
+            VecAcceleration /= -Mass2
+            if (FailMode) {
+                if (HoloPos:vector(I):z() + HoloPos:vector(1):z() < HoloSizes:number(I)) {
+                    VecAcceleration = VecAcceleration:setZ(0)
+                    if (HoloVel:vector(I):z() < 0) {
+                        HoloVel:setVector(I, HoloVel:vector(I):setZ(-HoloVel:vector(I):z() * 0.8))
+                    }
+                } else {
+                    VecAcceleration += vec(0, 0, -1)
+                }
+            }
+            HoloVel:setVector(I, HoloVel:vector(I) + VecAcceleration)
+            HoloPos:setVector(I, HoloPos:vector(I) + HoloVel:vector(I))
+            holoPos(I, HoloPos:vector(I) * Scale + HoloPos:vector(1))
+        } else {
+            holoColor(I, vec(255, 0, 0))
+            if (HoloAlpha:number(I)) {
+                HoloAlpha:setNumber(I, HoloAlpha:number(I) - 5)
+                holoAlpha(I, HoloAlpha:number(I))
+            } else {
+                holoDelete(I)
+            }
+        }
+    }
+}

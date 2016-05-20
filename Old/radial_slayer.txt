@@ -1,0 +1,81 @@
+@name Radial Slayer
+@inputs 
+@outputs 
+@persist Started Distance
+@trigger 
+
+interval(500)
+runOnChat(1)
+
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    Distance = 256
+    Started = 1
+    holoCreate(1)
+    holoCreate(2)
+    holoModel(1, "hqsphere")
+    holoModel(2, "hqsphere")
+    Size = Distance / 6
+    holoScale(1, vec(Size, Size, Size))
+    holoScale(2, vec(-Size, -Size, -Size))
+    holoColor(1, vec(255, 0, 0), 128)
+    holoColor(2, vec(255, 0, 0), 128)
+    if (Size > 50) {
+        hint("Warning: Hologram does not reflect private area's true size.", 10)
+    }
+}
+
+holoPos(1, entity():pos())
+holoPos(2, entity():pos())
+
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Command == "dist" | Command == "distance") {
+            Distance = Params:toNumber()
+            Size = Distance / 6
+            holoScale(1, vec(Size, Size, Size))
+            holoScale(2, vec(-Size, -Size, -Size))
+            hint("Set distance to " + Distance + ".", 10)
+            if (Size > 50) {
+                hint("Warning: Hologram does not reflect private area's true size.", 10)
+            }
+        }
+    }
+}
+
+findIncludeClass("player")
+findInSphere(entity():pos(), Distance)
+Players = findToArray()
+
+for (I = 1, Players:count()) {
+    if (Players:entity(I):isAlive() &
+        Players:entity(I) != owner() &
+        !Players:entity(I):isAdmin() &
+        !Players:entity(I):isSuperAdmin()) {
+        hint("Player \"" + Players:entity(I):name() + "\" wandered too close.", 10)
+        # concmd("citrus slay \"" + Players:entity(I):name() + "\"")
+        concmd("ulx sslay \"" + Players:entity(I):name() + "\"")
+        concmd("ulx psay \"" + Players:entity(I):name() + "\" \"You wandered into private airspace.\"")
+    }
+}

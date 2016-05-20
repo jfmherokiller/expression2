@@ -1,0 +1,155 @@
+@name Natbro's PF
+@persist [EE O]:entity TPos:vector ParentPos:vector
+@persist [Directions SafeList]:array
+@persist [CNode]:string
+@outputs [PNodes FScores GScores ClosedNodes OpenList]:table
+@persist XYScale Rate OC
+
+
+if (first()) {
+
+    OC = 1
+    Rate = 1000
+    XYScale = 32
+
+    
+    
+    EE = entity()
+    O = owner()
+    CNode = "0x0"
+    ClosedNodes["0x0", number] = 1
+    ParentPos = EE:pos() + vec(0,0,32)
+    
+    runOnChat(1)
+    
+    Directions[1, vector] = vec(1, 0, 0)
+    Directions[2, vector] = vec(1, 1, 0)
+    Directions[3, vector] = vec(0, 1, 0)
+    Directions[4, vector] = vec(-1, 1, 0)
+    Directions[5, vector] = vec(-1, 0, 0)
+    Directions[6, vector] = vec(-1, -1, 0)
+    Directions[7, vector] = vec(0, -1, 0)
+    Directions[8, vector] = vec(1, -1, 0)
+    
+    holoCreate(0)
+    holoModel(0, "hqsphere")
+    holoScale(0, vec(2.5, 2.5, 2.5))
+    holoColor(0, vec(83, 184, 83))
+    
+    
+    TPos = gGetVec("pf-TPos")
+    holoPos(0, TPos)
+    
+    timer("Run", 100)
+}
+
+
+if (chatClk()) {
+    LS = lastSaid()
+    
+    if (LS:left(1) == "-" & chatClk(O)) {
+        hideChat(1)
+        
+        LS = LS:replace("-", "")
+        LSO = LS:lower()
+        
+        if (LSO == "tpos") {
+            TPos = O:aimPos() + vec(0, 0, 32)
+            holoPos(0, TPos)
+            gSetVec("pf-TPos", TPos)
+            #FScore = (EE:pos() + vec(0, 0, 32)):distance(TPos)
+        }
+    }
+}
+        
+            
+if (clk("Run")) {
+    
+    
+    
+    for (I = 1, OC) {
+        
+        E = CNode:explode("x")
+        X = E[1, string]:toNumber()
+        Y = E[2, string]:toNumber() #print(X) print(Y)
+        CPos = vec(X, Y, 0) + ParentPos
+        
+        if (CPos:distance(TPos) > XYScale * 1.5) {timer("Run", Rate)}else{stoptimer("Run")}
+        
+        SafeList:clear()
+        G = GScores[PNodes[CNode, string], number]
+        
+        #Prepare!
+        for (V = 1, 8) {
+            
+            AddedPosition = Directions[V, vector] * XYScale 
+            AddedPosition = AddedPosition + CPos
+            
+            RF = rangerOffset(XYScale, AddedPosition, vec(1, 0, 0)):hit()
+            RB = rangerOffset(XYScale, AddedPosition, vec(-1, 0, 0)):hit()
+            RR = rangerOffset(XYScale, AddedPosition, vec(0, 1, 0)):hit()
+            RL = rangerOffset(XYScale, AddedPosition, vec(0, -1, 0)):hit()
+            RD = rangerOffset(XYScale + 32, AddedPosition, vec(0, 0, -1)):hit()
+            
+            if (!RF & !RB & !RR & !RL & RD) {
+                
+                New = (AddedPosition - CPos)
+                NewX = New:x()
+                NewY = New:y()
+                
+                NN = NewX + "x" + NewY
+                #print(NN)
+                
+                if (!ClosedNodes[NN, number]) {
+                    
+                    
+                    SafeList:pushString(NN)
+                    
+                    PNodes[NN, string] = CNode
+                    ClosedNodes[NN, number] = 1
+                                    
+                }
+            }                        
+        }
+        
+        for (I = 1, SafeList:count()) {
+            #print(SafeList)
+            
+            SLX = SafeList[I, string]:explode("x")[1, string]:toNumber()
+            SLY = SafeList[I, string]:explode("x")[2, string]:toNumber()
+            
+            NodePos = ParentPos + vec(SLX, SLY, 0)
+            #print(NodePos)
+            
+            Distance = round(NodePos:distance(TPos))
+            PG = SLX & SLY ? 84 : 80
+            
+            FScores[SLX + "x" + SLY, number] = Distance + PG
+            GScores[SLX + "x" + SLY, number] = PG
+            
+            VisID = randint(1, 49) 
+                if (!holoEntity(VisID)) {
+                    holoCreate(VisID, NodePos)
+                    holoColor(VisID, vec(0, 150, 0))
+            }else{holoPos(VisID, NodePos)}
+        
+            
+        }
+        
+        printTable(FScores)
+        MinNode = FScores:keys()[FScores:values():minIndex(), string]
+        FScores[MinNode, number] = 999999999999999999999999999999999999999
+        CNode = MinNode  
+        #print(CNode)
+        
+    }
+}
+                
+                
+                
+    
+    
+    
+    
+    
+

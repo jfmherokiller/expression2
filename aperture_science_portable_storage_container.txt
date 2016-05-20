@@ -1,0 +1,54 @@
+@name Aperture Science Portable Storage Container
+@inputs
+@outputs
+@persist Items:array
+@trigger
+@model models/props_junk/trashdumpster02.mdl
+# @model models/props_wasteland/laundry_cart002.mdl
+# @model models/props_junk/plasticcrate01a.mdl
+
+interval(500)
+runOnLast(1)
+
+Empty = 0
+if (first() | duped()) {
+    Items = array()
+}
+
+Dot = vec(0, 0, 1):dot(entity():toWorldAxis(vec(0, 0, 1)))
+if (Dot <= 0) {
+    Empty = 1
+}
+
+if (!Empty &
+    entity():getAlpha() > 0 &
+    findCanQuery()) {
+    findClearBlackEntityList()
+    findExcludeEntities(Items)
+    findInBox(entity():boxCenterW() + entity():boxMin() * 0.9, entity():boxCenterW() + entity():boxMax() * 0.9)
+    R = findToArray()
+    for (I = 1, R:count()) {
+        Entity = R[I, entity]
+        if (Entity:boxSize():length() <=
+            entity():boxSize():length()) {
+            Entity:propFreeze(1)
+            Entity:propNotSolid(1)
+            Entity:setAlpha(0)
+            if (Entity:getAlpha() == 0) {
+                Items:pushEntity(Entity)
+            }
+        }
+    }
+}
+
+if (Empty &
+    entity():getAlpha() > 0) {
+    for (I = 1, Items:count()) {
+        Entity = Items[I, entity]
+        Entity:propFreeze(0)
+        Entity:propNotSolid(0)
+        Entity:setAlpha(255)
+        Entity:setPos(entity():boxCenterW())
+    }
+    Items:clear()
+}

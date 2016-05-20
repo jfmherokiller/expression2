@@ -1,0 +1,30 @@
+@name Ride
+@inputs Start
+@outputs Height
+@persist Started StartTime
+@trigger 
+
+interval(50)
+
+if (Start) {
+    if (!Started) {
+        Started = 1
+        StartTime = curtime()
+    }
+}
+
+Time = curtime() - StartTime
+if (Time < 10) {
+    Height = Time * 40
+} elseif (Time < 13) {
+    Height = 400
+} elseif (Time < 18) {
+    Height = 0
+} elseif (Time >= 15) {
+    Started = 0
+}
+
+if (!Started) {
+    Height = 0
+    stoptimer("interval")   
+}

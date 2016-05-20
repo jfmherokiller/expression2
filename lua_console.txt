@@ -1,0 +1,139 @@
+@name Lua Console
+@inputs Screen:wirelink
+@outputs
+@persist FileName:string
+@persist Data:array DataIndex
+@persist ScreenLines
+@trigger 
+
+runOnFile(1)
+
+if (duped() | first()) {
+    if (!convarnum("wire_expression2_concmd")) {
+        printColor(vec(255, 0, 0), "Warning: wire_expression2_concmd is set to 0.")
+    }
+    
+    DataIndex = 1
+    
+    Screen[2041] = 1
+    
+    FileName = "console.txt"
+    fileRemove(FileName)
+    fileLoad(FileName)
+    
+    concmd("lmsg file " + FileName + " console")
+    hint("Console file: " + FileName, 10)
+    
+    fileRemove(FileName)
+    fileLoad(FileName)
+    concmd("lmsg ping")
+    concmd("lmsg recv")
+    print("Sent startup signal.")
+    
+#ifdef function()
+    ShiftScreen = function(Source:wirelink, Dest:wirelink, Lines) {
+        for (I = 1, Lines) {
+            ArrData = array()
+            for (J = 1, 60) {
+                ArrData:setNumber(J, Source:readCell((I + 1) * 60 + J - 1))
+            }
+            Dest:writeArray((17 - Lines + I) * 60, ArrData)
+        }
+    }
+#endif
+}
+
+# Instruction buffers
+ReceiveMessages = 0
+
+if (chatClk()) {
+    ChatActivated = 0
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        ChatActivated = 1
+    }
+    if (ChatActivated) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        Components = Params:explode(" ")
+        ReducedParams = Params:replace(" ", "")
+        Vector = vec(Components:number(2), Components:number(3), Components:number(4))
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "#") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        Player = findPlayerByName(Components:string(1))
+        Message = Params:sub(Params:find(" ") + 1, Params:length())
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "tick") {
+                ReceiveMessages = 1
+            }
+        }
+    }
+} elseif (clk("interval")) {
+    concmd("lmsg ping")
+} elseif (fileClk(FileName)) {
+    ReceiveMessages = 2
+}
+
+if (ReceiveMessages) {
+    EncodedData = ""
+    if (ReceiveMessages == 1) {
+        MessageID = convarnum("lmsg_message_proxy_data_id")
+        for (I = 1, convarnum("lmsg_message_proxy_data_count")) {
+            EncodedData = EncodedData + convar("lmsg_message_proxy_data" + I)
+        }
+    } else {
+        EncodedData = fileRead(FileName)
+        fileRemove(FileName)
+        fileLoad(FileName)
+        concmd("lmsg ack " + FileName)
+    }
+    NewData = glonDecode(EncodedData)
+    for (I = 1, NewData:count()) {
+        if (NewData:string(I):length()) {
+            Data:pushString(NewData:string(I))
+        } else {
+            printColor(vec(255, 0, 0), "Message reception failure.")
+        }
+    }
+}
+
+for (Z = DataIndex, Data:count()) {
+    String = Data[Z, string]
+    Table = glonDecodeTable(String)
+    Type = Table["type", string]
+    if (Type == "text") {
+        Text = Table["text", string]
+        TextBits = Text:explode("\n")
+        LinesNeeded = 0
+        for (I = 1, TextBits:count()) {
+            LinesNeeded += ceil(TextBits[I, string]:length() / 30)
+        }
+        LinesAvailable = 18 - ScreenLines
+        if (LinesAvailable < LinesNeeded) {
+            ScreenLines -= LinesNeeded - LinesAvailable
+            Screen:writeCell(2038, LinesNeeded - LinesAvailable)
+        }
+        Screen:writeString(Text, 0, ScreenLines)
+        ScreenLines += LinesNeeded
+        concmd("lmsg ack")
+    } elseif (Type == "clear") {
+        Screen[2041] = 1
+        ScreenLines = 0
+        concmd("lmsg ack")
+    } else {
+        printColor(vec(255, 0, 0), "Unhandled message " + Type + ".")
+    }
+    Data:setString(Z, "")
+    DataIndex++
+}

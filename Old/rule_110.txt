@@ -1,0 +1,93 @@
+@name Rule 110
+@inputs Screen:wirelink
+@outputs
+@persist Width Height BPP Pitch
+@persist State MaxStates LastUpdate UpdateInterval
+@persist X Y Data:array NewData:array
+@trigger 
+
+interval(10)
+
+if (duped() | first()) {
+    BPP = 1
+    Width = 128
+    Height = 128
+    Pitch = BPP * Width
+    MaxStates = 3
+    State = -1
+    LastUpdate = curtime()
+    UpdateInterval = 1
+    
+    Screen[1048569] = 0
+    Screen[1048574] = 1
+    Screen[1048574] = 0
+    Screen[1048573] = Width
+    Screen[1048572] = Height
+    
+    X = 0
+    Y = 0
+    Data = array()
+    NewData = array()
+} else {
+    if (State == -1) {
+        while (minquota()) {
+            # Initialization
+            Data:setNumber(X, round(random(0, 255)))
+            Screen[X * BPP] = Data:number(X)
+            X++
+            if (X >= Width) {
+                X = 0
+                Y++
+                State++
+                break
+            }
+        }
+    } elseif (State == 0) {
+        while (minquota()) {
+            Left = Data:number(X - 1)
+            Middle = Data:number(X)
+            Right = Data:number(X + 1)
+            Value = 0
+            if (Left) {
+                if ((!Middle | !Right) & (Middle | Right)) {
+                    Value = 1
+                }
+            } else {
+                if (Middle | Right) {
+                    Value = 1
+                }
+            }
+            NewData:setNumber(X, Value * 255)
+            X++
+            if (X >= Width) {
+                X = 0
+                State++
+                break
+            }
+        }
+    } elseif (State == 1) {
+        Data = NewData:clone()
+        State++
+    } else {
+        if (curtime() - LastUpdate > UpdateInterval) {
+            while (minquota()) {
+                Screen[Y * Pitch + X * BPP] = Data:number(X)
+                X++
+                if (X >= Width) {
+                    X = 0
+                    Y++
+                    if (Y >= Height) {
+                        Y = 0
+                    }
+                    State++
+                    
+                    LastUpdate = curtime()
+                    break
+                }
+            }
+        }
+    }
+    if (State >= MaxStates) {
+        State = 0
+    }
+}

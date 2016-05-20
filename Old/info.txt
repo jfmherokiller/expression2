@@ -1,0 +1,11 @@
+@name Info
+@inputs DoorOpen
+@outputs Text:string
+@persist
+@trigger
+
+if (DoorOpen) {
+    Text = "<br>Welcome"
+} else {
+    Text = ""
+}

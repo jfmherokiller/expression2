@@ -1,0 +1,42 @@
+@name Prime Sieve
+@inputs 
+@outputs LastPrime
+@persist Primes:array CurrentNumber CurrentFactorIndex
+@trigger 
+
+if (first())
+{
+    runOnTick(1)
+    
+    Primes:pushNumber(2)
+    Primes:pushNumber(3)
+    
+    CurrentNumber = 5
+    CurrentFactorIndex = 2
+    
+    LastPrime = 3
+}
+
+while(perf())
+{
+    if (CurrentNumber % Primes[CurrentFactorIndex, number] == 0)
+    {
+        # not prime
+        CurrentNumber += 2
+        CurrentFactorIndex = 2
+    }
+    else
+    {
+        CurrentFactorIndex++
+        if (CurrentFactorIndex > Primes:count())
+        {
+            Primes:pushNumber(CurrentNumber)
+            LastPrime = CurrentNumber
+            
+            CurrentNumber += 2
+            CurrentFactorIndex = 2
+            
+            break
+        }
+    }
+}

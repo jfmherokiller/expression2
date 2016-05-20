@@ -1,0 +1,50 @@
+@name Prop Envelope
+@inputs 
+@outputs 
+@persist Props:array
+@trigger 
+
+runOnChat(1)
+interval(100)
+
+if (duped() | first()) {
+    Props = array()
+}
+
+if (chatClk()) {
+    LastSpoke = lastSpoke()
+    if (LastSpoke == owner()) {
+        LastSaid = lastSaid()
+        Authorized = 1
+    }
+    if (Authorized) {
+        # Parse the command
+        if (LastSaid:find(" ")) {
+            Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+            Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+        } else {
+            Command = LastSaid:sub(1, LastSaid:length())
+            Params = ""
+        }
+        IsCmd = 0
+        if (Command:index(1) == "!" | Command:index(1) == "/") {
+            IsCmd = 1
+            Command = Command:sub(2, Command:length()):lower()
+        }
+        if (IsCmd) {
+            hideChat(1)
+            if (Command == "add") {
+                ID = LastSpoke:aimEntity():id()
+                holoCreate(ID)
+                holoColor(ID, vec(0, 0, 0))
+                Props:pushEntity(LastSpoke:aimEntity())
+            }
+        }
+    }
+} else {
+    for (I = 1, Props:count()) {
+        holoPos(Props:entity(I):id(), Props:entity(I):toWorld(Props:entity(I):boxCenter()))
+        holoAng(Props:entity(I):id(), Props:entity(I):angles())
+        holoScale(Props:entity(I):id(), Props:entity(I):boxSize() / 12)
+    }
+}

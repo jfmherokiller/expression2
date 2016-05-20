@@ -1,0 +1,52 @@
+@name Holoemitter cube
+@inputs 
+@outputs Pos:vector Active Clear
+@persist Coords:array Index Wait
+@trigger 
+
+interval(250)
+
+Clear = 0
+if (duped() | first()) {
+    Clear = 1
+    Active = 1
+    Wait = 0
+    
+    Coords = array()
+    Coords:pushVector(vec(-1, -1, -1))
+    Coords:pushVector(vec(-1, -1,  1))
+    Coords:pushVector(vec(-1,  1,  1))
+    Coords:pushVector(vec(-1,  1, -1))
+    Coords:pushVector(vec(-1, -1, -1))
+    
+    Coords:pushVector(vec(1, -1, -1))
+    Coords:pushVector(vec(1, -1,  1))
+    Coords:pushVector(vec(1,  1,  1))
+    Coords:pushVector(vec(1,  1, -1))
+    Coords:pushVector(vec(1, -1, -1))
+    
+    Coords:pushVector(vec(-1, -1, -1))
+    Coords:pushVector(vec(1, -1, -1))
+    
+    Coords:pushVector(vec(-1, -1,  1))
+    Coords:pushVector(vec(1, -1,  1))
+    
+    Coords:pushVector(vec(-1,  1,  1))
+    Coords:pushVector(vec(1,  1,  1))
+    
+    Coords:pushVector(vec(-1,  1, -1))
+    Coords:pushVector(vec(1,  1, -1))
+    Index = 1
+}
+
+if (Wait) {
+    Wait = 0
+    Clear = 1
+} else {
+    Pos = Coords:vector(Index) * 16
+    Index++
+}
+if (Index > Coords:count()) {
+    Index = 1
+    Wait = 1
+}

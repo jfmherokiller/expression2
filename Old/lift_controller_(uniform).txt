@@ -1,0 +1,15 @@
+@name Lift Controller (Building)
+@inputs F0 F1 F2 F3
+@outputs HydraulicLength TargetHeight
+@persist TargetFloor
+@trigger
+
+if (F0) {
+    TargetFloor = 0
+} elseif (F1) {
+    TargetFloor = 1
+} elseif (F2) {
+    TargetFloor = 2
+}
+
+HydraulicLength = TargetFloor * 192

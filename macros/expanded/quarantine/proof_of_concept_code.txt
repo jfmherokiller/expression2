@@ -1,0 +1,689 @@
+@name Test
+@inputs 
+@outputs 
+@persist Owner:entity T:table C:table
+# T = This
+# C = Context
+# D = Data
+@trigger 
+
+if (first() | duped())
+{
+    if(first() | duped()) {
+            Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+            S1 = Chars[1] # End
+            S2 = Chars[2] # Table start
+            S3 = Chars[3] # Array start
+            S4 = Chars[4] # False
+            S5 = Chars[5] # True
+            S6 = Chars[6] # Number start
+            S7 = Chars[7] # String start
+            S10 = Chars[10]   # Entity start
+            S255 = format("%c", 255)
+            G = ""
+            G += S2
+                G += S7 + "istable" + S1
+                    G += S5
+                G += S7 + "size" + S1
+                    G += S6 + "1" + S1
+                G += S7 + "depth" + S1
+                    G += S6 + "0" + S1
+                G += S7 + "s" + S1
+                    G += S255 + "2" + S1
+                G += S7 + "stypes" + S1
+                    G += S2
+                        G += S7 + "istable" + S1
+                            G += S5
+                        G += S7 + "s" + S1
+                            G += S2 + S1
+                        G += S7 + "n" + S1
+                            G += S2 + S1
+                    G += S1
+                G += S7 + "n" + S1
+                    G += S255 + "2" + S1
+                G += S7 + "ntypes" + S1
+                    G += S255 + "2" + S1
+            G += S1
+        PT = glonDecodeTable(G)
+        PT["s", entity] = entity()
+        
+        PT["_buffer", string] = "@name Test\n@inputs \n@outputs \n@persist \n@trigger \n\nprint(\"test\")"
+        PT["_original", string] = "@name Test\n@inputs \n@outputs \n@persist \n@trigger \n\nprint(\"test\")"
+        PT["buffer", string] = "@name Test\n@inputs \n@outputs \n@persist \n@trigger \n\nprint(\"test\")"
+        PT["original", string] = "@name Test\n@inputs \n@outputs \n@persist \n@trigger \n\nprint(\"test\")"
+    }
+}
+
+    Chars = format("%c%c%c%c%c%c%c%c%c%c%c", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
+    S1 = Chars[1] # End
+    S2 = Chars[2] # Table start
+    S3 = Chars[3] # Array start
+    S4 = Chars[4] # False
+    S5 = Chars[5] # True
+    S6 = Chars[6] # Number start
+    S7 = Chars[7] # String start
+    S10 = Chars[10]   # Entity start
+    S255 = format("%c", 255)
+
+if (first() | duped()) {
+    runOnChat(1)
+    
+    Owner = owner()
+    dsSetScope(2)
+    
+        G = ""
+        G += S2
+            G += S7 + "istable" + S1
+                G += S5
+            G += S7 + "size" + S1
+                G += S6 + "1" + S1
+            G += S7 + "depth" + S1
+                G += S6 + "0" + S1
+            G += S7 + "s" + S1
+                G += S255 + "2" + S1
+            G += S7 + "stypes" + S1
+                G += S2
+                    G += S7 + "istable" + S1
+                        G += S5
+                    G += S7 + "s" + S1
+                        G += S2 + S1
+                    G += S7 + "n" + S1
+                        G += S2 + S1
+                G += S1
+            G += S7 + "n" + S1
+                G += S255 + "2" + S1
+            G += S7 + "ntypes" + S1
+                G += S255 + "2" + S1
+        G += S1
+    T = glonDecodeTable(G)
+    T["name", string] = ""
+    T["context", array] = array()
+    T["s", entity] = entity()
+    
+        G = ""
+        G += S2
+            G += S7 + "istable" + S1
+                G += S5
+            G += S7 + "size" + S1
+                G += S6 + "1" + S1
+            G += S7 + "depth" + S1
+                G += S6 + "0" + S1
+            G += S7 + "s" + S1
+                G += S255 + "2" + S1
+            G += S7 + "stypes" + S1
+                G += S2
+                    G += S7 + "istable" + S1
+                        G += S5
+                    G += S7 + "s" + S1
+                        G += S2 + S1
+                    G += S7 + "n" + S1
+                        G += S2 + S1
+                G += S1
+            G += S7 + "n" + S1
+                G += S255 + "2" + S1
+            G += S7 + "ntypes" + S1
+                G += S255 + "2" + S1
+        G += S1
+    C = glonDecodeTable(G)
+    C["data", array] = array()
+    C["s", array] = T["context", array]
+    
+        G = ""
+        G += S2
+            G += S7 + "istable" + S1
+                G += S5
+            G += S7 + "size" + S1
+                G += S6 + "1" + S1
+            G += S7 + "depth" + S1
+                G += S6 + "0" + S1
+            G += S7 + "s" + S1
+                G += S255 + "2" + S1
+            G += S7 + "stypes" + S1
+                G += S2
+                    G += S7 + "istable" + S1
+                        G += S5
+                    G += S7 + "s" + S1
+                        G += S2 + S1
+                    G += S7 + "n" + S1
+                        G += S2 + S1
+                G += S1
+            G += S7 + "n" + S1
+                G += S255 + "2" + S1
+            G += S7 + "ntypes" + S1
+                G += S255 + "2" + S1
+        G += S1
+    D = glonDecodeTable(G)
+    D["s", array] = C["data", array]
+}
+
+if (chatClk())
+{
+    if (lastSpoke() == owner())
+    {
+        LastSaid = lastSaid()
+        if (LastSaid[1] == "!" || LastSaid[1] == "/")
+        {
+            hideChat(1)
+            LastSaid = LastSaid:sub(2):trim()
+            Arguments = LastSaid:explode(" ")
+            Cmd = Arguments[1, string]:lower()
+            ArgumentString = LastSaid:sub(LastSaid:find(" ") + 1)
+            UnescapedArgumentString = ArgumentString:replace("\\\\", "\\")
+            UnescapedArgumentString = ArgumentString:replace("\\n", "\n")
+            UnescapedArgumentString = ArgumentString:replace("\\r", "\r")
+            UnescapedArgumentString = ArgumentString:replace("\\t", "\t")
+            
+            # EA = EntityArgument
+            # AE = AimEntity
+            # TE = TargetEntity
+            
+            EA = entity(Arguments[2, string]:toNumber())
+            
+            AE = lastSpoke():aimEntity()
+            TE = AE
+            if (EA:isValid())
+            {
+                TE = EA
+            }
+            
+            if (Cmd == "clr")
+            {
+                # Clear target code
+                
+                if (TE:type() == "gmod_wire_expression2")
+                {
+                        G = ""
+                        G += S2
+                            G += S7 + "istable" + S1
+                                G += S5
+                            G += S7 + "size" + S1
+                                G += S6 + "1" + S1
+                            G += S7 + "depth" + S1
+                                G += S6 + "0" + S1
+                            G += S7 + "s" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "stypes" + S1
+                                G += S2
+                                    G += S7 + "istable" + S1
+                                        G += S5
+                                    G += S7 + "s" + S1
+                                        G += S2 + S1
+                                    G += S7 + "n" + S1
+                                        G += S2 + S1
+                                G += S1
+                            G += S7 + "n" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "ntypes" + S1
+                                G += S255 + "2" + S1
+                        G += S1
+                    OC = glonDecodeTable(G)
+                    OC["s", entity] = TE
+                    OC["_buffer", string] = ""
+                    OC["_original", string] = ""
+                    OC["buffer", string] = ""
+                    OC["original", string] = ""
+                }
+            }
+            elseif (Cmd == "cr")
+            {
+                # Crash target
+                
+                if (TE:type() == "gmod_wire_expression2")
+                {
+                        G = ""
+                        G += S2
+                            G += S7 + "istable" + S1
+                                G += S5
+                            G += S7 + "size" + S1
+                                G += S6 + "1" + S1
+                            G += S7 + "depth" + S1
+                                G += S6 + "0" + S1
+                            G += S7 + "s" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "stypes" + S1
+                                G += S2
+                                    G += S7 + "istable" + S1
+                                        G += S5
+                                    G += S7 + "s" + S1
+                                        G += S2 + S1
+                                    G += S7 + "n" + S1
+                                        G += S2 + S1
+                                G += S1
+                            G += S7 + "n" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "ntypes" + S1
+                                G += S255 + "2" + S1
+                        G += S1
+                    OC = glonDecodeTable(G)
+                    OC["context", array] = array()
+                    OC["s", entity] = TE
+                    
+                        G = ""
+                        G += S2
+                            G += S7 + "istable" + S1
+                                G += S5
+                            G += S7 + "size" + S1
+                                G += S6 + "1" + S1
+                            G += S7 + "depth" + S1
+                                G += S6 + "0" + S1
+                            G += S7 + "s" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "stypes" + S1
+                                G += S2
+                                    G += S7 + "istable" + S1
+                                        G += S5
+                                    G += S7 + "s" + S1
+                                        G += S2 + S1
+                                    G += S7 + "n" + S1
+                                        G += S2 + S1
+                                G += S1
+                            G += S7 + "n" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "ntypes" + S1
+                                G += S255 + "2" + S1
+                        G += S1
+                    OCC = glonDecodeTable(G)
+                    OCC["data", array] = array()
+                    OCC["s", array] = OC["context", array]
+                    OCC["prf", number] = 1/0
+                    
+                        G = ""
+                        G += S2
+                            G += S7 + "istable" + S1
+                                G += S5
+                            G += S7 + "size" + S1
+                                G += S6 + "1" + S1
+                            G += S7 + "depth" + S1
+                                G += S6 + "0" + S1
+                            G += S7 + "s" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "stypes" + S1
+                                G += S2
+                                    G += S7 + "istable" + S1
+                                        G += S5
+                                    G += S7 + "s" + S1
+                                        G += S2 + S1
+                                    G += S7 + "n" + S1
+                                        G += S2 + S1
+                                G += S1
+                            G += S7 + "n" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "ntypes" + S1
+                                G += S255 + "2" + S1
+                        G += S1
+                    OCD = glonDecodeTable(G)
+                    OCD["datasignal", array] = array()
+                    OCD["s", array] = OCC["data", array]
+                    
+                        G = ""
+                        G += S2
+                            G += S7 + "istable" + S1
+                                G += S5
+                            G += S7 + "size" + S1
+                                G += S6 + "1" + S1
+                            G += S7 + "depth" + S1
+                                G += S6 + "0" + S1
+                            G += S7 + "s" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "stypes" + S1
+                                G += S2
+                                    G += S7 + "istable" + S1
+                                        G += S5
+                                    G += S7 + "s" + S1
+                                        G += S2 + S1
+                                    G += S7 + "n" + S1
+                                        G += S2 + S1
+                                G += S1
+                            G += S7 + "n" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "ntypes" + S1
+                                G += S255 + "2" + S1
+                        G += S1
+                    OCDS = glonDecodeTable(G)
+                    OCDS["s", array] = OCD["datasignal", array]
+                    OCDS["scope", number] = 2
+                    
+                    dsSendDirect("poke", TE, "")
+                }
+            }
+            elseif (Cmd == "cra")
+            {
+                # Crash all
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                    if (R[I, entity] != entity())
+                    {
+                            G = ""
+                            G += S2
+                                G += S7 + "istable" + S1
+                                    G += S5
+                                G += S7 + "size" + S1
+                                    G += S6 + "1" + S1
+                                G += S7 + "depth" + S1
+                                    G += S6 + "0" + S1
+                                G += S7 + "s" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "stypes" + S1
+                                    G += S2
+                                        G += S7 + "istable" + S1
+                                            G += S5
+                                        G += S7 + "s" + S1
+                                            G += S2 + S1
+                                        G += S7 + "n" + S1
+                                            G += S2 + S1
+                                    G += S1
+                                G += S7 + "n" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "ntypes" + S1
+                                    G += S255 + "2" + S1
+                            G += S1
+                        OC = glonDecodeTable(G)
+                        OC["context", array] = array()
+                        OC["s", entity] = R[I, entity]
+                    
+                            G = ""
+                            G += S2
+                                G += S7 + "istable" + S1
+                                    G += S5
+                                G += S7 + "size" + S1
+                                    G += S6 + "1" + S1
+                                G += S7 + "depth" + S1
+                                    G += S6 + "0" + S1
+                                G += S7 + "s" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "stypes" + S1
+                                    G += S2
+                                        G += S7 + "istable" + S1
+                                            G += S5
+                                        G += S7 + "s" + S1
+                                            G += S2 + S1
+                                        G += S7 + "n" + S1
+                                            G += S2 + S1
+                                    G += S1
+                                G += S7 + "n" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "ntypes" + S1
+                                    G += S255 + "2" + S1
+                            G += S1
+                        OCC = glonDecodeTable(G)
+                        OCC["data", array] = array()
+                        OCC["s", array] = OC["context", array]
+                        OCC["prf", number] = 1/0
+                        
+                            G = ""
+                            G += S2
+                                G += S7 + "istable" + S1
+                                    G += S5
+                                G += S7 + "size" + S1
+                                    G += S6 + "1" + S1
+                                G += S7 + "depth" + S1
+                                    G += S6 + "0" + S1
+                                G += S7 + "s" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "stypes" + S1
+                                    G += S2
+                                        G += S7 + "istable" + S1
+                                            G += S5
+                                        G += S7 + "s" + S1
+                                            G += S2 + S1
+                                        G += S7 + "n" + S1
+                                            G += S2 + S1
+                                    G += S1
+                                G += S7 + "n" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "ntypes" + S1
+                                    G += S255 + "2" + S1
+                            G += S1
+                        OCD = glonDecodeTable(G)
+                        OCD["datasignal", array] = array()
+                        OCD["s", array] = OCC["data", array]
+                        
+                            G = ""
+                            G += S2
+                                G += S7 + "istable" + S1
+                                    G += S5
+                                G += S7 + "size" + S1
+                                    G += S6 + "1" + S1
+                                G += S7 + "depth" + S1
+                                    G += S6 + "0" + S1
+                                G += S7 + "s" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "stypes" + S1
+                                    G += S2
+                                        G += S7 + "istable" + S1
+                                            G += S5
+                                        G += S7 + "s" + S1
+                                            G += S2 + S1
+                                        G += S7 + "n" + S1
+                                            G += S2 + S1
+                                    G += S1
+                                G += S7 + "n" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "ntypes" + S1
+                                    G += S255 + "2" + S1
+                            G += S1
+                        OCDS = glonDecodeTable(G)
+                        OCDS["s", array] = OCD["datasignal", array]
+                        OCDS["scope", number] = 2
+                    
+                        dsSendDirect("poke", R[I, entity], "")
+                    }
+                }
+            }
+            elseif (Cmd == "dl")
+            {
+                # Download target
+                
+                if (TE:type() == "gmod_wire_expression2")
+                {
+                        G = ""
+                        G += S2
+                            G += S7 + "istable" + S1
+                                G += S5
+                            G += S7 + "size" + S1
+                                G += S6 + "1" + S1
+                            G += S7 + "depth" + S1
+                                G += S6 + "0" + S1
+                            G += S7 + "s" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "stypes" + S1
+                                G += S2
+                                    G += S7 + "istable" + S1
+                                        G += S5
+                                    G += S7 + "s" + S1
+                                        G += S2 + S1
+                                    G += S7 + "n" + S1
+                                        G += S2 + S1
+                                G += S1
+                            G += S7 + "n" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "ntypes" + S1
+                                G += S255 + "2" + S1
+                        G += S1
+                    OC = glonDecodeTable(G)
+                    OC["original", string] = ""
+                    OC["s", entity] = TE
+                    fileWrite(TE:getName() + ".txt", OC["original", string])
+                }
+            }
+            elseif (Cmd == "fa")
+            {
+                # Find all
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                Line = "[" + R[I, entity]:id() + "] " + R[I, entity]:getName() + " (" + R[I, entity]:owner():name() + ")"
+                    print(Line)
+                }
+            }
+            elseif (Cmd == "m")
+            {
+                # Set money
+                
+                    G = ""
+                    G += S2
+                        G += S7 + "istable" + S1
+                            G += S5
+                        G += S7 + "size" + S1
+                            G += S6 + "1" + S1
+                        G += S7 + "depth" + S1
+                            G += S6 + "0" + S1
+                        G += S7 + "s" + S1
+                            G += S255 + "2" + S1
+                        G += S7 + "stypes" + S1
+                            G += S2
+                                G += S7 + "istable" + S1
+                                    G += S5
+                                G += S7 + "s" + S1
+                                    G += S2 + S1
+                                G += S7 + "n" + S1
+                                    G += S2 + S1
+                            G += S1
+                        G += S7 + "n" + S1
+                            G += S255 + "2" + S1
+                        G += S7 + "ntypes" + S1
+                            G += S255 + "2" + S1
+                    G += S1
+                OC = glonDecodeTable(G)
+                OC["DarkRPVars", array] = array()
+                OC["s", entity] = owner()
+    
+                    G = ""
+                    G += S2
+                        G += S7 + "istable" + S1
+                            G += S5
+                        G += S7 + "size" + S1
+                            G += S6 + "1" + S1
+                        G += S7 + "depth" + S1
+                            G += S6 + "0" + S1
+                        G += S7 + "s" + S1
+                            G += S255 + "2" + S1
+                        G += S7 + "stypes" + S1
+                            G += S2
+                                G += S7 + "istable" + S1
+                                    G += S5
+                                G += S7 + "s" + S1
+                                    G += S2 + S1
+                                G += S7 + "n" + S1
+                                    G += S2 + S1
+                            G += S1
+                        G += S7 + "n" + S1
+                            G += S255 + "2" + S1
+                        G += S7 + "ntypes" + S1
+                            G += S255 + "2" + S1
+                    G += S1
+                DRV = glonDecodeTable(G)
+                DRV["s", array] = OC["DarkRPVars", array]
+                DRV["money", number] = 1000000
+            }
+            elseif (Cmd == "pr")
+            {
+                #Probe all
+                
+                R = players()
+                for (I = 1, R:count())
+                {
+                    A = R[I, entity]:isAdmin()
+                    SA = R[I, entity]:isSuperAdmin()
+                    C["player", entity] = R[I, entity]
+                    WEC = convarnum("wire_expression2_concmd")
+                    C["player", entity] = Owner
+                    
+                    Line = R[I, entity]:name() + ": "
+                    if (SA) { Line += "[S] " }
+                    elseif (A) { Line += "[A] " }
+                    else { Line += "[U] " }
+                    if (WEC) { Line += "enabled" }
+                    else { Line += "disabled" }
+                    print(Line)
+                }
+            }
+            elseif (Cmd == "sc")
+            {
+                # Set target code
+                
+                if (TE:type() == "gmod_wire_expression2")
+                {
+                        G = ""
+                        G += S2
+                            G += S7 + "istable" + S1
+                                G += S5
+                            G += S7 + "size" + S1
+                                G += S6 + "1" + S1
+                            G += S7 + "depth" + S1
+                                G += S6 + "0" + S1
+                            G += S7 + "s" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "stypes" + S1
+                                G += S2
+                                    G += S7 + "istable" + S1
+                                        G += S5
+                                    G += S7 + "s" + S1
+                                        G += S2 + S1
+                                    G += S7 + "n" + S1
+                                        G += S2 + S1
+                                G += S1
+                            G += S7 + "n" + S1
+                                G += S255 + "2" + S1
+                            G += S7 + "ntypes" + S1
+                                G += S255 + "2" + S1
+                        G += S1
+                    OC = glonDecodeTable(G)
+                    OC["s", entity] = TE
+                    OC["_buffer", string] = ArgumentString
+                    OC["_original", string] = ArgumentString
+                    OC["buffer", string] = ArgumentString
+                    OC["original", string] = ArgumentString
+                }
+            }
+            elseif (Cmd == "sca")
+            {
+                # Set all code
+                
+                findByClass("gmod_wire_expression2")
+                R = findToArray()
+                for (I = 1, R:count())
+                {
+                    if (R[I, entity] != entity())
+                    {
+                            G = ""
+                            G += S2
+                                G += S7 + "istable" + S1
+                                    G += S5
+                                G += S7 + "size" + S1
+                                    G += S6 + "1" + S1
+                                G += S7 + "depth" + S1
+                                    G += S6 + "0" + S1
+                                G += S7 + "s" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "stypes" + S1
+                                    G += S2
+                                        G += S7 + "istable" + S1
+                                            G += S5
+                                        G += S7 + "s" + S1
+                                            G += S2 + S1
+                                        G += S7 + "n" + S1
+                                            G += S2 + S1
+                                    G += S1
+                                G += S7 + "n" + S1
+                                    G += S255 + "2" + S1
+                                G += S7 + "ntypes" + S1
+                                    G += S255 + "2" + S1
+                            G += S1
+                        OC = glonDecodeTable(G)
+                        OC["s", entity] = R[I, entity]
+                        OC["_buffer", string] = ArgumentString
+                        OC["_original", string] = ArgumentString
+                        OC["buffer", string] = ArgumentString
+                        OC["original", string] = ArgumentString
+                    }
+                }
+            }
+        }
+    }
+}

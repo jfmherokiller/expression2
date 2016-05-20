@@ -1,0 +1,15 @@
+@name Flail
+@inputs 
+@outputs 
+@persist 
+@trigger 
+
+interval(1)
+runOnTick(1)
+
+for(I = 1, 720) {
+    String = "abcd"
+    String += String
+}
+
+reset()

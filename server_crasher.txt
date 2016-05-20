@@ -1,0 +1,17 @@
+@name Server Crasher
+@inputs Button
+@outputs Countdown
+@persist LastButton I
+@trigger 
+
+if (Button != LastButton)
+{
+    LastButton = Button
+    if (Button)
+    {
+        soundPlay(1, 1, I + ".mp3")
+        I++
+    }
+}
+
+Countdown = 8192 - I

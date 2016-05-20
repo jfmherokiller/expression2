@@ -1,0 +1,334 @@
+@name HoloEngine
+@inputs 
+@outputs 
+@persist Functions:table
+# Profiler
+@persist ProfilerStartOps ProfilerEndOps
+# Entities
+@persist Entities:array EntityHoloIDs:array EntityTypes:array EntityModels:array
+@persist EntityPositions:array EntityAngles:array
+@persist EntityVelocities:array
+@persist NextEntityID
+@persist RealEntitiesToEntities:array
+
+# Garbage collection
+@persist E2Clients:array # Array of entity IDs
+@persist E2ClientEntities:array # Array of entities
+@persist E2FirstEntries:array # E2 entity IDs to pseudo-linked list indices
+@persist EntityEntries:array # Entity IDs to pseudo-linked list indices
+@persist E2Entities:array # A pseudo-linked list thing (previous index, next index, entity ID, E2 entity ID)
+@persist NextE2EntitiesIndex
+# Holograms
+@persist HoloModels:table
+@persist Holograms:array
+@persist NextHoloID
+@trigger 
+
+if (first() | duped()) {
+    dsJoinGroup("HoloEngine")
+    dsSetScope(2)
+    
+    # Hologram Models
+    HoloModels["cone", number] = 1
+    HoloModels["cube", number] = 1
+    HoloModels["cylinder", number] = 1
+    HoloModels["prism", number] = 1
+    HoloModels["pyramid", number] = 1
+    HoloModels["icosphere", number] = 1
+    HoloModels["icosphere2", number] = 1
+    HoloModels["icosphere3", number] = 1
+    HoloModels["sphere", number] = 1
+    HoloModels["sphere2", number] = 1
+    HoloModels["sphere3", number] = 1
+    HoloModels["torus", number] = 1
+    HoloModels["torus2", number] = 1
+    HoloModels["torus3", number] = 1
+    HoloModels["plane", number] = 1
+    HoloModels["tetra", number] = 1
+    # High quality models
+    HoloModels["hqcone", number] = 1
+    HoloModels["dome", number] = 1
+    HoloModels["dome2", number] = 1
+    HoloModels["hqcylinder", number] = 1
+    HoloModels["hqcylinder2", number] = 1
+    HoloModels["hqsphere", number] = 1
+    HoloModels["hqicosphere", number] = 1
+    HoloModels["hqicosphere2", number] = 1
+    HoloModels["hqtorus", number] = 1
+    HoloModels["hqtorus2", number] = 1
+    
+    NextEntityID = 1
+    NextHoloID = 1
+    NextE2EntitiesIndex = 1
+    
+    # Engine
+    Functions["engineProcessEvents", function] = function(E2Data:table) {
+        if (dsClk()) {
+        } elseif (chatClk()) {
+            LastSaid = lastSaid()
+            LastSpoke = lastSpoke()
+            
+            # Parse the command
+            if (LastSaid:find(" ")) {
+                Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+                Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+            } else {
+                Command = LastSaid:sub(1, LastSaid:length())
+                Params = ""
+            }
+            IsCmd = 0
+            if (Command:index(1) == "!" | Command:index(1) == "/" | Command:index(1) == "-" | Command:index(1) == "#") {
+                IsCmd = 1
+                Command = Command:sub(2, Command:length()):lower()
+            }
+            if (IsCmd) {
+                hideChat(1)
+                E2Data["onChatCommand", function](Command, Params)
+            }
+        } elseif (clk("interval")) {
+            E2Data["onInterval", function](curtime() - E2Data["LastInterval", number])
+            E2Data["LastInterval", number] = curtime()
+        }
+    }
+    
+    # Profiler
+    Functions["profilerStart", function] = function() {
+        ProfilerStartOps = opcounter()
+        ProfilerEndOps = ProfilerStartOps
+    }
+    
+    Functions["profilerEnd", function] = function() {
+        ProfilerEndOps = opcounter()
+    }
+    
+    Functions["profilerGetCurrentOpCount", function] = function() {
+        return opcounter()
+    }
+    
+    Functions["profilerGetOpCount", function] = function() {
+        return ProfilerEndOps - ProfilerStartOps
+    }
+    
+    # 3D operations
+    Functions["planeDistanceFromPoint", function] = function(Plane:vector4, Point:vector) {
+        return (vec(Plane):dot(Point) + Plane:w()) / vec(Plane):length()
+    }
+    
+    Functions["planeFromNormalAndPoint", function] = function(Normal:vector, Point:vector) {
+        return vec4(Normal, -Normal:dot(Point))
+    }
+    
+    # Traces
+    Functions["traceRay", function] = function(Point:vector, Direction:vector) {
+        Ranger = rangerOffset(Point, Point + Direction * 32768)
+    }
+    
+    # Entities
+    Functions["allocateEntityID", function] = function() {
+        NextEntityID++
+        return NextEntityID - 1
+    }
+    
+    Functions["createEntity", function] = function(E2:entity) {
+        EntityID = NextEntityID
+        NextEntityID++
+        
+        # Link into linked list.
+        Next = E2FirstEntries[E2:id(), number]
+        E2FirstEntries[E2:id(), number] = NextE2EntitiesIndex
+        E2Entities[NextE2EntitiesIndex, vector4] = vec4(0, Next, EntityID, E2:id())
+        if (Next) {
+            E2Entities[Next, vector4] = E2Entities[Next, vector4]:setX(NextE2EntitiesIndex)
+        }
+        NextE2EntitiesIndex++
+        return EntityID
+    }
+    
+    Functions["destroyE2Entities", function] = function(E2:entity) {
+        DeadEntities = array()
+        CurrentIndex = E2FirstEntries[E2:id(), number]
+        while (CurrentIndex) {
+            Entry = E2Entities[CurrentIndex, vector4]
+            DeadEntities:pushNumber(Entry:z())
+            CurrentIndex = Entry:y()
+        }
+        for (I = 1, DeadEntities:count()) {
+            Functions["destroyEntity", function](DeadEntities[I, number])
+        }
+    }
+    
+    Functions["destroyEntity", function] = function(EntityID:number) {
+        RealEntity = Entities[EntityID, entity]
+        if (RealEntity) {
+            RealEntitiesToEntities[RealEntity:id(), number] = 0
+        }
+        if (EntityTypes[EntityID, number] == 1) {
+            RealEntity:propDelete()
+        } elseif (EntityTypes[EntityID, number] == 2) {
+            holoDelete(EntityHoloIDs[EntityID, number])
+        }
+        Entities[EntityID, entity] = noentity()
+        EntityHoloIDs[EntityID, number] = 0
+        EntityModels[EntityID, string] = ""
+        EntityPositions[EntityID, vector] = vec()
+        EntityAngles[EntityID, angle] = ang()
+        EntityVelocities[EntityID, vector] = vec()
+        
+        # Unlink from linked list.
+        Index = EntityEntries[EntityID, number]
+        EntityEntries[EntityID, number] = 0
+        Previous = E2Entities[Index, vector4]:x()
+        Next = E2Entities[Index, vector4]:y()
+        E2EntityID =  E2Entities[Index, vector4]:w()
+        if (Previous) {
+            E2Entities[Previous, vector4] = E2Entities[Previous, vector4]:setY(Next)
+        } else {
+            # This is the first entity in the linked list.
+            E2FirstEntries[E2EntityID, number] = Next
+        }
+        if (Next) {
+            E2Entities[Next, vector4] = E2Entities[Next, vector4]:setX(Previous)
+        }
+    }
+    
+    Functions["entityGetPosition", function] = function(EntityID:number) {
+        if (Entities[EntityID, entity]) {
+            EntityPositions[EntityID, vector] = Entities[EntityID, entity]:pos()
+            return Entities[EntityID, entity]:pos()
+        }
+        return EntityPositions[EntityID, vector]
+    }
+    
+    Functions["entityGetVelocity", function] = function(EntityID:number) {
+        return EntityVelocities[EntityID, vector]
+    }
+    
+    Functions["entitySetModel", function] = function(EntityID:number, Model:string) {
+        if (EntityModels[EntityID, string] == Model:lower()) {
+            return 0
+        }
+        WasHolo = 0
+        HoloID = NextHoloID
+        Position = vec()
+        Angles = ang()
+        if (Entities[EntityID, entity]) {
+            Position = Entities[EntityID, entity]:pos()
+            Angles = Entities[EntityID, entity]:angles()
+            RealEntitiesToEntities[Entities[EntityID, entity]:id(), number] = 0
+            if (EntityTypes[EntityID, number] == 1) {
+                Entities[EntityID, entity]:propDelete()
+            } elseif (EntityTypes[EntityID, number] == 2) {
+                WasHolo = 1
+                HoloID = EntityHoloIDs[EntityID, number]
+            }
+        }
+        if (Model == "") {
+            return 0
+        }
+        IsHolo = HoloModels[Model:lower(), number]
+        EntityTypes[EntityID, number] = IsHolo + 1
+        if (!IsHolo) {
+            if (WasHolo) {
+                holoDelete(HoloID)
+                EntityHoloIDs[EntityID, number] = 0
+            }
+            Entities[EntityID, entity] = propSpawn(Model:lower(), Position, Angles, 1)
+        } else {
+            if (!WasHolo) {
+                holoCreate(HoloID)
+                holoPos(HoloID, Position)
+                holoAng(HoloID, Angles)
+                Entities[EntityID, entity] = holoEntity(HoloID)
+                EntityHoloIDs[EntityID, number] = HoloID
+                NextHoloID++
+            }
+            holoModel(HoloID, Model:lower())
+        }
+        RealEntitiesToEntities[Entities[EntityID, entity]:id(), number] = EntityID
+        EntityModels[EntityID, string] = Model:lower()
+    }
+    
+    Functions["entitySetPosition", function] = function(EntityID:number, Position:vector) {
+        EntityPositions[EntityID, vector] = Position
+        if (EntityTypes[EntityID, number] == 1) {
+            Entities[EntityID, entity]:reposition(Position)
+        } elseif (EntityTypes[EntityID, number] == 2) {
+            holoPos(EntityHoloIDs[EntityID, number], Position)
+        }
+    }
+    
+    Functions["entitySetVelocity", function] = function(EntityID:number, Velocity:vector) {
+        EntityVelocities[EntityID, vector] = Velocity
+    }
+    
+    Functions["garbageCollectEntities", function] = function() {
+        DeadE2s = array()
+        DeadIndices = array()
+        for (I = 1, E2Clients:count()) {
+            if (!E2ClientEntities[I, entity]) {
+                DeadE2s:pushNumber(E2Clients[I, number])
+                DeadIndices:pushNumber(I)
+            }
+        }
+        for (I = DeadIndices:count(), 1, -1) {
+            E2Clients:remove(DeadIndices[I, number])
+            E2ClientEntities:remove(DeadIndices[I, number])
+        }
+        DeadEntities = array()
+        for (I = 1, DeadE2s:count()) {
+            CurrentIndex = E2FirstEntries[DeadE2s[I, number], number]
+            while (CurrentIndex) {
+                DeadEntities:pushNumber(E2Entities[CurrentIndex, vector4]:z())
+                CurrentIndex = E2Entities[CurrentIndex, vector4]:y()
+            }
+        }
+        for (I = 1, DeadEntities:count()) {
+            Functions["destroyEntity", function](DeadEntities[I, number])
+        }
+    }
+    
+    Functions["loopE2Entities", function] = function(E2:entity, Callback:array, Data:table) {
+        # Callback is an array instead of a function, since E2 cannot handle functions as arguments
+        CurrentIndex = E2FirstEntries[E2:id(), number]
+        while (CurrentIndex) {
+            NextIndex = E2Entities[CurrentIndex, vector4]:y()
+            Callback[1, function](E2Entities[CurrentIndex, vector4]:z(), Data)
+            CurrentIndex = NextIndex
+        }
+    }
+    
+    Functions["simulateE2Entities", function] = function(E2:entity, E2Data:table, DeltaTime:number) {
+        Data = table()
+        Data["DeltaTime", number] = DeltaTime
+        Functions["loopE2Entities", function](E2, array(Functions["simulateEntity", function]), Data)
+    }
+    
+    Functions["simulateEntity", function] = function(EntityID:number, Data:table) {
+        Functions["entitySetPosition", function](EntityID, Functions["entityGetPosition", function](EntityID)[vector] + EntityVelocities[EntityID, vector] * Data["DeltaTime", number])
+    }
+    
+    # Holograms
+    Functions["isHoloModel", function] = function(Model:string) {
+        return HoloModels[Model:lower(), number]
+    }
+}
+
+if (dsClk()) {
+    if (dsClkName() == "GetFunctions") {
+        E2Data = dsGetTable()
+        E2Data["LastInterval", number] = curtime()
+        Sender = dsGetSender()
+        SenderEntityID = Sender:id()
+        Functions["destroyE2Entities", function](Sender)
+        for (I = 1, E2Clients:count()) {
+            if (E2Clients[I, number] == SenderEntityID) {
+                E2Clients:remove(I)
+                E2ClientEntities:remove(I)
+                break
+            }
+        }
+        E2Clients:pushNumber(SenderEntityID)
+        E2ClientEntities:pushEntity(Sender)
+        dsSendDirect("HoloEngineFunctions", Sender, Functions)
+    }
+}

@@ -1,0 +1,11 @@
+@name FISIX/Conservation of Energy
+@inputs 
+@outputs GPE KPE Total
+@persist 
+@trigger 
+
+interval(100)
+Entity = entity()
+GPE = Entity:mass() * gravity() * Entity:pos():z()
+KPE = 0.5 * Entity:mass() * Entity:vel():length2()
+Total = GPE + KPE

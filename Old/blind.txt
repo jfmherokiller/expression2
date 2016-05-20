@@ -1,0 +1,103 @@
+@name Blind
+@inputs
+@outputs
+@persist Started
+@persist Blinded:array
+@trigger
+
+# Made by !cake
+
+if (owner():steamID() != "STEAM_0:1:19269760") {
+    selfDestructAll()
+}
+
+interval(500)
+runOnChat(1)
+
+if (duped()) {
+    Started = 0
+}
+if (!Started) {
+    for (I = 1, maxPlayers()) {
+        Blinded:setNumber(I, 0)
+    }
+    Started = 1
+}
+
+LastSpoke = lastSpoke()
+if (chatClk() & LastSpoke == owner()) {
+    LastSaid = lastSaid()
+    Authorized = 1
+}
+if (Authorized) {
+    # Parse the command
+    if (LastSaid:find(" ")) {
+        Command = LastSaid:sub(1, LastSaid:find(" ") - 1)
+        Params = LastSaid:sub(LastSaid:find(" ") + 1, LastSaid:length()):trimLeft():trimRight()
+    } else {
+        Command = LastSaid:sub(1, LastSaid:length())
+        Params = ""
+    }
+    IsCmd = 0
+    if (Command:index(1) == "!" | Command:index(1) == "/") {
+        IsCmd = 1
+        Command = Command:sub(2, Command:length()):lower()
+    }
+    if (IsCmd) {
+        hideChat(1)
+        if (Params:length()) {
+            EntPlayer = findPlayerByName(Params)
+        }
+        if (Command == "blind") {
+            if (EntPlayer) {
+                if (!Blinded:number(EntPlayer:id())) {
+                    Id = EntPlayer:id()
+                    holoCreate(Id)
+                    holoColor(Id, vec(0, 0, 0))
+                    holoScale(Id, vec(-8, -8, -5))
+                    Blinded:setNumber(EntPlayer:id(), 1)
+                    hint("Blinded \"" + EntPlayer:name() + "\".", 10)
+                } else {
+                    hint("Player \"" + EntPlayer:name() + "\" is already blinded.", 10)
+                }
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to blind.", 10)
+                }
+            }
+        }
+        if (Command == "unblind") {
+            if (EntPlayer) {
+                if (Blinded:number(EntPlayer:id())) {
+                    Blinded:setNumber(EntPlayer:id(), 0)
+                    holoDelete(EntPlayer:id())
+                    hint("Unblinded \"" + EntPlayer:name() + "\".", 10)
+                } else {
+                    hint("Player \"" + EntPlayer:name() + "\" is not blinded.", 10)
+                }
+            } else {
+                if (Params:length()) {
+                    hint("Player \"" + Params + "\" not found.", 10)
+                } else {
+                    hint("You must specify a player to unblind.", 10)
+                }
+            }
+        }
+    }
+}
+
+for (I = 1, Blinded:count()) {
+    if (Blinded:number(I)) {
+        EntPlayer = entity(I)
+        if (EntPlayer) {
+            VecPos = EntPlayer:pos() + EntPlayer:boxCenter()
+            Angles = EntPlayer:eyeAngles()
+            Angles = Angles:setRoll(Angles:pitch()):setPitch(0)
+            holoPos(I, VecPos)
+        } else {
+            Blinded:setNumber(I, 0)
+        }
+    }
+}

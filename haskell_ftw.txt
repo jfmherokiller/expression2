@@ -1,0 +1,162 @@
+@import chat
+@import keyboard
+@name Haskell FTW
+@inputs Screen:wirelink
+@outputs 
+@persist ExpectingHTTP
+@persist Previous:string
+@persist HeaderLines FooterLines MessageLines
+@trigger 
+
+@expand keyboard_preinit
+@expand chat_init
+
+@import protector
+
+OverrideCode = "using namespace Haskell;\n\n"
+OverrideCode += "namespace HaskellFTW\n"
+OverrideCode += "{\n"
+OverrideCode += "    class Program\n"
+OverrideCode += "    {\n"
+OverrideCode += "        public void main ()\n"
+OverrideCode += "        {\n"
+OverrideCode += "            HaskellInterpreter interpreter = new HaskellInterpreter();\n"
+OverrideCode += "            Console.WriteLine(interpreter.Interpret(Console.ReadLine()));\n"
+OverrideCode += "        }\n"
+OverrideCode += "    }\n"
+OverrideCode += "}\n"
+@expand set_code OverrideCode
+
+
+runOnHTTP(1)
+
+Messages = array()
+MessageColors = array()
+
+if (first() | duped()) {
+    Screen[2041] = 1
+    Screen:writeString("Haskell                       ", 0, 0, 999, 449)
+    Screen:writeString(">                             ", 0, 16, 999, 559)
+    Screen:writeString("                              ", 0, 17, 999, 559)
+    
+    Screen[2046] = 1
+    Screen[2045] = 16 * 60 + 2
+    
+    HeaderLines = 1
+    FooterLines = 2
+    
+    Screen[2033] = HeaderLines
+    Screen[2034] = 17 - FooterLines
+}
+
+if (httpClk() | (ExpectingHTTP & httpData())) {
+    ExpectingHTTP = 0
+    Reply = httpData()
+    Reply = Reply:sub(Reply:find("{") + 1, -Reply:reverse():find("}") - 1)
+    Part = ""
+    Escaped = 0
+    Index = 1
+    QuotationMark = ""
+    Bits = array()
+    for (I = 1, min(256, Reply:length())) {
+        Character = Reply[I]
+        if (Escaped) {
+            if (Character == "n") {
+                Character = "\n"
+            }
+            Part = Part + Character
+            Escaped = 0
+        } else {
+            if (Character == QuotationMark) {
+                Bits:pushString(Part)
+                Part = ""
+                QuotationMark = ""
+            } elseif ((Character == "\"" |
+                        Character == "'") &
+                        QuotationMark == "") {
+                Part = ""
+                QuotationMark = Character
+            } elseif (Character == "\\" &
+                        QuotationMark) {
+                Escaped = 1
+            } else {
+                Part = Part + Character
+            }
+        }
+    }
+    if (Part) {
+        Bits:pushString(Part)
+    }
+    Table = table()
+    I = 1
+    while (I < Bits:count()) {
+        Table[Bits[I, string], string] = Bits[I + 1, string]
+        I += 2
+    }
+    if (Table["result", string]) {
+        Messages:pushString(Table["type", string])
+        MessageColors:pushNumber(262)
+        Messages:pushString("=> " + Table["result", string])
+        MessageColors:pushNumber(999)
+    } elseif (Table["type", string]) {
+        Messages:pushString(Table["type", string])
+        MessageColors:pushNumber(262)
+    } elseif (Table["error", string]) {
+        Messages:pushString(Table["error", string])
+        MessageColors:pushNumber(944)
+    } elseif (Table["exception", string]) {
+        Messages:pushString(Table["exception", string])
+        MessageColors:pushNumber(944)
+    }
+}
+
+@expand keyboard_handler
+if (KeyboardInputReceived) {
+    if (KeyboardCommand == "enter" & KeyboardString != "") {
+        URL = "http://tryhaskell.org/haskell.json?method=eval&pad=handleJSON&expr="
+        URL += httpUrlEncode(KeyboardString)
+        httpRequest(URL)
+        ExpectingHTTP = 1
+        Previous = KeyboardString
+        Messages:pushString(KeyboardString)
+        MessageColors:pushNumber(266)
+        KeyboardString = ""
+        KeyboardStringOffset = 0
+    } elseif (KeyboardCommand == "up" |
+                KeyboardCommand == "down") {
+        if (Previous) {
+            T = Previous
+            Previous = KeyboardString
+            KeyboardString = T
+            KeyboardStringOffset = KeyboardString:length()
+        }
+    }
+    Screen[2045] = 16 * 60 + 2 + KeyboardStringOffset * 2
+    Screen:writeString(">" + KeyboardString + " ":repeat(59 - KeyboardString:length()), 0, 16, 999, 559)
+}
+
+ChatAuthorized = 1
+@expand chat_begin_handler
+} elseif (Command == "eval") {
+    URL = "http://tryhaskell.org/haskell.json?method=eval&pad=handleJSON&expr="
+    URL += httpUrlEncode(Arguments)
+    httpRequest(URL)
+    ExpectingHTTP = 1
+    Messages:pushString(Arguments)
+    MessageColors:pushNumber(266)
+@expand chat_end_handler
+
+for (I = 1, Messages:count()) {
+    TextBits = Messages[I, string]:explode("\n")
+    LinesNeeded = 0
+    for (J = 1, TextBits:count()) {
+        LinesNeeded += ceil(TextBits[J, string]:length() / 30)
+    }
+    LinesAvailable = 18 - HeaderLines - FooterLines - MessageLines
+    if (LinesAvailable < LinesNeeded) {
+        MessageLines -= LinesNeeded - LinesAvailable
+        Screen[2038] = LinesNeeded - LinesAvailable
+    }
+    Screen:writeString(Messages[I, string], 0, HeaderLines + MessageLines, MessageColors[I, number], 0)
+    MessageLines += LinesNeeded
+}

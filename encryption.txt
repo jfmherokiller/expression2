@@ -1,0 +1,294 @@
+@name Encryption
+@inputs Keyboard
+@outputs Display:string
+@persist Algorithms:array Algorithm:string AlgorithmIndex
+@persist Parameter:string
+@persist LastKeyboard
+@persist Input:string Output:string
+@trigger 
+
+runOnChat(1)
+
+Process = 0
+if (first() | duped()) {
+    Algorithms:pushString("base64_decode")
+    Algorithms:pushString("base64_encode")
+    Algorithms:pushString("base_decode")
+    Algorithms:pushString("dec_decode")
+    Algorithms:pushString("dec_encode")
+    Algorithms:pushString("divide")
+    Algorithms:pushString("hex_encode")
+    Algorithms:pushString("reverse")
+    Algorithms:pushString("rot13")
+    Algorithms:pushString("strlen")
+    AlgorithmIndex = 2
+    
+    Algorithm = "base64_encode"
+    Parameter = ""
+    Input = "Herp a derp herp derp; derp a herpderp."
+    Process = 1
+}
+
+if (chatClk() & !dsClk()) {
+    if (lastSpoke() == owner()) {
+        LastSaid = lastSaid()
+        if (LastSaid:sub(1, 1) == "!") {
+            hideChat(1)
+            LookingAtThis = 0
+            if (owner():eyeTrace():entity() == entity()) {
+                LookingAtThis = 1
+            }
+            LastSaid = LastSaid:sub(2)
+            Parts = LastSaid:explode(" ")
+            Arguments = LastSaid:sub(Parts[1, string]:length() + 2)
+            Command = Parts[1, string]
+            if (Command == "algorithm") {
+                Algorithm = Arguments
+                Process = 1
+            } elseif (Command == "next") {
+                AlgorithmIndex++
+                if (AlgorithmIndex > Algorithms:count()) {
+                    AlgorithmIndex = 1
+                }
+                Algorithm = Algorithms[AlgorithmIndex, string]
+                Process = 1
+            } elseif (Command == "params") {
+                Parameter = Arguments
+                Process = 1
+            } elseif (Command == "prev") {
+                AlgorithmIndex--
+                if (!AlgorithmIndex) {
+                    AlgorithmIndex = Algorithms:count()
+                }
+                Algorithm = Algorithms[AlgorithmIndex, string]
+                Process = 1
+            } elseif (Command == "process") {
+                Input = Arguments
+                Process = 1
+            } elseif (Command == "swap") {
+                Input = Output
+                Process = 1
+            }
+        }
+    }
+}
+
+if (Keyboard != LastKeyboard) {
+    if (Keyboard) {
+        if (Keyboard >= 32 & Keyboard < 127) {
+            Input += toChar(Keyboard)
+        } elseif (Keyboard == 127) {
+            if (Input:length()) {
+                Input = Input:sub(1, Input:length() - 1)
+            }
+        } else {
+            if (Keyboard == 17 |
+                Keyboard == 19) {
+                AlgorithmIndex--
+                if (!AlgorithmIndex) {
+                    AlgorithmIndex = Algorithms:count()
+                }
+                Algorithm = Algorithms[AlgorithmIndex, string]
+            } elseif (Keyboard == 18 |
+                      Keyboard == 20) {
+                AlgorithmIndex++
+                if (AlgorithmIndex > Algorithms:count()) {
+                    AlgorithmIndex = 1
+                }
+                Algorithm = Algorithms[AlgorithmIndex, string]
+            }
+        }
+        if (Keyboard == 13) {
+            Input = ""
+        }
+        Process = 1
+    }
+}
+
+if (Process) {
+    if (Algorithm == "base64_decode") {
+        I = 1
+        Output = ""
+        while (I <= Input:length()) {
+            Part = Input:sub(I, I + 3)
+            B1 = toByte(Part[1])
+            B2 = toByte(Part[2])
+            B3 = toByte(Part[3])
+            B4 = toByte(Part[4])
+            Discard = 0
+            if (B1 >= 65 & B1 <= 90) {
+                B1 -= 65
+            } elseif (B1 >= 97 & B1 <= 122) {
+                B1 -= 71
+            } elseif (B1 >= 48 & B1 <= 57) {
+                B1 += 4
+            } elseif (B1 == 43) {
+                B1 = 62
+            } elseif (B1 == 47) {
+                B1 = 63
+            }
+            if (B2 >= 65 & B2 <= 90) {
+                B2 -= 65
+            } elseif (B2 >= 97 & B2 <= 122) {
+                B2 -= 71
+            } elseif (B2 >= 48 & B2 <= 57) {
+                B2 += 4
+            } elseif (B2 == 43) {
+                B2 = 62
+            } elseif (B2 == 47) {
+                B2 = 63
+            }
+            if (B3 >= 65 & B3 <= 90) {
+                B3 -= 65
+            } elseif (B3 >= 97 & B3 <= 122) {
+                B3 -= 71
+            } elseif (B3 >= 48 & B3 <= 57) {
+                B3 += 4
+            } elseif (B3 == 43) {
+                B3 = 62
+            } elseif (B3 == 47) {
+                B3 = 63
+            } elseif (B3 == 61) {
+                Discard++
+            }
+            if (B4 >= 65 & B4 <= 90) {
+                B4 -= 65
+            } elseif (B4 >= 97 & B4 <= 122) {
+                B4 -= 71
+            } elseif (B4 >= 48 & B4 <= 57) {
+                B4 += 4
+            } elseif (B4 == 43) {
+                B4 = 62
+            } elseif (B4 == 47) {
+                B4 = 63
+            } elseif (B4 == 61) {
+                Discard++
+            }
+            Buffer = ""
+            Buffer += toChar(B1 * 4 + bShr(B2, 4))
+            Buffer += toChar(bAnd(B2 * 16, 240) + bShr(B3, 2))
+            Buffer += toChar(bAnd(B3 * 64, 192) + B4)
+            Buffer = Buffer:sub(1, 3 - Discard)
+            Output += Buffer
+            
+            I += 4
+        }
+    } elseif (Algorithm == "base64_encode") {
+        Symbols = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+        Output = ""
+        BitsStored = 0
+        Accumulator = 0
+        for (I = 1, Input:length()) {
+            Accumulator = Accumulator * 256 + toByte(Input, I)
+            BitsStored += 8
+            
+            while (BitsStored >= 6) {
+                Output += Symbols[bAnd(bShr(Accumulator, BitsStored - 6), 63) + 1]
+                BitsStored -= 6
+            }
+            Accumulator = bAnd(Accumulator, 255)
+        }
+        if (BitsStored) {
+            Accumulator = bShl(Accumulator, 6 - BitsStored)
+            Output += Symbols[bAnd(Accumulator, 63) + 1]
+        }
+        Output += "=":repeat((4 - Output:length()) % 4)
+    } elseif (Algorithm == "base_decode") {
+        I = 1
+        Output = ""
+        while (I <= Input:length()) {
+            Part = Input:sub(I, I + 1)
+            C1 = toByte(Part[1])
+            C2 = toByte(Part[2])
+            if (C1 >= 48 & C1 <= 57) {
+                C1 -= 48
+            }
+            if (C1 >= 65 & C1 <= 90) {
+                C1 -= 55
+            }
+            if (C2 >= 48 & C2 <= 57) {
+                C2 -= 48
+            }
+            if (C2 >= 65 & C2 <= 90) {
+                C2 -= 55
+            }
+            Output += format("%c", C1 * Parameter:toNumber() + C2)
+            I += 2
+        }
+    } elseif (Algorithm == "dec_decode") {
+        Parts = Input:explode(" ")
+        Output = ""
+        for (I = 1, Parts:count()) {
+            Char = Parts[I, string]:toNumber()
+            if (Char < 128) {
+                Output += format("%c", Char)
+            } elseif (Char < 2048) {
+                Output += format("%c%c", 192 + bShr(Char, 6), 128 + bAnd(Char, 63))
+            } elseif (Char < 65536) {
+                Output += format("%c%c%c", 224 + bShr(Char, 12), 128 + bAnd(bShr(Char, 6), 63), 128 + bAnd(Char, 63))
+            }
+        }
+    } elseif (Algorithm == "dec_encode") {
+        Output = ""
+        for (I = 1, Input:length()) {
+            Dec = toString(toByte(Input[I]))
+            Dec = "0":repeat(3 - Dec:length()) + Dec
+            Output += Dec + " "
+        }
+    } elseif (Algorithm == "divide") {
+        Output = ""
+        for (I = 1, Input:length()) {
+            Output += format("%c", toByte(Input[I]) / Parameter:toNumber())
+        }
+    } elseif (Algorithm == "hex_encode") {
+        Output = ""
+        for (I = 1, Input:length()) {
+            Output += format("%.2X ", toByte(Input[I]))
+        }
+    } elseif (Algorithm == "reverse") {
+        Output = Input:reverse()
+    } elseif (Algorithm == "rot13") {
+        Symbols = "NOPQRSTUVWXYZABCDEFGHIJKLM"
+        Output = ""
+        for (I = 1, Input:length()) {
+            Char = toByte(Input[I])
+            UpperChar = toByte(Input[I]:upper())
+            if (UpperChar >= 65 &
+                UpperChar <= 90) {
+                if (Char == UpperChar) {
+                    Output += Symbols[UpperChar - 64]
+                } else {
+                    Output += Symbols[UpperChar - 64]:lower()
+                }
+            } else {
+                Output += toChar(Char)
+            }
+        }
+    } elseif (Algorithm == "strlen") {
+        Output = toString(Input:length())
+    }
+    
+    Display = "Function: " + Algorithm + "<br>"
+    Display += "Parameter: " + Parameter + "<br>"
+    Display += "<br>"
+    Display += "Input<br>"
+    
+    DisplayedOutput = ""
+    Offset = 1
+    while (Offset <= Input:length()) {
+        DisplayedOutput += Input:sub(Offset, Offset + 29) + "<br>"
+        Offset += 30
+    }
+    Display += DisplayedOutput
+    
+    Display += "<br>"
+    Display += "Output<br>"
+    
+    DisplayedOutput = ""
+    Offset = 1
+    while (Offset <= Output:length()) {
+        DisplayedOutput += Output:sub(Offset, Offset + 29) + "<br>"
+        Offset += 30
+    }
+    Display += DisplayedOutput
+}

@@ -1,0 +1,10 @@
+@name Helicopter
+@inputs PC:wirelink
+@outputs 
+@persist 
+@trigger 
+
+Driver = PC["Entity", entity]:driver()
+if (Driver)
+{
+}

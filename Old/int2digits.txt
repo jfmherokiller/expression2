@@ -1,0 +1,22 @@
+@name int2digits
+@inputs Value
+@outputs D C B A IsZero Value
+@persist
+@trigger all
+
+A = Value % 10
+A = floor(A)
+B = Value / 10 % 10
+B = floor(B)
+C = Value / 100 % 10
+C = floor(C)
+D = Value / 100 % 10
+D = floor(D)
+
+if (Value <= 0) {
+    IsZero = 1   
+} else {
+    IsZero = 0
+}
+
+Value = Value

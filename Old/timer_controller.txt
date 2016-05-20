@@ -1,0 +1,36 @@
+@name Timer Controller
+@inputs DistTop EntTop:entity
+@outputs DistBottom EntPlayerBottom:entity EntPlayerTop:entity StartTime Started EntStartPlayer:entity
+@persist DistBottom EntPlayerBottom:entity EntPlayerTop:entity StartTime Started EntStartPlayer:entity
+@trigger
+
+interval(10)
+
+gSetGroup("timer")
+DistBottom = gGetNum("distbottom")
+EntPlayerBottom = gGetEnt("entbottom")
+if (!EntTop:isPlayer()) {
+    EntPlayerTop = EntTop:owner()   
+} else {
+    EntPlayerTop = EntTop
+}
+if (!EntPlayerBottom:isPlayer()) {
+    EntPlayerBottom = EntPlayerBottom:owner()   
+}
+
+if (DistTop < 1000 & ((!Started) | EntStartPlayer == EntPlayerTop)) {
+    EntStartPlayer = EntPlayerTop
+    gSetEnt("player", EntStartPlayer)
+    StartTime = curtime()
+    if(EntPlayerTop) {
+        Started = 1  
+    }
+}
+if (Started) {
+    Time = curtime() - StartTime
+    gSetNum("lasttime", Time)
+}
+if (DistBottom < 1000 & EntPlayerBottom == EntStartPlayer) {
+    Started = 0
+}
+gResetGroup()
